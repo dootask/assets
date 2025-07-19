@@ -32,7 +32,7 @@ mkdir -p docs scripts docker
 
 ```bash
 # 启动 PostgreSQL 和 Redis
-docker-compose -f docker/docker-compose.dev.yml up -d postgres redis
+docker compose -f docker/docker-compose.dev.yml up -d postgres redis
 
 # 创建数据库和表结构
 psql -h localhost -U dootask -d dootask_ai -f scripts/init.sql
@@ -51,7 +51,7 @@ go mod init dootask-ai/go-service
 go get github.com/gin-gonic/gin
 go get github.com/golang-jwt/jwt/v5
 go get github.com/lib/pq
-go get github.com/go-redis/redis/v8
+go get github.com/redis/go-redis/v9
 go get github.com/gorilla/websocket
 ```
 
@@ -500,7 +500,7 @@ def test_process_message():
 
 ```bash
 # 启动测试环境
-docker-compose -f docker/docker-compose.test.yml up -d
+docker compose -f docker/docker-compose.test.yml up -d
 
 # 运行集成测试
 npm run test:integration
@@ -569,24 +569,24 @@ Authorization: Bearer <token>
 
 ```bash
 # 启动所有服务
-docker-compose -f docker/docker-compose.dev.yml up -d
+docker compose -f docker/docker-compose.dev.yml up -d
 
 # 查看服务状态
-docker-compose ps
+docker compose ps
 
 # 查看日志
-docker-compose logs -f go-service
-docker-compose logs -f python-ai
+docker compose logs -f go-service
+docker compose logs -f python-ai
 ```
 
 ### 生产环境部署
 
 ```bash
 # 构建镜像
-docker-compose -f docker/docker-compose.prod.yml build
+docker compose -f docker/docker-compose.prod.yml build
 
 # 启动生产环境
-docker-compose -f docker/docker-compose.prod.yml up -d
+docker compose -f docker/docker-compose.prod.yml up -d
 ```
 
 ## 🔍 调试指南

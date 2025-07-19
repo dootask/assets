@@ -14,9 +14,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "quick-start": "./scripts/quick-start.sh",
-    "db:up": "docker-compose -f docker/docker-compose.dev.yml up -d postgres redis",
-    "db:down": "docker-compose -f docker/docker-compose.dev.yml down",
-    "db:reset": "docker-compose -f docker/docker-compose.dev.yml down -v && docker-compose -f docker/docker-compose.dev.yml up -d postgres redis && sleep 10 && docker exec -i dootask-ai-postgres psql -U dootask -d dootask_ai < scripts/init.sql",
+    "db:up": "docker compose -f docker/docker-compose.dev.yml up -d postgres redis",
+    "db:down": "docker compose -f docker/docker-compose.dev.yml down",
+    "db:reset": "docker compose -f docker/docker-compose.dev.yml down -v && docker compose -f docker/docker-compose.dev.yml up -d postgres redis && sleep 10 && docker exec -i dootask-ai-postgres psql -U dootask -d dootask_ai < scripts/init.sql",
     "logs:go": "docker logs -f dootask-ai-go-service",
     "logs:python": "docker logs -f dootask-ai-python-ai",
     "logs:db": "docker logs -f dootask-ai-postgres",
@@ -86,7 +86,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dootask/dootask-ai-agent"
+    "url": "https://github.com/dootask/ai"
   },
   "keywords": [
     "dootask",

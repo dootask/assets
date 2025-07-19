@@ -12,8 +12,6 @@
 [![LangChain](https://img.shields.io/badge/LangChain-Latest-green)](https://langchain.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://typescriptlang.org/)
 
-[在线文档](https://docs.dootask.com/ai-agent) • [演示视频](https://demo.dootask.com) • [社区讨论](https://github.com/dootask/dootask-ai-agent/discussions)
-
 </div>
 
 ## ✨ 功能特性
@@ -110,8 +108,8 @@ graph TB
 
 ```bash
 # 克隆项目
-git clone https://github.com/dootask/dootask-ai-agent.git
-cd dootask-ai-agent
+git clone https://github.com/dootask/ai.git
+cd ai
 
 # 快速启动（推荐）
 npm run quick-start
@@ -267,9 +265,9 @@ npm run logs:db         # 数据库日志
 
 ## 📞 联系我们
 
-- 项目主页：[https://github.com/dootask/dootask-ai-agent](https://github.com/dootask/dootask-ai-agent)
-- 问题反馈：[Issues](https://github.com/dootask/dootask-ai-agent/issues)
-- 功能建议：[Discussions](https://github.com/dootask/dootask-ai-agent/discussions)
+- 项目主页：[https://github.com/dootask/ai](https://github.com/dootask/ai)
+- 问题反馈：[Issues](https://github.com/dootask/ai/issues)
+- 功能建议：[Discussions](https://github.com/dootask/ai/discussions)
 - 邮箱联系：ai@dootask.com
 
 ---

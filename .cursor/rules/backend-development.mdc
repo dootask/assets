@@ -1,0 +1,142 @@
+---
+globs: *.go,*.py,backend/**/*
+description: "后端服务开发规范"
+---
+
+# 后端开发规则
+
+## Go微服务开发 ([backend/go-service/](mdc:backend/go-service/))
+- 遵循Go标准项目布局
+- 使用context.Context进行请求跟踪
+- 错误处理使用errors包
+- API响应统一使用JSON格式
+- 日志记录使用结构化日志
+- 数据库操作使用事务
+
+## Python AI服务开发 ([backend/python-ai/](mdc:backend/python-ai/))
+- 使用异步编程 (asyncio)
+- 类型提示 (type hints) 必须添加
+- 错误处理使用try-except-finally模式
+- AI模型调用使用适当的错误重试机制
+- API文档使用FastAPI自动生成
+
+## 通用规范
+- RESTful API设计原则
+- 使用环境变量进行配置管理
+- 数据库迁移脚本存放在[scripts/](mdc:scripts/)
+- Docker化部署配置
+
+## 错误码规范
+- **统一错误码**: 所有API返回标准化的错误码格式
+- **错误码结构**: `{ "code": "ERROR_CODE", "message": "详细描述", "data": {} }`
+- **分类编码**: 按业务模块和错误类型进行编码 (如: AUTH_001, USER_002, TASK_003)
+- **前端翻译**: 后端只返回错误码，前端负责错误信息的国际化翻译
+- **文档维护**: 维护完整的错误码文档供前端参考
+
+## HTTP状态码规范
+- **200**: 请求成功，正常响应
+- **400**: 请求数据格式错误 (Bad Request)
+- **401**: 用户认证失败或令牌无效 (Unauthorized)
+- **403**: 用户权限不足，禁止访问 (Forbidden)
+- **422**: 数据验证错误或通用业务逻辑错误 (Unprocessable Entity)
+
+## 安全规范
+- API认证和授权
+- 输入验证和清理
+- SQL注入防护
+- 敏感信息不得硬编码
+
+## 性能优化
+- 数据库查询优化
+- 缓存策略实施
+- 异步处理长时间操作
+- 连接池管理
+
+## 错误码返回示例
+
+### Go服务错误返回
+```go
+import (
+    "net/http"
+    "github.com/gin-gonic/gin"
+)
+
+type APIError struct {
+    Code    string      `json:"code"`
+    Message string      `json:"message"`
+    Data    interface{} `json:"data,omitempty"`
+}
+
+// 认证失败 - 401
+c.JSON(http.StatusUnauthorized, APIError{
+    Code:    "AUTH_001",
+    Message: "Invalid username or password",
+    Data:    nil,
+})
+
+// 权限不足 - 403
+c.JSON(http.StatusForbidden, APIError{
+    Code:    "AUTH_003",
+    Message: "Insufficient permissions",
+    Data:    nil,
+})
+
+// 数据验证错误 - 422
+c.JSON(http.StatusUnprocessableEntity, APIError{
+    Code:    "VALIDATION_001",
+    Message: "Invalid input data",
+    Data:    map[string]string{"field": "email"},
+})
+
+// 数据格式错误 - 400
+c.JSON(http.StatusBadRequest, APIError{
+    Code:    "FORMAT_001",
+    Message: "Invalid JSON format",
+    Data:    nil,
+})
+```
+
+### Python服务错误返回
+```python
+from fastapi import HTTPException, status
+
+# 认证失败 - 401
+raise HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail={
+        "code": "AUTH_001",
+        "message": "Invalid username or password",
+        "data": {}
+    }
+)
+
+# 权限不足 - 403
+raise HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN,
+    detail={
+        "code": "AUTH_003", 
+        "message": "Insufficient permissions",
+        "data": {}
+    }
+)
+
+# 数据验证错误 - 422
+raise HTTPException(
+    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+    detail={
+        "code": "VALIDATION_001",
+        "message": "Invalid input data", 
+        "data": {"field": "email"}
+    }
+)
+
+# 数据格式错误 - 400
+raise HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail={
+        "code": "FORMAT_001",
+        "message": "Invalid JSON format",
+        "data": {}
+    }
+)
+```

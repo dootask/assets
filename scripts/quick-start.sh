@@ -98,7 +98,7 @@ start_databases() {
     log_info "启动数据库服务..."
     
     if [ -f "docker/docker-compose.dev.yml" ]; then
-        docker-compose -f docker/docker-compose.dev.yml up -d postgres redis
+        docker compose -f docker/docker-compose.dev.yml up -d postgres redis
         
         # 等待数据库启动
         log_info "等待数据库启动完成..."
@@ -116,7 +116,7 @@ check_database() {
     log_info "检查数据库连接..."
     
     # 检查 PostgreSQL
-    if docker exec -it dootask-ai-postgres pg_isready -U dootask > /dev/null 2>&1; then
+    if docker exec dootask-ai-postgres pg_isready -U dootask > /dev/null 2>&1; then
         log_success "PostgreSQL 连接正常"
     else
         log_error "PostgreSQL 连接失败"
@@ -124,7 +124,7 @@ check_database() {
     fi
     
     # 检查 Redis
-    if docker exec -it dootask-ai-redis redis-cli ping > /dev/null 2>&1; then
+    if docker exec dootask-ai-redis redis-cli ping > /dev/null 2>&1; then
         log_success "Redis 连接正常"
     else
         log_error "Redis 连接失败"
@@ -239,7 +239,7 @@ main() {
 # 错误处理
 cleanup() {
     log_error "脚本执行过程中发生错误，正在清理..."
-    docker-compose -f docker/docker-compose.dev.yml down > /dev/null 2>&1 || true
+    docker compose -f docker/docker-compose.dev.yml down > /dev/null 2>&1 || true
     exit 1
 }
 

@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+description: "代码质量和测试规范"
+---
+
+# 代码质量和测试规范
+
+## 代码风格
+- **ESLint配置**: 遵循[eslint.config.mjs](mdc:eslint.config.mjs)规则
+- **TypeScript严格模式**: 使用[tsconfig.json](mdc:tsconfig.json)的严格配置
+- **格式化**: 统一使用Prettier进行代码格式化
+- **命名规范**: 
+  - 变量和函数使用camelCase
+  - 常量使用UPPER_SNAKE_CASE
+  - 类和接口使用PascalCase
+
+## 测试标准
+- **单元测试**: 核心业务逻辑100%覆盖
+- **集成测试**: API端点和服务间交互测试
+- **E2E测试**: 关键用户流程测试
+- **测试文件命名**: `*.test.ts` 或 `*.spec.ts`
+
+## 代码审查要求
+- 所有功能都需要通过PR审查
+- 至少一位reviewer批准
+- 自动化测试必须通过
+- 代码覆盖率不低于80%
+
+## 性能规范
+- 避免不必要的重新渲染
+- 数据库查询优化
+- 静态资源压缩和缓存
+- 异步操作正确处理
+
+## 安全规范
+- 输入验证和清理
+- XSS和CSRF防护
+- 敏感数据加密存储
+- API访问权限控制
+
+## 文档要求
+- 复杂函数需要JSDoc注释
+- README文档保持更新
+- API文档自动生成
+- 变更日志记录
