@@ -26,6 +26,20 @@ mkdir -p mcp-tools/{dootask-mcp,external-mcp}
 mkdir -p docs scripts docker
 ```
 
+### 环境配置
+
+```bash
+# 复制环境配置文件
+cp config.example.env .env
+
+# 编辑环境变量 (.env 文件)
+DOOTASK_API_URL=http://your-dootask-instance.com/api
+DOOTASK_API_TOKEN=your-dootask-api-token
+OPENAI_API_KEY=your-openai-api-key
+DATABASE_URL=postgresql://dootask:password@localhost:5432/dootask_ai
+REDIS_URL=redis://localhost:6379/0
+```
+
 ## 🏗️ 开发环境搭建
 
 ### 1. 数据库设置
@@ -64,7 +78,7 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # 安装依赖
-pip install fastapi uvicorn langchain openai redis psycopg2-binary
+pip install fastapi uvicorn langchain openai redis psycopg2-binary dootask-tools mcp
 ```
 
 ### 3. 前端开发服务器
@@ -85,6 +99,31 @@ feature/知识库系统    # feature/knowledge-base
 feature/MCP集成      # feature/mcp-integration
 hotfix/修复XXX       # hotfix/fix-xxx
 ```
+
+### 代码格式化规范
+
+```bash
+# 格式化所有代码
+npm run format
+
+# 检查代码格式
+npm run format:check
+
+# 格式化并修复 ESLint 问题
+npm run format:fix
+
+# 配置文件
+# .prettierrc      - Prettier 配置
+# .prettierignore  - 忽略格式化的文件
+```
+
+#### 格式化规则
+- **分号**: 使用分号结尾
+- **引号**: 使用单引号
+- **行宽**: 120 字符 (适合现代宽屏开发环境)
+- **缩进**: 2 空格
+- **尾随逗号**: ES5 标准
+- **Tailwind 排序**: 自动排序 Tailwind 类名
 
 ### 提交规范
 
@@ -142,7 +181,7 @@ interface Agent {
   updatedAt: Date
 }
 
-// 组件定义
+// 组件定义 - 使用shadcn/ui组件
 interface AgentConfigProps {
   agent: Agent
   onSave: (agent: Agent) => void
@@ -255,7 +294,7 @@ func HandleWebhook(c *gin.Context) {
 #### 项目结构创建
 ```bash
 # 在 backend/python-ai 目录下创建结构
-mkdir -p {agents,tools,knowledge,models,services,config,utils}
+mkdir -p {agents,mcp,knowledge,models,services,config,utils}
 ```
 
 #### 主入口文件
@@ -308,7 +347,9 @@ if __name__ == "__main__":
 from langchain.agents import initialize_agent, AgentType
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
-from tools.dootask_tools import DooTaskToolkit
+from langchain.tools import Tool
+from dootask_tools import DooTaskClient
+import os
 
 class DooTaskAgent:
     def __init__(self, config):
@@ -324,9 +365,14 @@ class DooTaskAgent:
             return_messages=True
         )
         
-        # 加载工具
-        self.toolkit = DooTaskToolkit()
-        self.tools = self.toolkit.get_tools(config.tools)
+        # 初始化 DooTask 客户端
+        self.dootask_client = DooTaskClient(
+            base_url=os.getenv("DOOTASK_API_URL"),
+            token=os.getenv("DOOTASK_API_TOKEN")
+        )
+        
+        # 创建工具集
+        self.tools = self._create_dootask_tools()
         
         # 初始化智能体
         self.agent = initialize_agent(
@@ -336,6 +382,49 @@ class DooTaskAgent:
             memory=self.memory,
             verbose=True
         )
+    
+    def _create_dootask_tools(self):
+        """创建 DooTask 工具集"""
+        return [
+            Tool(
+                name="get_chat_messages",
+                description="获取聊天记录",
+                func=lambda chat_id, limit=50: self.dootask_client.chat.get_messages(chat_id, limit=limit)
+            ),
+            Tool(
+                name="create_project",
+                description="创建新项目",
+                func=lambda name, description="", owner_id="": self.dootask_client.project.create(
+                    name=name, description=description, owner_id=owner_id
+                )
+            ),
+            Tool(
+                name="create_task", 
+                description="创建新任务",
+                func=lambda title, project_id, assignee_id, description="", priority="medium": 
+                    self.dootask_client.task.create(
+                        title=title,
+                        description=description,
+                        project_id=project_id,
+                        assignee_id=assignee_id,
+                        priority=priority
+                    )
+            ),
+            Tool(
+                name="search_tasks",
+                description="搜索任务",
+                func=lambda query, project_id="", status="": self.dootask_client.task.search(
+                    query=query, project_id=project_id, status=status
+                )
+            ),
+            Tool(
+                name="send_message",
+                description="发送消息",
+                func=lambda chat_id, content, type="text": self.dootask_client.chat.send_message(
+                    chat_id=chat_id, content=content, type=type
+                )
+            )
+        ]
     
     def process_message(self, message: str, context: dict = None) -> str:
         # 增强消息上下文
@@ -349,7 +438,90 @@ class DooTaskAgent:
         return response
     
     def get_used_tools(self) -> list:
-        return [tool.name for tool in self.tools if tool.was_used()]
+        return [tool.name for tool in self.tools if hasattr(tool, 'was_used') and tool.was_used()]
+```
+
+#### MCP 服务器实现
+```python
+# backend/python-ai/mcp/dootask_mcp_server.py
+from mcp import Server
+from mcp import types
+from dootask_tools import DooTaskClient
+import os
+import asyncio
+
+class DooTaskMCPServer:
+    def __init__(self):
+        self.client = DooTaskClient(
+            base_url=os.getenv("DOOTASK_API_URL"),
+            token=os.getenv("DOOTASK_API_TOKEN")
+        )
+
+async def serve_dootask_mcp():
+    """启动 DooTask MCP 服务器"""
+    server = Server("dootask-internal")
+    dootask_server = DooTaskMCPServer()
+    
+    @server.list_tools()
+    async def handle_list_tools() -> list[types.Tool]:
+        """注册可用的工具"""
+        return [
+            types.Tool(
+                name="get_chat_messages",
+                description="获取指定聊天的消息记录", 
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "chat_id": {"type": "string", "description": "聊天ID"},
+                        "limit": {"type": "integer", "description": "消息数量限制", "default": 50}
+                    },
+                    "required": ["chat_id"]
+                }
+            ),
+            types.Tool(
+                name="create_task",
+                description="创建新任务",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string", "description": "任务标题"},
+                        "project_id": {"type": "string", "description": "所属项目ID"},
+                        "assignee_id": {"type": "string", "description": "执行人ID"}
+                    },
+                    "required": ["title", "project_id", "assignee_id"]
+                }
+            )
+            # 更多工具定义...
+        ]
+    
+    @server.call_tool()
+    async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+        """处理工具调用"""
+        try:
+            if name == "get_chat_messages":
+                result = await dootask_server.client.chat.get_messages(**arguments)
+                return [types.TextContent(type="text", text=f"聊天记录: {result}")]
+            elif name == "create_task":
+                result = await dootask_server.client.task.create(**arguments) 
+                return [types.TextContent(type="text", text=f"任务创建成功: {result}")]
+            else:
+                raise ValueError(f"Unknown tool: {name}")
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"工具调用失败: {str(e)}")]
+    
+    return server
+
+# 启动脚本
+if __name__ == "__main__":
+    import asyncio
+    from mcp.server.stdio import stdio_server
+    
+    async def main():
+        server = await serve_dootask_mcp()
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(read_stream, write_stream)
+    
+    asyncio.run(main())
 ```
 
 ### 3. 前端组件开发
@@ -473,27 +645,64 @@ func TestHandleWebhook(t *testing.T) {
 ```python
 # backend/python-ai/tests/test_agent.py
 import pytest
+from unittest.mock import Mock, patch
 from agents.dootask_agent import DooTaskAgent
 from config.agent_config import AgentConfig
 
 def test_agent_initialization():
-    config = AgentConfig(
-        model="gpt-3.5-turbo",
-        temperature=0.7,
-        tools=["search", "calculator"]
-    )
+    """测试智能体初始化"""
+    with patch('agents.dootask_agent.DooTaskClient') as mock_client:
+        config = AgentConfig(
+            model="gpt-3.5-turbo",
+            temperature=0.7,
+            openai_api_key="test-key"
+        )
+        
+        agent = DooTaskAgent(config)
+        assert agent.config.model == "gpt-3.5-turbo"
+        assert len(agent.tools) == 5  # DooTask 工具数量
+        mock_client.assert_called_once()
+
+def test_dootask_tools_creation():
+    """测试 DooTask 工具创建"""
+    with patch('agents.dootask_agent.DooTaskClient') as mock_client:
+        config = AgentConfig(model="gpt-3.5-turbo", temperature=0.7)
+        agent = DooTaskAgent(config)
+        
+        tools = agent._create_dootask_tools()
+        tool_names = [tool.name for tool in tools]
+        
+        expected_tools = [
+            "get_chat_messages", "create_project", "create_task", 
+            "search_tasks", "send_message"
+        ]
+        assert all(tool_name in tool_names for tool_name in expected_tools)
+
+@pytest.mark.asyncio
+async def test_mcp_server():
+    """测试 MCP 服务器"""
+    from mcp.dootask_mcp_server import serve_dootask_mcp
     
-    agent = DooTaskAgent(config)
-    assert agent.config.model == "gpt-3.5-turbo"
-    assert len(agent.tools) == 2
+    with patch('mcp.dootask_mcp_server.DooTaskClient') as mock_client:
+        server = await serve_dootask_mcp()
+        assert server.name == "dootask-internal"
 
 def test_process_message():
-    config = AgentConfig(model="gpt-3.5-turbo", temperature=0.7)
-    agent = DooTaskAgent(config)
-    
-    response = agent.process_message("Hello")
-    assert isinstance(response, str)
-    assert len(response) > 0
+    """测试消息处理"""
+    with patch('agents.dootask_agent.DooTaskClient'), \
+         patch('agents.dootask_agent.ChatOpenAI') as mock_llm:
+        
+        # 模拟 LangChain 智能体
+        mock_agent = Mock()
+        mock_agent.run.return_value = "AI response"
+        
+        config = AgentConfig(model="gpt-3.5-turbo", temperature=0.7)
+        agent = DooTaskAgent(config)
+        agent.agent = mock_agent
+        
+        response = agent.process_message("Hello")
+        assert response == "AI response"
+        mock_agent.run.assert_called_once()
 ```
 
 ### 集成测试
@@ -571,12 +780,26 @@ Authorization: Bearer <token>
 # 启动所有服务
 docker compose -f docker/docker-compose.dev.yml up -d
 
+# 启动 MCP 服务器
+cd backend/python-ai
+python mcp/dootask_mcp_server.py
+
 # 查看服务状态
 docker compose ps
 
 # 查看日志
 docker compose logs -f go-service
 docker compose logs -f python-ai
+```
+
+### MCP 服务器测试
+
+```bash
+# 测试 MCP 服务器连接
+echo '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}' | python mcp/dootask_mcp_server.py
+
+# 测试工具调用
+echo '{"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "get_chat_messages", "arguments": {"chat_id": "test-123"}}, "id": 2}' | python mcp/dootask_mcp_server.py
 ```
 
 ### 生产环境部署

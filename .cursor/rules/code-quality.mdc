@@ -8,7 +8,10 @@ description: "代码质量和测试规范"
 ## 代码风格
 - **ESLint配置**: 遵循[eslint.config.mjs](mdc:eslint.config.mjs)规则
 - **TypeScript严格模式**: 使用[tsconfig.json](mdc:tsconfig.json)的严格配置
-- **格式化**: 统一使用Prettier进行代码格式化
+- **Prettier格式化**: 使用[.prettierrc](mdc:.prettierrc)配置进行代码格式化
+  - 单引号、分号结尾、120字符行宽
+  - 集成Tailwind CSS类名排序
+  - 提交前自动格式化：`npm run format`
 - **命名规范**: 
   - 变量和函数使用camelCase
   - 常量使用UPPER_SNAKE_CASE

@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Environment files
+.env*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.db
+*.sqlite
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Generated files
+*.tsbuildinfo
+next-env.d.ts
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Scripts (might have specific formatting)
+scripts/*.sh
+
+# Markdown files (preserve manual formatting)
+# *.md  # 取消注释此行可启用 Markdown 格式化
+
+# Package lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml 

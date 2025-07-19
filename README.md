@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![DooTask AI Logo](./public/logo.png)
+# 🤖 DooTask AI 智能体插件
 
 基于 **DooTask** 主程序的企业级 AI 智能体插件系统
 
@@ -138,8 +138,8 @@ npm run dev
 ### 访问应用
 
 - **前端界面**: http://localhost:3000
-- **API 文档**: http://localhost:8080/swagger  
-- **数据库管理**: http://localhost:5432 (用户名: `dootask`, 密码: `dootask123`)
+- **API 文档**: http://localhost:8080/swagger (开发中)
+- **数据库**: PostgreSQL (localhost:5432)
 
 ## 📖 使用指南
 
@@ -225,11 +225,10 @@ npm run logs:db         # 数据库日志
 
 ## 📚 文档链接
 
-- [项目规划](./PROJECT_PLAN.md) - 完整的项目规划和发展路线图
-- [技术架构](./ARCHITECTURE.md) - 详细的技术架构设计文档  
-- [开发指南](./DEVELOPMENT.md) - 开发环境搭建和编码规范
-- [API 文档](./docs/API.md) - 完整的 API 接口文档
-- [部署指南](./docs/DEPLOYMENT.md) - 生产环境部署说明
+- [项目规划](./docs/PROJECT_PLAN.md) - 完整的项目规划和发展路线图
+- [技术架构](./docs/ARCHITECTURE.md) - 详细的技术架构设计文档  
+- [开发指南](./docs/DEVELOPMENT.md) - 开发环境搭建和编码规范
+- [部署指南](./docs/DEPLOYMENT.md) - 生产环境部署说明 (开发中)
 
 ## 🤝 贡献指南
 
@@ -245,7 +244,7 @@ npm run logs:db         # 数据库日志
 
 ### 开发规范
 
-- 遵循 [代码规范](./DEVELOPMENT.md#代码规范)
+- 遵循 [代码规范](./docs/DEVELOPMENT.md#代码规范)
 - 编写测试用例
 - 更新相关文档
 - 确保 CI 通过
@@ -268,7 +267,6 @@ npm run logs:db         # 数据库日志
 - 项目主页：[https://github.com/dootask/ai](https://github.com/dootask/ai)
 - 问题反馈：[Issues](https://github.com/dootask/ai/issues)
 - 功能建议：[Discussions](https://github.com/dootask/ai/discussions)
-- 邮箱联系：ai@dootask.com
 
 ---
 

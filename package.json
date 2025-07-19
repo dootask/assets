@@ -13,6 +13,7 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "format:fix": "prettier --write . && eslint --fix .",
     "quick-start": "./scripts/quick-start.sh",
     "db:up": "docker compose -f docker/docker-compose.dev.yml up -d postgres redis",
     "db:down": "docker compose -f docker/docker-compose.dev.yml down",
@@ -78,7 +79,18 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "@testing-library/react": "^14.1.2",
-    "@testing-library/jest-dom": "^6.1.5"
+    "@testing-library/jest-dom": "^6.1.5",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "engines": {
     "node": ">=18.0.0",
@@ -91,7 +103,7 @@
   "keywords": [
     "dootask",
     "ai-agent",
-    "langchain", 
+    "langchain",
     "mcp-protocol",
     "chatbot",
     "enterprise-ai",

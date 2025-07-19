@@ -7,6 +7,7 @@ graph TB
     subgraph "DooTask 主程序"
         DT[DooTask 聊天系统]
         BOT[机器人系统]
+        API_DT[(DooTask Tools)]
         DB_DT[(DooTask 数据库)]
     end
     
@@ -14,6 +15,7 @@ graph TB
         subgraph "前端层"
             UI[Next.js 前端]
             COMP[shadcn/ui 组件]
+            HTTP[Axios HTTP客户端]
         end
         
         subgraph "API 网关层"
@@ -43,14 +45,16 @@ graph TB
     
     DT -->|Webhook| WEBHOOK
     BOT --> DT
-    UI --> GO
+    UI --> HTTP
+    HTTP --> GO
     GO --> PY
     GO --> PG
     PY --> LC
     LC --> AGENT
     AGENT --> MCP_INT
     AGENT --> MCP_EXT
-    MCP_INT --> DB_DT
+    MCP_INT --> API_DT
+    API_DT --> DB_DT
     GO --> REDIS
     PY --> VECTOR
 ```
@@ -203,26 +207,188 @@ type MCPResponse struct {
 ```
 
 #### 内部 MCP 工具
-```go
-// DooTask 内部工具集
-type DooTaskMCPServer struct {
-    client *DooTaskAPIClient
-}
 
-func (d *DooTaskMCPServer) GetChatMessages(params MCPParams) interface{} {
-    // 获取聊天记录
-    return d.client.GetMessages(params.ChatID, params.Limit)
-}
+使用官方 [dootask-tools](https://github.com/dootask/tools/blob/main/server/python/README.md) Python 包：
 
-func (d *DooTaskMCPServer) CreateProject(params MCPParams) interface{} {
-    // 创建项目
-    return d.client.CreateProject(params.ProjectData)
-}
+```python
+# 安装依赖
+# pip install dootask-tools
 
-func (d *DooTaskMCPServer) CreateTask(params MCPParams) interface{} {
-    // 创建任务
-    return d.client.CreateTask(params.TaskData)
-}
+from mcp import Server
+from mcp import types
+from dootask_tools import DooTaskClient
+import os
+import asyncio
+
+class DooTaskMCPServer:
+    def __init__(self):
+        self.client = DooTaskClient(
+            base_url=os.getenv("DOOTASK_API_URL"),
+            token=os.getenv("DOOTASK_API_TOKEN")
+        )
+    
+    async def get_chat_messages(self, chat_id: str, limit: int = 50):
+        """获取聊天记录"""
+        return await self.client.chat.get_messages(chat_id, limit=limit)
+    
+    async def create_project(self, name: str, description: str = "", owner_id: str = ""):
+        """创建项目"""
+        return await self.client.project.create(
+            name=name,
+            description=description,
+            owner_id=owner_id
+        )
+    
+    async def create_task(self, title: str, project_id: str, assignee_id: str, 
+                         description: str = "", priority: str = "medium"):
+        """创建任务"""
+        return await self.client.task.create(
+            title=title,
+            description=description,
+            project_id=project_id,
+            assignee_id=assignee_id,
+            priority=priority
+        )
+    
+    async def get_user_info(self, user_id: str):
+        """获取用户信息"""
+        return await self.client.user.get(user_id)
+    
+    async def search_tasks(self, query: str, project_id: str = "", status: str = ""):
+        """搜索任务"""
+        return await self.client.task.search(
+            query=query,
+            project_id=project_id,
+            status=status
+        )
+    
+    async def send_message(self, chat_id: str, content: str, type: str = "text"):
+        """发送消息"""
+        return await self.client.chat.send_message(
+            chat_id=chat_id,
+            content=content,
+            type=type
+        )
+
+# MCP 服务器实现
+async def serve_dootask_mcp():
+    server = Server("dootask-internal")
+    dootask_server = DooTaskMCPServer()
+    
+    @server.list_tools()
+    async def handle_list_tools() -> list[types.Tool]:
+        return [
+            types.Tool(
+                name="get_chat_messages",
+                description="获取指定聊天的消息记录",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "chat_id": {"type": "string", "description": "聊天ID"},
+                        "limit": {"type": "integer", "description": "消息数量限制", "default": 50}
+                    },
+                    "required": ["chat_id"]
+                }
+            ),
+            types.Tool(
+                name="create_project",
+                description="创建新项目",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "项目名称"},
+                        "description": {"type": "string", "description": "项目描述"},
+                        "owner_id": {"type": "string", "description": "项目负责人ID"}
+                    },
+                    "required": ["name"]
+                }
+            ),
+            types.Tool(
+                name="create_task",
+                description="创建新任务",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string", "description": "任务标题"},
+                        "description": {"type": "string", "description": "任务描述"},
+                        "project_id": {"type": "string", "description": "所属项目ID"},
+                        "assignee_id": {"type": "string", "description": "执行人ID"},
+                        "priority": {"type": "string", "enum": ["low", "medium", "high"], "default": "medium"}
+                    },
+                    "required": ["title", "project_id", "assignee_id"]
+                }
+            ),
+            types.Tool(
+                name="search_tasks",
+                description="搜索任务",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "搜索关键词"},
+                        "project_id": {"type": "string", "description": "项目ID过滤"},
+                        "status": {"type": "string", "description": "任务状态过滤"}
+                    },
+                    "required": ["query"]
+                }
+            ),
+            types.Tool(
+                name="send_message",
+                description="发送消息到指定聊天",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "chat_id": {"type": "string", "description": "聊天ID"},
+                        "content": {"type": "string", "description": "消息内容"},
+                        "type": {"type": "string", "enum": ["text", "markdown"], "default": "text"}
+                    },
+                    "required": ["chat_id", "content"]
+                }
+            )
+        ]
+    
+    @server.call_tool()
+    async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+        try:
+            if name == "get_chat_messages":
+                result = await dootask_server.get_chat_messages(**arguments)
+                return [types.TextContent(type="text", text=f"聊天记录: {result}")]
+            elif name == "create_project":
+                result = await dootask_server.create_project(**arguments)
+                return [types.TextContent(type="text", text=f"项目创建成功: {result}")]
+            elif name == "create_task":
+                result = await dootask_server.create_task(**arguments)
+                return [types.TextContent(type="text", text=f"任务创建成功: {result}")]
+            elif name == "search_tasks":
+                result = await dootask_server.search_tasks(**arguments)
+                return [types.TextContent(type="text", text=f"任务搜索结果: {result}")]
+            elif name == "send_message":
+                result = await dootask_server.send_message(**arguments)
+                return [types.TextContent(type="text", text=f"消息发送成功: {result}")]
+            else:
+                raise ValueError(f"Unknown tool: {name}")
+        except Exception as e:
+            return [types.TextContent(type="text", text=f"工具调用失败: {str(e)}")]
+    
+    return server
+
+# 启动 MCP 服务器
+if __name__ == "__main__":
+    import asyncio
+    from mcp.server.stdio import stdio_server
+    
+    async def main():
+        server = await serve_dootask_mcp()
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                InitializationOptions(
+                    server_name="dootask-internal",
+                    server_version="1.0.0"
+                )
+            )
+    
+    asyncio.run(main())
 ```
 
 ## 📊 数据架构
@@ -356,14 +522,22 @@ func (a *AuthMiddleware) ValidateToken(c *gin.Context) {
     // 验证 JWT Token
     claims, err := jwt.Parse(token, a.jwtSecret)
     if err != nil {
-        c.JSON(401, gin.H{"error": "Invalid token"})
+        c.JSON(http.StatusUnauthorized, APIError{
+            Code:    "AUTH_001",
+            Message: "Invalid token",
+            Data:    nil,
+        })
         return
     }
     
     // 检查用户权限
     hasPermission := a.checkPermission(claims.UserID, c.Request.URL.Path)
     if !hasPermission {
-        c.JSON(403, gin.H{"error": "Insufficient permissions"})
+        c.JSON(http.StatusForbidden, APIError{
+            Code:    "AUTH_003",
+            Message: "Insufficient permissions",
+            Data:    nil,
+        })
         return
     }
     
@@ -429,11 +603,5 @@ services:
   redis:
     image: redis:7-alpine
 ```
-
-### Kubernetes 部署
-- **水平扩展**：根据负载自动扩缩容
-- **服务发现**：内部服务通信优化
-- **健康检查**：完整的健康检查机制
-- **配置管理**：ConfigMap 和 Secret 管理
 
 这个技术架构为 AI 智能体插件提供了强大、可扩展、安全的技术基础，支持企业级的高并发和高可用需求。 
