@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"dootask-ai/go-service/global"
@@ -21,22 +20,12 @@ const (
 // InitRedis 初始化Redis连接
 func InitRedis() error {
 	// 从环境变量获取Redis配置
-	redisHost := os.Getenv("REDIS_HOST")
-	redisPort := os.Getenv("REDIS_PORT")
-	redisDb := os.Getenv("REDIS_DB")
-	redisPassword := os.Getenv("REDIS_PASSWORD")
+	redisHost := utils.GetEnvWithDefault("REDIS_HOST", "127.0.0.1")
+	redisPort := utils.GetEnvWithDefault("REDIS_PORT", "6379")
+	redisDb := utils.GetEnvWithDefault("REDIS_DB", "0")
+	redisPassword := utils.GetEnvWithDefault("REDIS_PASSWORD", "")
 
-	// 设置默认值
-	if redisHost == "" {
-		redisHost = "127.0.0.1"
-	}
-	if redisPort == "" {
-		redisPort = "6379"
-	}
-	if redisDb == "" {
-		redisDb = "0"
-	}
-
+	// 连接Redis
 	var err error
 	for i := 0; i < redisMaxRetries; i++ {
 		global.Redis = redis.NewClient(&redis.Options{

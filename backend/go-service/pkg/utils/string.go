@@ -3,7 +3,6 @@ package utils
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -71,12 +70,4 @@ func MD5(str string) string {
 func StrToInt(s string) int {
 	num, _ := strconv.Atoi(s)
 	return num
-}
-
-// GetEnvWithDefault 获取环境变量，如果为空则返回默认值
-func GetEnvWithDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

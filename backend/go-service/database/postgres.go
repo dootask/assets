@@ -2,11 +2,11 @@ package database
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/migrations"
+	"dootask-ai/go-service/pkg/utils"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -21,32 +21,12 @@ const (
 // InitDatabase 初始化数据库
 func InitDatabase() error {
 	// 从环境变量获取配置
-	host := os.Getenv("POSTGRES_HOST")
-	port := os.Getenv("POSTGRES_PORT")
-	dbName := os.Getenv("POSTGRES_DB")
-	username := os.Getenv("POSTGRES_USER")
-	password := os.Getenv("POSTGRES_PASSWORD")
-	sslmode := os.Getenv("POSTGRES_SSLMODE")
-
-	// 设置默认值
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	if port == "" {
-		port = "5432"
-	}
-	if dbName == "" {
-		dbName = "dootask_ai"
-	}
-	if username == "" {
-		username = "dootask"
-	}
-	if password == "" {
-		password = "dootask123"
-	}
-	if sslmode == "" {
-		sslmode = "disable"
-	}
+	host := utils.GetEnvWithDefault("POSTGRES_HOST", "127.0.0.1")
+	port := utils.GetEnvWithDefault("POSTGRES_PORT", "5432")
+	dbName := utils.GetEnvWithDefault("POSTGRES_DB", "dootask_ai")
+	username := utils.GetEnvWithDefault("POSTGRES_USER", "dootask")
+	password := utils.GetEnvWithDefault("POSTGRES_PASSWORD", "dootask123")
+	sslmode := utils.GetEnvWithDefault("POSTGRES_SSLMODE", "disable")
 
 	// 构建DSN
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",

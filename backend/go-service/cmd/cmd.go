@@ -84,10 +84,7 @@ func runServer(*cobra.Command, []string) {
 	health.RegisterRoutes(root)
 
 	// 获取端口
-	port := os.Getenv("GO_SERVICE_PORT")
-	if port == "" {
-		port = "8000"
-	}
+	port := utils.GetEnvWithDefault("GO_SERVICE_PORT", "8000")
 
 	// 启动服务器
 	if err := r.Run(":" + port); err != nil {
