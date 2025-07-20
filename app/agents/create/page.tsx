@@ -177,10 +177,10 @@ export default function CreateAgentPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {availableModels.map(model => (
-                        <SelectItem key={model.value} value={model.value}>
-                          <div>
-                            <div className="font-medium">{model.label}</div>
-                            <div className="text-muted-foreground text-xs">{model.description}</div>
+                        <SelectItem key={model.value} value={model.value} className="flex-col items-start p-2">
+                          {model.label}
+                          <div className="text-muted-foreground mt-1 max-w-[200px] text-xs leading-tight">
+                            {model.description}
                           </div>
                         </SelectItem>
                       ))}
@@ -278,6 +278,7 @@ export default function CreateAgentPage() {
                         id={`tool-${tool.id}`}
                         checked={formData.tools?.includes(tool.id) || false}
                         onCheckedChange={(checked: boolean) => handleToolToggle(tool.id, checked)}
+                        className="mt-0.5"
                       />
                       <div className="min-w-0 flex-1">
                         <Label htmlFor={`tool-${tool.id}`} className="text-sm font-medium">
@@ -321,6 +322,7 @@ export default function CreateAgentPage() {
                         id={`kb-${kb.id}`}
                         checked={formData.knowledgeBases?.includes(kb.id) || false}
                         onCheckedChange={(checked: boolean) => handleKnowledgeBaseToggle(kb.id, checked)}
+                        className="mt-0.5"
                       />
                       <div className="min-w-0 flex-1">
                         <Label htmlFor={`kb-${kb.id}`} className="text-sm font-medium">

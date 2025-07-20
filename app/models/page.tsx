@@ -196,13 +196,15 @@ export default function ModelsPage() {
           return (
             <Card
               key={model.id}
-              className={`transition-all ${model.isActive ? 'border-green-200 bg-green-50/30' : 'opacity-75'}`}
+              className={`transition-all ${model.isActive ? 'border-green-200 bg-green-50/30 dark:border-green-800 dark:bg-green-950/20' : 'opacity-75'}`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`rounded-lg p-2 ${model.isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
-                      <Cpu className={`h-5 w-5 ${model.isActive ? 'text-green-600' : 'text-gray-400'}`} />
+                    <div className={`rounded-lg p-2 ${model.isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+                      <Cpu
+                        className={`h-5 w-5 ${model.isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+                      />
                     </div>
                     <div>
                       <CardTitle className="flex items-center gap-2 text-lg">

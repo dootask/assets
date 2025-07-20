@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { MockDataManager } from '@/lib/mock-data';
 import { AIModelConfig } from '@/lib/types';
-import { Cpu, Key, Save, Settings, Star, TestTube } from 'lucide-react';
+import { Cpu, Key, Save, Settings, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -139,7 +139,7 @@ export default function CreateModelPage() {
       ...prev,
       provider,
       baseUrl: providerConfig?.baseUrl || '',
-      name: prev.name || providerConfig?.models[0] || '',
+      name: (prev.provider === provider ? prev.name : null) || providerConfig?.models[0] || '',
     }));
   };
 
@@ -244,10 +244,10 @@ export default function CreateModelPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {providerOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <div>
-                            <div className="font-medium">{option.label}</div>
-                            <div className="text-muted-foreground text-xs">{option.description}</div>
+                        <SelectItem key={option.value} value={option.value} className="flex-col items-start p-2">
+                          {option.label}
+                          <div className="text-muted-foreground mt-1 max-w-[250px] text-xs leading-tight">
+                            {option.description}
                           </div>
                         </SelectItem>
                       ))}
@@ -293,7 +293,7 @@ export default function CreateModelPage() {
                       required
                     />
                     <Button type="button" variant="outline" onClick={testConnection}>
-                      <TestTube className="mr-2 h-4 w-4" />
+                      <Cpu className="mr-2 h-4 w-4" />
                       测试
                     </Button>
                   </div>

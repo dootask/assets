@@ -248,10 +248,10 @@ export default function ToolsPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
-            <div className="min-w-[200px] flex-1">
+            <div className="min-w-0 flex-1 sm:min-w-[200px]">
               <Label htmlFor="category">工具类别</Label>
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mt-2">
-                <TabsList>
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
                   <TabsTrigger value="all">全部</TabsTrigger>
                   <TabsTrigger value="dootask">DooTask</TabsTrigger>
                   <TabsTrigger value="external">外部工具</TabsTrigger>
@@ -260,7 +260,7 @@ export default function ToolsPage() {
               </Tabs>
             </div>
 
-            <div className="min-w-[200px] flex-1">
+            <div className="min-w-0 flex-1 sm:min-w-[200px]">
               <Label htmlFor="search">搜索工具</Label>
               <div className="relative mt-2">
                 <Search className="text-muted-foreground absolute left-2 top-2.5 h-4 w-4" />
@@ -282,13 +282,15 @@ export default function ToolsPage() {
         {filteredTools.map(tool => (
           <Card
             key={tool.id}
-            className={`transition-all ${tool.isActive ? 'border-green-200 bg-green-50/30' : 'opacity-75'}`}
+            className={`transition-all ${tool.isActive ? 'border-green-200 bg-green-50/30 dark:border-green-800 dark:bg-green-950/20' : 'opacity-75'}`}
           >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`rounded-lg p-2 ${tool.isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
-                    <Wrench className={`h-5 w-5 ${tool.isActive ? 'text-green-600' : 'text-gray-400'}`} />
+                  <div className={`rounded-lg p-2 ${tool.isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+                    <Wrench
+                      className={`h-5 w-5 ${tool.isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+                    />
                   </div>
                   <div>
                     <CardTitle className="text-lg">{tool.name}</CardTitle>
@@ -384,7 +386,7 @@ export default function ToolsPage() {
                     查看详情
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-h-[90vh] max-w-2xl">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Wrench className="h-5 w-5" />
@@ -393,71 +395,73 @@ export default function ToolsPage() {
                     <DialogDescription>MCP 工具详细信息和使用统计</DialogDescription>
                   </DialogHeader>
 
-                  <div className="space-y-4">
-                    {/* 基本信息 */}
-                    <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg p-4">
-                      <div>
-                        <p className="text-sm font-medium">工具类别</p>
-                        <p className="text-muted-foreground text-sm">{tool.category}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">工具类型</p>
-                        <p className="text-muted-foreground text-sm">{tool.type}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">创建时间</p>
-                        <p className="text-muted-foreground text-sm">
-                          {new Date(tool.createdAt).toLocaleString('zh-CN')}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">更新时间</p>
-                        <p className="text-muted-foreground text-sm">
-                          {new Date(tool.updatedAt).toLocaleString('zh-CN')}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 统计信息 */}
-                    {tool.statistics && (
-                      <div>
-                        <h4 className="mb-3 font-medium">使用统计</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          <Card>
-                            <CardContent className="p-4 text-center">
-                              <p className="text-2xl font-bold">{tool.statistics.totalCalls}</p>
-                              <p className="text-muted-foreground text-xs">总调用次数</p>
-                            </CardContent>
-                          </Card>
-                          <Card>
-                            <CardContent className="p-4 text-center">
-                              <p className="text-2xl font-bold">{tool.statistics.todayCalls}</p>
-                              <p className="text-muted-foreground text-xs">今日调用</p>
-                            </CardContent>
-                          </Card>
-                          <Card>
-                            <CardContent className="p-4 text-center">
-                              <p className="text-2xl font-bold">{tool.statistics.averageResponseTime}s</p>
-                              <p className="text-muted-foreground text-xs">平均响应时间</p>
-                            </CardContent>
-                          </Card>
-                          <Card>
-                            <CardContent className="p-4 text-center">
-                              <p className="text-2xl font-bold">{(tool.statistics.successRate * 100).toFixed(1)}%</p>
-                              <p className="text-muted-foreground text-xs">成功率</p>
-                            </CardContent>
-                          </Card>
+                  <div className="max-h-[70vh] overflow-y-auto pr-2">
+                    <div className="space-y-4">
+                      {/* 基本信息 */}
+                      <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg p-4">
+                        <div>
+                          <p className="text-sm font-medium">工具类别</p>
+                          <p className="text-muted-foreground text-sm">{tool.category}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">工具类型</p>
+                          <p className="text-muted-foreground text-sm">{tool.type}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">创建时间</p>
+                          <p className="text-muted-foreground text-sm">
+                            {new Date(tool.createdAt).toLocaleString('zh-CN')}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">更新时间</p>
+                          <p className="text-muted-foreground text-sm">
+                            {new Date(tool.updatedAt).toLocaleString('zh-CN')}
+                          </p>
                         </div>
                       </div>
-                    )}
 
-                    {/* 配置信息 */}
-                    <div>
-                      <h4 className="mb-3 font-medium">配置信息</h4>
-                      <div className="bg-muted/50 rounded-lg p-4">
-                        <pre className="text-muted-foreground overflow-x-auto text-sm">
-                          {JSON.stringify(tool.config, null, 2)}
-                        </pre>
+                      {/* 统计信息 */}
+                      {tool.statistics && (
+                        <div>
+                          <h4 className="mb-3 font-medium">使用统计</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-2xl font-bold">{tool.statistics.totalCalls}</p>
+                                <p className="text-muted-foreground text-xs">总调用次数</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-2xl font-bold">{tool.statistics.todayCalls}</p>
+                                <p className="text-muted-foreground text-xs">今日调用</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-2xl font-bold">{tool.statistics.averageResponseTime}s</p>
+                                <p className="text-muted-foreground text-xs">平均响应时间</p>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="p-4 text-center">
+                                <p className="text-2xl font-bold">{(tool.statistics.successRate * 100).toFixed(1)}%</p>
+                                <p className="text-muted-foreground text-xs">成功率</p>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 配置信息 */}
+                      <div>
+                        <h4 className="mb-3 font-medium">配置信息</h4>
+                        <div className="bg-muted/50 rounded-lg p-4">
+                          <pre className="text-muted-foreground overflow-x-auto text-sm">
+                            {JSON.stringify(tool.config, null, 2)}
+                          </pre>
+                        </div>
                       </div>
                     </div>
                   </div>

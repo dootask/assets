@@ -17,41 +17,56 @@ import {
 } from '@/components/ui/sidebar';
 
 // 导航菜单配置
-const menuItems = [
+const menuGroups = [
   {
-    title: '仪表板',
-    url: '/dashboard',
-    icon: Home,
+    label: '核心功能',
+    items: [
+      {
+        title: '仪表板',
+        url: '/dashboard',
+        icon: Home,
+      },
+      {
+        title: '智能体管理',
+        url: '/agents',
+        icon: Bot,
+      },
+      {
+        title: '对话监控',
+        url: '/conversations',
+        icon: MessageSquare,
+      },
+    ],
   },
   {
-    title: '智能体管理',
-    url: '/agents',
-    icon: Bot,
+    label: '配置管理',
+    items: [
+      {
+        title: 'AI 模型管理',
+        url: '/models',
+        icon: Cpu,
+      },
+      {
+        title: '知识库',
+        url: '/knowledge',
+        icon: Database,
+      },
+      {
+        title: 'MCP工具',
+        url: '/tools',
+        icon: Wrench,
+      },
+    ],
   },
   {
-    title: 'AI 模型管理',
-    url: '/models',
-    icon: Cpu,
-  },
-  {
-    title: '对话监控',
-    url: '/conversations',
-    icon: MessageSquare,
-  },
-  {
-    title: '知识库',
-    url: '/knowledge',
-    icon: Database,
-  },
-  {
-    title: 'MCP工具',
-    url: '/tools',
-    icon: Wrench,
-  },
-  {
-    title: '系统设置',
-    url: '/settings',
-    icon: Settings,
+    label: '系统管理',
+    items: [
+      {
+        title: '系统设置',
+        url: '/settings',
+        icon: Settings,
+      },
+    ],
   },
 ];
 
@@ -68,26 +83,28 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>导航菜单</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map(item => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.url || (item.url !== '/' && pathname.startsWith(item.url))}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menuGroups.map(group => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map(item => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.url || (item.url !== '/' && pathname.startsWith(item.url))}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   );

@@ -185,10 +185,10 @@ export default function CreateKnowledgeBasePage() {
                     </SelectTrigger>
                     <SelectContent>
                       {availableModels.map(model => (
-                        <SelectItem key={model.value} value={model.value}>
-                          <div className="flex flex-col">
-                            <div className="font-medium">{model.label}</div>
-                            <div className="text-muted-foreground text-xs">{model.description}</div>
+                        <SelectItem key={model.value} value={model.value} className="flex-col items-start p-2">
+                          {model.label}
+                          <div className="text-muted-foreground mt-1 max-w-[220px] text-xs leading-tight">
+                            {model.description}
                           </div>
                         </SelectItem>
                       ))}

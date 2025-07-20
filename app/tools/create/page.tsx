@@ -198,10 +198,10 @@ export default function CreateMCPToolPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {categoryOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div>
-                              <div className="font-medium">{option.label}</div>
-                              <div className="text-muted-foreground text-xs">{option.description}</div>
+                          <SelectItem key={option.value} value={option.value} className="flex-col items-start p-2">
+                            {option.label}
+                            <div className="text-muted-foreground mt-1 max-w-[180px] text-xs leading-tight">
+                              {option.description}
                             </div>
                           </SelectItem>
                         ))}
@@ -224,10 +224,10 @@ export default function CreateMCPToolPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {typeOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            <div>
-                              <div className="font-medium">{option.label}</div>
-                              <div className="text-muted-foreground text-xs">{option.description}</div>
+                          <SelectItem key={option.value} value={option.value} className="flex-col items-start p-2">
+                            {option.label}
+                            <div className="text-muted-foreground mt-1 max-w-[160px] text-xs leading-tight">
+                              {option.description}
                             </div>
                           </SelectItem>
                         ))}
@@ -326,6 +326,7 @@ export default function CreateMCPToolPage() {
                       id={`permission-${permission.value}`}
                       checked={formData.permissions?.includes(permission.value) || false}
                       onCheckedChange={(checked: boolean) => handlePermissionToggle(permission.value, checked)}
+                      className="mt-0.5"
                     />
                     <div className="min-w-0 flex-1">
                       <Label htmlFor={`permission-${permission.value}`} className="text-sm font-medium">

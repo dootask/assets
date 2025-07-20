@@ -245,7 +245,7 @@ export default function ConversationsPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
-            <div className="min-w-[200px] flex-1">
+            <div className="min-w-0 flex-1 sm:min-w-[200px]">
               <Select value={selectedAgent} onValueChange={setSelectedAgent}>
                 <SelectTrigger>
                   <SelectValue placeholder="选择智能体" />
@@ -264,7 +264,7 @@ export default function ConversationsPage() {
               </Select>
             </div>
 
-            <div className="min-w-[200px] flex-1">
+            <div className="min-w-0 flex-1 sm:min-w-[200px]">
               <div className="relative">
                 <Search className="text-muted-foreground absolute left-2 top-2.5 h-4 w-4" />
                 <Input
@@ -296,12 +296,12 @@ export default function ConversationsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>用户</TableHead>
-                  <TableHead>智能体</TableHead>
-                  <TableHead>消息数</TableHead>
-                  <TableHead>响应时间</TableHead>
-                  <TableHead>开始时间</TableHead>
-                  <TableHead>操作</TableHead>
+                  <TableHead className="min-w-[100px]">用户</TableHead>
+                  <TableHead className="min-w-[100px]">智能体</TableHead>
+                  <TableHead className="min-w-[80px] text-center">消息数</TableHead>
+                  <TableHead className="min-w-[100px] text-center">响应时间</TableHead>
+                  <TableHead className="hidden min-w-[140px] sm:table-cell">开始时间</TableHead>
+                  <TableHead className="min-w-[120px] text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -319,17 +319,19 @@ export default function ConversationsPage() {
                         <span>{conversation.agentName}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <Badge variant="outline">{conversation.messagesCount}</Badge>
                     </TableCell>
-                    <TableCell>{getResponseTimeBadge(conversation.lastMessage?.responseTime)}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
+                      {getResponseTimeBadge(conversation.lastMessage?.responseTime)}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <div className="text-muted-foreground flex items-center gap-1 text-sm">
                         <Calendar className="h-3 w-3" />
                         {new Date(conversation.createdAt).toLocaleString('zh-CN')}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button variant="ghost" size="sm" onClick={() => setSelectedConversation(conversation)}>

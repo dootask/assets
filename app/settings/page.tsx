@@ -125,7 +125,9 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2">
                   <div
                     className={`h-2 w-2 rounded-full ${
-                      settings.dootaskIntegration.isConnected ? 'bg-green-500' : 'bg-red-500'
+                      settings.dootaskIntegration.isConnected
+                        ? 'bg-green-500 dark:bg-green-400'
+                        : 'bg-red-500 dark:bg-red-400'
                     }`}
                   />
                   <span className="font-medium">连接状态</span>
@@ -207,7 +209,7 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2">
                   <div
                     className={`h-2 w-2 rounded-full ${
-                      settings.webhookConfig.isActive ? 'bg-green-500' : 'bg-red-500'
+                      settings.webhookConfig.isActive ? 'bg-green-500 dark:bg-green-400' : 'bg-red-500 dark:bg-red-400'
                     }`}
                   />
                   <span className="font-medium">Webhook 状态</span>

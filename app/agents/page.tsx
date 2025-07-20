@@ -147,12 +147,16 @@ export default function AgentsPage() {
           {agents.map(agent => (
             <Card
               key={agent.id}
-              className={`transition-all ${agent.isActive ? 'border-green-200 bg-green-50/50' : ''}`}
+              className={`transition-all ${agent.isActive ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/30' : ''}`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <Bot className={`h-5 w-5 ${agent.isActive ? 'text-green-600' : 'text-gray-400'}`} />
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-lg p-2 ${agent.isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+                      <Bot
+                        className={`h-5 w-5 ${agent.isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+                      />
+                    </div>
                     <div>
                       <CardTitle className="text-lg">{agent.name}</CardTitle>
                       <Badge variant={getModelBadgeVariant(agent.model)} className="mt-1 text-xs">
