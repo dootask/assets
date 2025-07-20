@@ -1,5 +1,6 @@
 import type {
   Agent,
+  AIModelConfig,
   Conversation,
   CreateAgentRequest,
   CreateKnowledgeBaseRequest,
@@ -226,6 +227,7 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   id: 'system-config',
   aiModels: [
     {
+      id: 'openai-gpt-3.5',
       name: 'gpt-3.5-turbo',
       displayName: 'GPT-3.5 Turbo',
       provider: 'openai',
@@ -235,6 +237,7 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
       isActive: true,
     },
     {
+      id: 'openai-gpt-4',
       name: 'gpt-4',
       displayName: 'GPT-4',
       provider: 'openai',
@@ -242,6 +245,27 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
       maxTokens: 8000,
       isDefault: false,
       isActive: true,
+    },
+    {
+      id: 'anthropic-claude-3',
+      name: 'claude-3-sonnet-20240229',
+      displayName: 'Claude 3 Sonnet',
+      provider: 'anthropic',
+      apiKey: '****',
+      maxTokens: 4096,
+      isDefault: false,
+      isActive: false,
+    },
+    {
+      id: 'deepseek-v2.5',
+      name: 'deepseek-chat',
+      displayName: 'DeepSeek V2.5',
+      provider: 'deepseek',
+      apiKey: '****',
+      baseUrl: 'https://api.deepseek.com/v1',
+      maxTokens: 4000,
+      isDefault: false,
+      isActive: false,
     },
   ],
   dootaskIntegration: {
@@ -456,6 +480,58 @@ export class MockDataManager {
         webhook: 'connected',
       },
     };
+  }
+
+  // AI模型管理方法
+  static addAIModel(model: Omit<AIModelConfig, 'id'>): AIModelConfig {
+    const settings = this.getSystemSettings();
+    const newModel: AIModelConfig = {
+      ...model,
+      id: `${model.provider}-${Date.now()}`,
+    };
+
+    // 如果设置为默认，取消其他模型的默认状态
+    if (newModel.isDefault) {
+      settings.aiModels = settings.aiModels.map(m => ({ ...m, isDefault: false }));
+    }
+
+    settings.aiModels.push(newModel);
+    this.updateSystemSettings(settings);
+    return newModel;
+  }
+
+  static updateAIModel(modelId: string, updates: Partial<AIModelConfig>): AIModelConfig | null {
+    const settings = this.getSystemSettings();
+    const modelIndex = settings.aiModels.findIndex(m => m.id === modelId);
+
+    if (modelIndex === -1) return null;
+
+    // 如果设置为默认，取消其他模型的默认状态
+    if (updates.isDefault) {
+      settings.aiModels = settings.aiModels.map(m => ({ ...m, isDefault: false }));
+    }
+
+    settings.aiModels[modelIndex] = { ...settings.aiModels[modelIndex], ...updates };
+    this.updateSystemSettings(settings);
+    return settings.aiModels[modelIndex];
+  }
+
+  static removeAIModel(modelId: string): boolean {
+    const settings = this.getSystemSettings();
+    const initialLength = settings.aiModels.length;
+    settings.aiModels = settings.aiModels.filter(m => m.id !== modelId);
+
+    // 如果删除的是默认模型，设置第一个激活的模型为默认
+    const hasDefault = settings.aiModels.some(m => m.isDefault);
+    if (!hasDefault && settings.aiModels.length > 0) {
+      const firstActiveModel = settings.aiModels.find(m => m.isActive);
+      if (firstActiveModel) {
+        firstActiveModel.isDefault = true;
+      }
+    }
+
+    this.updateSystemSettings(settings);
+    return settings.aiModels.length < initialLength;
   }
 
   // 初始化数据（首次使用时）

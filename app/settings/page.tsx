@@ -11,9 +11,146 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MockDataManager } from '@/lib/mock-data';
 import { AIModelConfig, SystemSettings } from '@/lib/types';
-import { AlertTriangle, Brain, Key, Link as LinkIcon, RefreshCw, Save, Settings, Webhook } from 'lucide-react';
+import {
+  AlertTriangle,
+  Brain,
+  Key,
+  Link as LinkIcon,
+  Plus,
+  RefreshCw,
+  Save,
+  Settings,
+  Trash2,
+  Webhook,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+
+// AI模型配置卡片组件
+const AIModelConfigCard = ({
+  model,
+  onUpdate,
+  onRemove,
+}: {
+  model: AIModelConfig;
+  onUpdate: (updates: Partial<AIModelConfig>) => void;
+  onRemove: () => void;
+}) => {
+  const providerOptions = [
+    { value: 'openai', label: 'ChatGPT (OpenAI)', baseUrl: 'https://api.openai.com/v1' },
+    { value: 'anthropic', label: 'Claude (Anthropic)', baseUrl: 'https://api.anthropic.com' },
+    { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
+    { value: 'google', label: 'Gemini (Google)', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+    { value: 'xai', label: 'Grok (xAI)', baseUrl: 'https://api.x.ai/v1' },
+    { value: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://localhost:11434' },
+    { value: 'zhipuai', label: '智谱清言', baseUrl: 'https://open.bigmodel.cn/api/paas/v4' },
+    { value: 'qwen', label: '通义千问', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
+    { value: 'wenxin', label: '文心一言', baseUrl: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop' },
+  ];
+
+  return (
+    <div className="space-y-4 rounded-lg border p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h4 className="font-medium">{model.displayName || '新模型'}</h4>
+          {model.isDefault && <Badge variant="default">默认</Badge>}
+          {model.isActive ? (
+            <Badge variant="default" className="bg-green-100 text-green-800">
+              启用
+            </Badge>
+          ) : (
+            <Badge variant="secondary">禁用</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch checked={model.isActive} onCheckedChange={checked => onUpdate({ isActive: checked })} />
+          <Button variant="ghost" size="sm" onClick={onRemove}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>显示名称</Label>
+          <Input
+            value={model.displayName}
+            onChange={e => onUpdate({ displayName: e.target.value })}
+            placeholder="GPT-3.5 Turbo"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>模型名称</Label>
+          <Input value={model.name} onChange={e => onUpdate({ name: e.target.value })} placeholder="gpt-3.5-turbo" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>AI 提供商</Label>
+          <Select
+            value={model.provider}
+            onValueChange={(value: AIModelConfig['provider']) => onUpdate({ provider: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {providerOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>最大 Token 数</Label>
+          <Input
+            type="number"
+            value={model.maxTokens}
+            onChange={e => onUpdate({ maxTokens: parseInt(e.target.value) })}
+            placeholder="4000"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <Key className="h-4 w-4" />
+          API Key
+        </Label>
+        <Input
+          type="password"
+          value={model.apiKey}
+          onChange={e => onUpdate({ apiKey: e.target.value })}
+          placeholder="sk-... 或其他API密钥"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>API 基础 URL</Label>
+        <Input
+          value={model.baseUrl || providerOptions.find(p => p.value === model.provider)?.baseUrl || ''}
+          onChange={e => onUpdate({ baseUrl: e.target.value })}
+          placeholder="https://api.example.com/v1"
+        />
+        <p className="text-muted-foreground text-xs">留空将使用默认API地址</p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Label htmlFor={`default-${model.id}`} className="text-sm font-medium">
+          设为默认模型
+        </Label>
+        <Switch
+          id={`default-${model.id}`}
+          checked={model.isDefault}
+          onCheckedChange={checked => onUpdate({ isDefault: checked })}
+        />
+      </div>
+    </div>
+  );
+};
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
@@ -49,11 +186,41 @@ export default function SettingsPage() {
     toast.success(`${type} 连接测试成功`);
   };
 
-  const updateAIModel = (index: number, updates: Partial<AIModelConfig>) => {
+  const updateAIModel = (modelId: string, updates: Partial<AIModelConfig>) => {
     if (!settings) return;
 
-    const newModels = [...settings.aiModels];
-    newModels[index] = { ...newModels[index], ...updates };
+    const newModels = settings.aiModels.map(model => (model.id === modelId ? { ...model, ...updates } : model));
+
+    setSettings({
+      ...settings,
+      aiModels: newModels,
+    });
+  };
+
+  const addAIModel = () => {
+    if (!settings) return;
+
+    const newModel: AIModelConfig = {
+      id: `model-${Date.now()}`,
+      name: '',
+      displayName: '',
+      provider: 'openai',
+      apiKey: '',
+      maxTokens: 4000,
+      isDefault: false,
+      isActive: false,
+    };
+
+    setSettings({
+      ...settings,
+      aiModels: [...settings.aiModels, newModel],
+    });
+  };
+
+  const removeAIModel = (modelId: string) => {
+    if (!settings) return;
+
+    const newModels = settings.aiModels.filter(model => model.id !== modelId);
 
     setSettings({
       ...settings,
@@ -88,7 +255,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">系统设置</h1>
@@ -134,102 +301,21 @@ export default function SettingsPage() {
               <CardDescription>管理可用的 AI 模型和 API 配置</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {settings.aiModels.map((model, index) => (
-                <div key={model.name} className="space-y-4 rounded-lg border p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <h4 className="font-medium">{model.displayName}</h4>
-                      {model.isDefault && <Badge variant="default">默认</Badge>}
-                      {model.isActive ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          启用
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">禁用</Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={model.isActive}
-                        onCheckedChange={checked => updateAIModel(index, { isActive: checked })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>模型名称</Label>
-                      <Input
-                        value={model.name}
-                        onChange={e => updateAIModel(index, { name: e.target.value })}
-                        placeholder="gpt-3.5-turbo"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>显示名称</Label>
-                      <Input
-                        value={model.displayName}
-                        onChange={e => updateAIModel(index, { displayName: e.target.value })}
-                        placeholder="GPT-3.5 Turbo"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>API 提供商</Label>
-                      <Select
-                        value={model.provider}
-                        onValueChange={value =>
-                          updateAIModel(index, { provider: value as 'openai' | 'anthropic' | 'local' })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="openai">OpenAI</SelectItem>
-                          <SelectItem value="anthropic">Anthropic</SelectItem>
-                          <SelectItem value="local">本地部署</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>最大 Token 数</Label>
-                      <Input
-                        type="number"
-                        value={model.maxTokens}
-                        onChange={e => updateAIModel(index, { maxTokens: parseInt(e.target.value) })}
-                        placeholder="4000"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Key className="h-4 w-4" />
-                      API Key
-                    </Label>
-                    <Input
-                      type="password"
-                      value={model.apiKey}
-                      onChange={e => updateAIModel(index, { apiKey: e.target.value })}
-                      placeholder="sk-..."
-                    />
-                  </div>
-
-                  {model.provider !== 'openai' && (
-                    <div className="space-y-2">
-                      <Label>API 基础 URL</Label>
-                      <Input
-                        value={model.baseUrl || ''}
-                        onChange={e => updateAIModel(index, { baseUrl: e.target.value })}
-                        placeholder="https://api.example.com/v1"
-                      />
-                    </div>
-                  )}
-                </div>
+              {settings.aiModels.map(model => (
+                <AIModelConfigCard
+                  key={model.id}
+                  model={model}
+                  onUpdate={updates => updateAIModel(model.id, updates)}
+                  onRemove={() => removeAIModel(model.id)}
+                />
               ))}
+
+              <div className="flex justify-center pt-4">
+                <Button variant="outline" onClick={addAIModel}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  添加AI模型
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

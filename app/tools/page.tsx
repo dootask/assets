@@ -36,6 +36,7 @@ import {
   TrendingUp,
   Wrench,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -182,9 +183,11 @@ export default function ToolsPage() {
           <h1 className="text-3xl font-bold tracking-tight">MCP 工具管理</h1>
           <p className="text-muted-foreground">管理智能体可使用的 MCP 工具</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          添加工具
+        <Button asChild>
+          <Link href="/tools/create">
+            <Plus className="mr-2 h-4 w-4" />
+            添加工具
+          </Link>
         </Button>
       </div>
 

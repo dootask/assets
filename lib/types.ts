@@ -154,9 +154,10 @@ export interface SystemSettings {
 }
 
 export interface AIModelConfig {
+  id: string;
   name: string;
   displayName: string;
-  provider: 'openai' | 'anthropic' | 'local';
+  provider: 'openai' | 'anthropic' | 'deepseek' | 'google' | 'xai' | 'ollama' | 'zhipuai' | 'qwen' | 'wenxin';
   apiKey: string;
   baseUrl?: string;
   maxTokens: number;
