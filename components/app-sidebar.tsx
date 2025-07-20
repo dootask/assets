@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot, Brain, Database, Home, MessageSquare, Settings, Wrench } from 'lucide-react';
+import { Bot, Brain, Cpu, Database, Home, MessageSquare, Settings, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -27,6 +27,11 @@ const menuItems = [
     title: '智能体管理',
     url: '/agents',
     icon: Bot,
+  },
+  {
+    title: 'AI 模型管理',
+    url: '/models',
+    icon: Cpu,
   },
   {
     title: '对话监控',
@@ -58,30 +63,28 @@ export function AppSidebar() {
       <SidebarHeader className="border-b p-4">
         <div className="flex items-center gap-2">
           <Brain className="text-primary h-6 w-6" />
-          <div>
-            <p className="text-sm font-semibold">DooTask AI</p>
-            <p className="text-muted-foreground text-xs">智能体管理</p>
-          </div>
+          <h1 className="text-xl font-bold">DooTask AI</h1>
         </div>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>主要功能</SidebarGroupLabel>
+          <SidebarGroupLabel>导航菜单</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map(item => {
-                const isActive = pathname === item.url;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link href={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {menuItems.map(item => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url || (item.url !== '/' && pathname.startsWith(item.url))}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
