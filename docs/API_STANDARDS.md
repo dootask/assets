@@ -27,6 +27,7 @@
 ```
 
 #### 成功响应示例
+
 ```json
 {
   "code": "SUCCESS",
@@ -39,6 +40,7 @@
 ```
 
 #### 错误响应示例
+
 ```json
 {
   "code": "AUTH_001",
@@ -55,8 +57,8 @@
 
 ```typescript
 // lib/axios.ts
-import axios from 'axios'
-import { toast } from "@/components/ui/use-toast"
+import axios from 'axios';
+import { toast } from '@/components/ui/use-toast';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api',
@@ -64,62 +66,59 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-})
+});
 
 // 请求拦截器
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken')
+apiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('authToken');
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers.Authorization = `Bearer ${token}`;
   }
-  return config
-})
+  return config;
+});
 
 // 响应拦截器
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  response => response,
+  error => {
     if (error.response) {
-      handleApiError(error.response)
+      handleApiError(error.response);
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 ```
 
 ### 错误处理策略
 
 ```typescript
-const handleApiError = (response: {
-  status: number,
-  data: { code: string, message: string, data?: any }
-}) => {
-  const { status, data } = response
-  
+const handleApiError = (response: { status: number; data: { code: string; message: string; data?: any } }) => {
+  const { status, data } = response;
+
   switch (status) {
     case 401:
       // 认证失败，清除token并跳转登录
-      localStorage.removeItem('authToken')
-      window.location.href = '/login'
-      break
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+      break;
     case 403:
       // 权限不足提示
       toast({
-        variant: "destructive",
-        title: "权限不足",
+        variant: 'destructive',
+        title: '权限不足',
         description: translateErrorCode(data.code),
-      })
-      break
+      });
+      break;
     case 422:
       // 数据验证错误
       toast({
-        variant: "destructive", 
-        title: "验证错误",
+        variant: 'destructive',
+        title: '验证错误',
         description: translateErrorCode(data.code),
-      })
-      break
+      });
+      break;
   }
-}
+};
 ```
 
 ## 🔧 后端实现规范
@@ -188,32 +187,36 @@ raise HTTPException(
 前端应使用 shadcn/ui 的 Toast 组件来显示 API 错误信息：
 
 ```typescript
-import { toast } from "@/components/ui/use-toast"
+import { toast } from '@/components/ui/use-toast';
 
 // 在错误处理中使用
 toast({
-  variant: "destructive",
-  title: "操作失败",
+  variant: 'destructive',
+  title: '操作失败',
   description: translateErrorCode(error.code),
-})
+});
 ```
 
 ## 🔍 错误码分类
 
 ### 认证相关 (AUTH_xxx)
+
 - `AUTH_001`: 用户名或密码错误
 - `AUTH_002`: 登录已过期
 - `AUTH_003`: 权限不足
 
 ### 验证相关 (VALIDATION_xxx)
+
 - `VALIDATION_001`: 输入数据验证失败
 - `VALIDATION_002`: 必填字段缺失
 
 ### 格式相关 (FORMAT_xxx)
+
 - `FORMAT_001`: 请求数据格式不正确
 - `FORMAT_002`: JSON 解析错误
 
 ### 业务相关 (BUSINESS_xxx)
+
 - `USER_001`: 用户不存在
 - `TASK_001`: 任务创建失败
 - `AGENT_001`: 智能体配置错误
@@ -223,22 +226,22 @@ toast({
 ```typescript
 // types/api.ts
 interface APIResponse<T> {
-  code: string
-  message: string
-  data: T
+  code: string;
+  message: string;
+  data: T;
 }
 
 interface APIError {
-  code: string
-  message: string
-  data?: Record<string, any>
+  code: string;
+  message: string;
+  data?: Record<string, any>;
 }
 
 // 使用示例
 const createAgent = async (agentData: CreateAgentRequest): Promise<Agent> => {
-  const response = await apiClient.post<APIResponse<Agent>>('/agents', agentData)
-  return response.data.data
-}
+  const response = await apiClient.post<APIResponse<Agent>>('/agents', agentData);
+  return response.data.data;
+};
 ```
 
 ## 🚀 API 设计最佳实践
@@ -250,4 +253,4 @@ const createAgent = async (agentData: CreateAgentRequest): Promise<Agent> => {
 5. **向后兼容**: API版本变更时保持向后兼容，渐进式升级
 6. **文档同步**: API变更时同步更新接口文档和错误码说明
 
-这些标准确保了 API 的可靠性、可维护性和良好的开发体验。 
+这些标准确保了 API 的可靠性、可维护性和良好的开发体验。
