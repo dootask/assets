@@ -1,39 +1,44 @@
 ---
 globs: docker/**/*,scripts/**/*,*.yml,*.yaml
-description: "开发工作流程和部署规范"
+description: '开发工作流程和部署规范'
 ---
 
 # 开发工作流程规则
 
 ## Docker开发环境
+
 - 使用[docker/docker-compose.dev.yml](mdc:docker/docker-compose.dev.yml)进行本地开发
 - 容器化所有服务，确保环境一致性
 - 数据持久化使用Docker volumes
 - 服务间通信使用Docker网络
 
 ## 快速启动流程
+
 1. 复制环境配置: `cp config.example.env .env`
-2. 执行快速启动: [scripts/quick-start.sh](mdc:scripts/quick-start.sh)
-3. 数据库初始化: [scripts/init.sql](mdc:scripts/init.sql)
+2. 执行快速启动: [scripts/dev.sh](mdc:scripts/dev.sh)
 
 ## 开发规范
+
 - **分支管理**: 使用feature分支开发新功能
 - **提交规范**: 使用semantic commit message
 - **代码审查**: 所有变更都需要PR审查
 - **测试覆盖**: 新功能必须包含相应测试
 
 ## 环境管理
+
 - 开发环境变量配置在`.env`文件
 - 生产环境变量通过CI/CD系统管理
 - 敏感信息使用secrets管理
 
 ## 部署流程
+
 - 开发环境: Docker Compose
 - 生产环境: 容器化部署
 - 数据库迁移: 自动化脚本执行
 - 健康检查和监控
 
 ## 调试和日志
+
 - 统一日志格式和级别
 - 分布式追踪和监控
 - 错误报告和告警机制

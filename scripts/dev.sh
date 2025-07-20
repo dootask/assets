@@ -84,9 +84,7 @@ popd
 echo "🤖 启动AI服务 (端口$(getEnv PYTHON_AI_SERVICE_PORT))..."
 pushd backend/python-ai
 source venv/bin/activate
-export ENVFILE=$(dirname $(pwd))/.env
-export ENVLOCALFILE=$(dirname $(pwd))/.env.local
-python -m uvicorn app.main:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --reload &
+python -m uvicorn app.main:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --env-file ${CURRENT_DIR}/.env --reload &
 AI_PID=$!
 popd
 

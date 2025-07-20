@@ -1,0 +1,11 @@
+# 基础Web框架 - 仅支持健康检查
+fastapi==0.110.0
+uvicorn[standard]==0.27.0
+
+# 基础数据处理
+pydantic>=2.6.4
+pydantic-settings>=2.5.2
+python-multipart==0.0.9
+
+# 开发工具
+python-dotenv==1.0.1 
