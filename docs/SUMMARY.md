@@ -69,7 +69,8 @@
 
 ```bash
 # 在项目根目录中执行
-npm run quick-start
+npm install
+npm run dev:all
 ```
 
 - 验证 Docker 环境

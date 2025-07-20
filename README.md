@@ -119,27 +119,8 @@ git clone https://github.com/dootask/ai.git
 cd ai
 
 # 快速启动（推荐）
-npm run quick-start
-```
-
-### 手动安装
-
-```bash
-# 1. 安装前端依赖
 npm install
-
-# 2. 复制环境配置
-cp config.example.env .env
-# 编辑 .env 文件，填入 OpenAI API Key 等配置
-
-# 3. 启动数据库服务
-npm run db:up
-
-# 4. 初始化数据库
-docker exec -i dootask-ai-postgres psql -U dootask -d dootask_ai < scripts/init.sql
-
-# 5. 启动前端开发服务器
-npm run dev
+npm run dev:all
 ```
 
 ### 访问应用
@@ -199,21 +180,14 @@ dootask-ai/                 # Next.js 前端项目根目录
 ### 开发命令
 
 ```bash
-# 前端开发
-npm run dev              # 启动开发服务器
-npm run build           # 构建生产版本
-npm run lint            # 代码检查
-npm run format          # 代码格式化
+# 安装依赖
+npm install
 
-# 数据库管理
-npm run db:up           # 启动数据库
-npm run db:down         # 停止数据库
-npm run db:reset        # 重置数据库
+# 启动所有开发服务（前端 + Go后端 + Python AI）
+npm run dev:all
 
-# 日志查看
-npm run logs:go         # Go 服务日志
-npm run logs:python     # Python 服务日志
-npm run logs:db         # 数据库日志
+# 停止所有开发服务
+npm run stop:all
 ```
 
 ### 扩展开发

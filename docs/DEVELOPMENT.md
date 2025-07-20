@@ -20,72 +20,15 @@ cd dootask-ai
 # 安装前端依赖
 npm install
 
-# 初始化后端目录结构
-mkdir -p backend/{go-service,python-ai}
-mkdir -p mcp-tools/{dootask-mcp,external-mcp}
-mkdir -p docs scripts docker
+# 一键启动开发环境
+npm run dev:all
 ```
 
 ### 环境配置
 
 ```bash
-# 复制环境配置文件
-cp config.example.env .env
-
-# 编辑环境变量 (.env 文件)
-
-# 系统级配置 (必需)
+# 必需编辑的环境变量 (.env 文件)
 DOOTASK_API_BASE_URL=http://localhost:2222
-```
-
-## 🏗️ 开发环境搭建
-
-### 1. 数据库设置
-
-```bash
-# 启动 PostgreSQL 和 Redis
-docker compose -f docker/docker-compose.dev.yml up -d postgres redis
-
-# 创建数据库和表结构
-psql -h localhost -U dootask -d dootask_ai -f scripts/init.sql
-```
-
-### 2. 后端服务设置
-
-#### Go 服务初始化
-
-```bash
-cd backend/go-service
-
-# 初始化 Go 模块
-go mod init dootask-ai/go-service
-
-# 安装依赖
-go get github.com/gin-gonic/gin
-go get github.com/golang-jwt/jwt/v5
-go get github.com/lib/pq
-go get github.com/redis/go-redis/v9
-go get github.com/gorilla/websocket
-```
-
-#### Python AI 服务初始化
-
-```bash
-cd backend/python-ai
-
-# 创建虚拟环境
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 安装依赖
-pip install fastapi uvicorn langchain openai redis psycopg2-binary dootask-tools mcp
-```
-
-### 3. 前端开发服务器
-
-```bash
-# 启动 Next.js 开发服务器
-npm run dev
 ```
 
 ## 📝 开发规范
@@ -111,10 +54,6 @@ npm run format:check
 
 # 格式化并修复 ESLint 问题
 npm run format:fix
-
-# 配置文件
-# .prettierrc      - Prettier 配置
-# .prettierignore  - 忽略格式化的文件
 ```
 
 #### 格式化规则
@@ -296,13 +235,6 @@ func HandleWebhook(c *gin.Context) {
 ```
 
 ### 2. Python AI 服务开发
-
-#### 项目结构创建
-
-```bash
-# 在 backend/python-ai 目录下创建结构
-mkdir -p {agents,mcp,knowledge,models,services,config,utils}
-```
 
 #### 主入口文件
 
@@ -723,18 +655,6 @@ def test_process_message():
         mock_agent.run.assert_called_once()
 ```
 
-### 集成测试
-
-```bash
-# 启动测试环境
-docker compose -f docker/docker-compose.test.yml up -d
-
-# 运行集成测试
-npm run test:integration
-go test ./... -tags=integration
-pytest tests/ -m integration
-```
-
 ## 📖 API 文档
 
 ### Webhook API
@@ -792,61 +712,6 @@ Authorization: Bearer <token>
   "tools": ["search", "email"],
   "knowledge_bases": ["kb-1", "kb-2"]
 }
-```
-
-## 🚀 部署指南
-
-### 开发环境部署
-
-```bash
-# 启动所有服务
-docker compose -f docker/docker-compose.dev.yml up -d
-
-# 启动 MCP 服务器
-cd backend/python-ai
-python mcp/dootask_mcp_server.py
-
-# 查看服务状态
-docker compose ps
-
-# 查看日志
-docker compose logs -f go-service
-docker compose logs -f python-ai
-```
-
-### MCP 服务器测试
-
-```bash
-# 测试 MCP 服务器连接
-echo '{"jsonrpc": "2.0", "method": "tools/list", "id": 1}' | python mcp/dootask_mcp_server.py
-
-# 测试工具调用
-echo '{"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "get_chat_messages", "arguments": {"chat_id": "test-123"}}, "id": 2}' | python mcp/dootask_mcp_server.py
-```
-
-### 生产环境部署
-
-```bash
-# 构建镜像
-docker compose -f docker/docker-compose.prod.yml build
-
-# 启动生产环境
-docker compose -f docker/docker-compose.prod.yml up -d
-```
-
-## 🔍 调试指南
-
-### 日志查看
-
-```bash
-# Go 服务日志
-docker logs -f dootask-ai-go-service
-
-# Python AI 服务日志
-docker logs -f dootask-ai-python-ai
-
-# 前端开发服务器日志
-npm run dev
 ```
 
 ### 常见问题解决
