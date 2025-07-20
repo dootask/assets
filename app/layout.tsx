@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SidebarProvider>
           <div className="flex h-screen w-full">
             <AppSidebar />
-            <main className="flex-1 overflow-y-auto">{children}</main>
+            <main className="flex-1">{children}</main>
           </div>
           <Toaster />
         </SidebarProvider>

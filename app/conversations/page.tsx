@@ -337,7 +337,7 @@ export default function ConversationsPage() {
                             查看详情
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-h-[80vh] max-w-4xl overflow-y-auto">
+                        <DialogContent className="max-h-[90vh] max-w-4xl">
                           <DialogHeader>
                             <DialogTitle>对话详情</DialogTitle>
                             <DialogDescription>
@@ -345,69 +345,73 @@ export default function ConversationsPage() {
                             </DialogDescription>
                           </DialogHeader>
 
-                          {selectedConversation && (
-                            <div className="space-y-4">
-                              {/* 对话信息 */}
-                              <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg p-4">
-                                <div>
-                                  <p className="text-sm font-medium">用户</p>
-                                  <p className="text-muted-foreground text-sm">{selectedConversation.userName}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium">智能体</p>
-                                  <p className="text-muted-foreground text-sm">{selectedConversation.agentName}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium">消息总数</p>
-                                  <p className="text-muted-foreground text-sm">{selectedConversation.messagesCount}</p>
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium">开始时间</p>
-                                  <p className="text-muted-foreground text-sm">
-                                    {new Date(selectedConversation.createdAt).toLocaleString('zh-CN')}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* 消息记录 */}
-                              <div className="space-y-3">
-                                <h4 className="font-medium">消息记录</h4>
-                                {generateMockMessages(selectedConversation).map(message => (
-                                  <div
-                                    key={message.id}
-                                    className={`rounded-lg p-3 ${
-                                      message.role === 'user'
-                                        ? 'border-l-4 border-blue-500 bg-blue-50'
-                                        : 'border-l-4 border-green-500 bg-green-50'
-                                    }`}
-                                  >
-                                    <div className="mb-2 flex items-center gap-2">
-                                      {message.role === 'user' ? (
-                                        <>
-                                          <User className="h-4 w-4 text-blue-500" />
-                                          <span className="text-sm font-medium text-blue-700">用户</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Bot className="h-4 w-4 text-green-500" />
-                                          <span className="text-sm font-medium text-green-700">AI助手</span>
-                                        </>
-                                      )}
-                                      <span className="text-muted-foreground ml-auto text-xs">
-                                        {new Date(message.createdAt).toLocaleTimeString('zh-CN')}
-                                      </span>
-                                      {message.responseTime && (
-                                        <Badge variant="outline" className="ml-1">
-                                          {message.responseTime}s
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                          <div className="max-h-[70vh] overflow-y-auto pr-2">
+                            {selectedConversation && (
+                              <div className="space-y-4">
+                                {/* 对话信息 */}
+                                <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg p-4">
+                                  <div>
+                                    <p className="text-sm font-medium">用户</p>
+                                    <p className="text-muted-foreground text-sm">{selectedConversation.userName}</p>
                                   </div>
-                                ))}
+                                  <div>
+                                    <p className="text-sm font-medium">智能体</p>
+                                    <p className="text-muted-foreground text-sm">{selectedConversation.agentName}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">消息总数</p>
+                                    <p className="text-muted-foreground text-sm">
+                                      {selectedConversation.messagesCount}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">开始时间</p>
+                                    <p className="text-muted-foreground text-sm">
+                                      {new Date(selectedConversation.createdAt).toLocaleString('zh-CN')}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* 消息记录 */}
+                                <div className="space-y-3">
+                                  <h4 className="font-medium">消息记录</h4>
+                                  {generateMockMessages(selectedConversation).map(message => (
+                                    <div
+                                      key={message.id}
+                                      className={`rounded-lg p-3 ${
+                                        message.role === 'user'
+                                          ? 'border-l-4 border-blue-500 bg-blue-50'
+                                          : 'border-l-4 border-green-500 bg-green-50'
+                                      }`}
+                                    >
+                                      <div className="mb-2 flex items-center gap-2">
+                                        {message.role === 'user' ? (
+                                          <>
+                                            <User className="h-4 w-4 text-blue-500" />
+                                            <span className="text-sm font-medium text-blue-700">用户</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Bot className="h-4 w-4 text-green-500" />
+                                            <span className="text-sm font-medium text-green-700">AI助手</span>
+                                          </>
+                                        )}
+                                        <span className="text-muted-foreground ml-auto text-xs">
+                                          {new Date(message.createdAt).toLocaleTimeString('zh-CN')}
+                                        </span>
+                                        {message.responseTime && (
+                                          <Badge variant="outline" className="ml-1">
+                                            {message.responseTime}s
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </DialogContent>
                       </Dialog>
                     </TableCell>
