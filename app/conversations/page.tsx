@@ -339,7 +339,7 @@ export default function ConversationsPage() {
                             查看详情
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-h-[90vh] max-w-4xl">
+                        <DialogContent className="max-h-[90vh] sm:max-w-4xl">
                           <DialogHeader>
                             <DialogTitle>对话详情</DialogTitle>
                             <DialogDescription>

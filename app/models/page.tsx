@@ -336,7 +336,10 @@ export default function ModelsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:text-destructive-foreground"
+            >
               删除
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -386,7 +386,7 @@ export default function ToolsPage() {
                     查看详情
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-h-[90vh] max-w-2xl">
+                <DialogContent className="max-h-[90vh] sm:max-w-4xl">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Wrench className="h-5 w-5" />
