@@ -71,7 +71,7 @@ echo ""
 
 # 启动数据库服务
 echo "🎯 启动数据库服务..."
-docker-compose -f docker/docker-compose.dev.yml --env-file .env up -d postgres redis
+docker-compose -f docker/docker-compose.dev.yml --env-file .env up -d
 
 # 启动Go后端（后台）
 echo "🎯 启动Go后端 (端口$(getEnv GO_SERVICE_PORT))..."
@@ -93,7 +93,7 @@ echo "🔍 检查服务状态..."
 
 go_backend_status=false
 ai_service_status=false
-for i in {1..5}; do
+for i in {1..30}; do
     sleep 1
     if [ $go_backend_status = false ]; then
         if curl -s http://localhost:$(getEnv GO_SERVICE_PORT)/health > /dev/null; then
@@ -111,7 +111,7 @@ for i in {1..5}; do
         echo "✅ AI服务启动成功 (PID: $AI_PID)"
         break
     fi
-    if [ $i -eq 5 ]; then
+    if [ $i -eq 30 ]; then
         echo "❌ 服务启动失败"
         kill $BACKEND_PID $AI_PID 2>/dev/null
         exit 1
@@ -122,6 +122,7 @@ done
 cat > scripts/stop.sh << 'EOF'
 #!/bin/bash
 echo "🛑 停止所有开发服务..."
+docker-compose -f docker/docker-compose.dev.yml --env-file .env down
 pkill -f "air --build.cmd"
 pkill -f "uvicorn app.main:app"
 pkill -f "next dev"
@@ -148,4 +149,5 @@ npm run dev
 echo ""
 echo "🛑 清理所有后台进程..."
 kill $BACKEND_PID $AI_PID 2>/dev/null
+sleep 0.5
 echo "✅ 开发环境已完全停止" 

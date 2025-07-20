@@ -12,18 +12,27 @@ SELECT * FROM (VALUES
 ) AS tmp(name, provider, model_name, base_url, max_tokens, temperature, is_enabled, is_default)
 WHERE NOT EXISTS (SELECT 1 FROM ai_models WHERE ai_models.name = tmp.name);
 
--- 默认智能体 (关联到 ai_models 表)
+-- 默认智能体 (关联到 ai_models 表，使用子查询获取实际的ID)
 INSERT INTO agents (name, description, prompt, ai_model_id, temperature) 
-SELECT * FROM (VALUES
-    ('默认助手', '通用AI助手，可以回答各种问题', '你是一个专业、友好的AI助手，会用中文回答用户的问题。请保持礼貌和专业。', 1, 0.7),
-    ('客服助手', '专业的客服AI助手', '你是一个专业的客服代表，能够帮助用户解决各种问题。请保持耐心、友好的态度，并尽力为用户提供准确的信息。', 1, 0.3),
-    ('技术顾问', '技术问题解答专家', '你是一个技术专家，擅长解答编程、系统架构、技术选型等问题。请提供准确、实用的技术建议。', 2, 0.5)
-) AS tmp(name, description, prompt, ai_model_id, temperature)
+SELECT name, description, prompt, 
+    (SELECT id FROM ai_models WHERE name = 'GPT-3.5 Turbo' LIMIT 1), 
+    temperature 
+FROM (VALUES
+    ('默认助手', '通用AI助手，可以回答各种问题', '你是一个专业、友好的AI助手，会用中文回答用户的问题。请保持礼貌和专业。', 0.7),
+    ('客服助手', '专业的客服AI助手', '你是一个专业的客服代表，能够帮助用户解决各种问题。请保持耐心、友好的态度，并尽力为用户提供准确的信息。', 0.3)
+) AS tmp(name, description, prompt, temperature)
 WHERE NOT EXISTS (SELECT 1 FROM agents WHERE agents.name = tmp.name);
+
+-- 技术顾问使用GPT-4模型
+INSERT INTO agents (name, description, prompt, ai_model_id, temperature) 
+SELECT '技术顾问', '技术问题解答专家', '你是一个技术专家，擅长解答编程、系统架构、技术选型等问题。请提供准确、实用的技术建议。', 
+    (SELECT id FROM ai_models WHERE name = 'GPT-4' LIMIT 1), 
+    0.5
+WHERE NOT EXISTS (SELECT 1 FROM agents WHERE name = '技术顾问');
 
 -- 默认MCP工具配置模板
 INSERT INTO mcp_tools (name, display_name, description, category, provider, config_schema, config_values, is_internal) 
-SELECT * FROM (VALUES
+SELECT name, display_name, description, category, provider, config_schema::JSONB, config_values::JSONB, is_internal FROM (VALUES
     ('dootask_chat', 'DooTask 聊天记录', 'DooTask 聊天记录查询', 'dootask', 'internal', 
      '{"fields": []}', '{"endpoint": "/api/chat", "methods": ["get_messages", "search_messages"]}', true),
     ('dootask_project', 'DooTask 项目管理', 'DooTask 项目管理工具', 'dootask', 'internal', 

@@ -233,10 +233,11 @@ func (m *MigrationManager) Status() error {
 	return nil
 }
 
-// splitSQL 分割SQL语句，正确处理注释和字符串
+// splitSQL 分割SQL语句，正确处理注释、字符串和PostgreSQL函数定义
 func (m *MigrationManager) splitSQL(sql string) []string {
 	var statements []string
 	var current strings.Builder
+	inFunction := false
 
 	lines := strings.Split(sql, "\n")
 	for _, line := range lines {
@@ -253,8 +254,13 @@ func (m *MigrationManager) splitSQL(sql string) []string {
 		}
 		current.WriteString(line)
 
-		// 如果行以分号结尾，表示语句结束
-		if strings.HasSuffix(line, ";") {
+		// 检查是否进入或退出函数定义
+		if strings.Contains(line, "$$") {
+			inFunction = !inFunction
+		}
+
+		// 如果不在函数定义中，且行以分号结尾，表示语句结束
+		if !inFunction && strings.HasSuffix(line, ";") {
 			stmt := strings.TrimSpace(current.String())
 			if stmt != "" {
 				statements = append(statements, stmt)
@@ -288,16 +294,17 @@ func (m *MigrationManager) validateStatements(tx *gorm.DB, statements []string) 
 			return fmt.Errorf("语句 %d 缺少结束分号: %s", i+1, stmt)
 		}
 
-		// 检查是否是支持的DDL语句
+		// 检查是否是支持的SQL语句（包括函数定义）
 		upperStmt := strings.ToUpper(stmt)
-		validDDL := strings.HasPrefix(upperStmt, "CREATE ") ||
+		validSQL := strings.HasPrefix(upperStmt, "CREATE ") ||
 			strings.HasPrefix(upperStmt, "ALTER ") ||
 			strings.HasPrefix(upperStmt, "DROP ") ||
 			strings.HasPrefix(upperStmt, "INSERT ") ||
 			strings.HasPrefix(upperStmt, "UPDATE ") ||
-			strings.HasPrefix(upperStmt, "DELETE ")
+			strings.HasPrefix(upperStmt, "DELETE ") ||
+			strings.Contains(upperStmt, "$$") // PostgreSQL函数定义
 
-		if !validDDL {
+		if !validSQL {
 			return fmt.Errorf("语句 %d 不是有效的SQL语句: %s", i+1, stmt)
 		}
 	}

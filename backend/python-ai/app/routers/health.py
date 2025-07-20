@@ -14,6 +14,7 @@ async def health_check():
         "success": True,
         "data": {
             "status": "healthy",
+            "service": "python-service",
             "timestamp": datetime.now().isoformat(),
             "app_name": settings.app_name,
             "app_version": settings.app_version,

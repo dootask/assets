@@ -6,10 +6,14 @@ CREATE TABLE IF NOT EXISTS mcp_tools (
     name VARCHAR(255) NOT NULL UNIQUE,
     display_name VARCHAR(255) NOT NULL,
     description TEXT,
-    category VARCHAR(100) DEFAULT 'general', -- 'search', 'weather', 'email', 'dootask', 'file'
-    provider VARCHAR(100), -- 'google', 'openweather', 'internal', 'custom'
-    config_schema JSONB DEFAULT '{}', -- 工具所需的配置字段定义
-    config_values JSONB DEFAULT '{}', -- 实际配置值 (敏感信息加密)
+    -- 分类: 'search', 'weather', 'email', 'dootask', 'file'
+    category VARCHAR(100) DEFAULT 'general',
+    -- 提供商: 'google', 'openweather', 'internal', 'custom'
+    provider VARCHAR(100),
+    -- 工具所需的配置字段定义
+    config_schema JSONB DEFAULT '{}',
+    -- 实际配置值 (敏感信息加密)
+    config_values JSONB DEFAULT '{}',
     is_internal BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW(),

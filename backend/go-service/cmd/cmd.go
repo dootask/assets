@@ -1,16 +1,15 @@
 package cmd
 
 import (
+	"dootask-ai/go-service/api/health"
 	"dootask-ai/go-service/database"
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/middleware"
 	"dootask-ai/go-service/pkg/utils"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -61,10 +60,10 @@ func runPre(*cobra.Command, []string) {
 
 func runServer(*cobra.Command, []string) {
 	// 设置gin模式
-	if os.Getenv("APP_ENV") == "release" {
-		gin.SetMode(gin.ReleaseMode)
-	} else {
+	if os.Getenv("ENABLE_DEBUG") == "true" {
 		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	// 创建Gin实例
@@ -80,8 +79,9 @@ func runServer(*cobra.Command, []string) {
 	// CORS中间件
 	r.Use(middleware.CorsMiddleware())
 
-	// 健康检查
-	r.GET("/health", routeHealth)
+	// 注册路由
+	root := r.Group("/")
+	health.RegisterRoutes(root)
 
 	// 获取端口
 	port := os.Getenv("GO_SERVICE_PORT")
@@ -95,18 +95,6 @@ func runServer(*cobra.Command, []string) {
 		database.CloseDatabase()
 		log.Fatal("Failed to start server:", err)
 	}
-}
-
-// routeHealth 健康检查
-func routeHealth(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"status":    "healthy",
-			"timestamp": time.Now().Format(time.RFC3339),
-			"version":   "1.0.0",
-		},
-	})
 }
 
 func Execute() error {

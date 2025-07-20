@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS kb_documents (
     file_path VARCHAR(500),
     file_type VARCHAR(50),
     file_size BIGINT,
-    embedding VECTOR(1536), -- OpenAI embedding 维度
+    -- OpenAI embedding 维度
+    embedding VECTOR(1536),
     metadata JSONB DEFAULT '{}',
     chunk_index INTEGER DEFAULT 0,
     parent_doc_id BIGINT REFERENCES kb_documents(id),
