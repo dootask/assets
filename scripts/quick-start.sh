@@ -68,14 +68,6 @@ setup_env() {
             cp config.example.env .env
             log_success "已创建 .env 配置文件"
             echo ""
-            log_warning "⚠️  请编辑 .env 文件，填入以下必需配置："
-            echo "   - DOOTASK_API_BASE_URL: DooTask 实例地址"
-            echo "   - DOOTASK_API_TOKEN: DooTask API 令牌"
-            echo "   - JWT_SECRET: JWT 密钥（生产环境请使用强密钥）"
-            echo ""
-            echo "💡 注意：AI 模型和 MCP 工具配置已移至 Web 管理界面"
-            echo "   请在系统启动后通过前端设置页面进行配置"
-            echo ""
         else
             log_error "找不到 config.example.env 文件"
             exit 1
@@ -116,7 +108,7 @@ start_databases() {
     log_info "启动数据库服务..."
     
     if [ -f "docker/docker-compose.dev.yml" ]; then
-        $DOCKER_COMPOSE -f docker/docker-compose.dev.yml up -d postgres redis
+        $DOCKER_COMPOSE -f docker/docker-compose.dev.yml --env-file .env up -d postgres redis
         
         # 等待数据库启动
         log_info "等待数据库启动完成..."
@@ -234,24 +226,24 @@ show_next_steps() {
     log_success "🎉 项目快速启动完成！"
     echo ""
     log_info "下一步操作："
-    echo ""
-    echo "1. 编辑 .env 文件，填入正确的 API 密钥和配置"
-    echo "2. 启动前端开发服务器："
-    echo "   ${GREEN}npm run dev${NC}"
-    echo ""
-    echo "3. 开发后端服务："
-    echo "   - Go 服务: ${GREEN}cd backend/go-service${NC}"
-    echo "   - Python AI 服务: ${GREEN}cd backend/python-ai${NC}"
-    echo ""
-    echo "4. 访问项目："
-    echo "   - 前端: ${GREEN}http://localhost:3000${NC}"
-    echo "   - API 文档: ${GREEN}http://localhost:8080/swagger${NC}"
-    echo ""
-    echo "5. 查看数据库："
-    echo "   - PostgreSQL: ${GREEN}docker exec -it dootask-ai-postgres psql -U dootask -d dootask_ai${NC}"
-    echo "   - Redis: ${GREEN}docker exec -it dootask-ai-redis redis-cli${NC}"
-    echo ""
-    log_info "如需帮助，请查看 README.md 和 DEVELOPMENT.md 文档"
+    echo -e ""
+    echo -e "1. 编辑 .env 文件，填入正确的 API 密钥和配置"
+    echo -e "2. 启动前端开发服务器："
+    echo -e "   ${GREEN}npm run dev${NC}"
+    echo -e ""
+    echo -e "3. 开发后端服务："
+    echo -e "   - Go 服务: ${GREEN}cd backend/go-service${NC}"
+    echo -e "   - Python AI 服务: ${GREEN}cd backend/python-ai${NC}"
+    echo -e ""
+    echo -e "4. 访问项目："
+    echo -e "   - 前端: ${GREEN}http://localhost:3000${NC}"
+    echo -e "   - API 文档: ${GREEN}http://localhost:8080/swagger${NC}"
+    echo -e ""
+    echo -e "5. 查看数据库："
+    echo -e "   - PostgreSQL: ${GREEN}docker exec -it dootask-ai-postgres psql -U dootask -d dootask_ai${NC}"
+    echo -e "   - Redis: ${GREEN}docker exec -it dootask-ai-redis redis-cli${NC}"
+    echo -e ""
+    log_info "如需帮助，请查看 README.md 和 docs/DEVELOPMENT.md 文档"
 }
 
 # 主函数

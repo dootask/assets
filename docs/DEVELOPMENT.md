@@ -33,15 +33,9 @@ mkdir -p docs scripts docker
 cp config.example.env .env
 
 # 编辑环境变量 (.env 文件)
-# 系统级配置 (必需)
-DATABASE_URL=postgresql://dootask:dootask123@localhost:5432/dootask_ai
-REDIS_URL=redis://localhost:6379/0
-DOOTASK_API_BASE_URL=http://localhost:7001
-DOOTASK_API_TOKEN=your-dootask-api-token
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
 
-# 注意：AI 模型和 MCP 工具配置已移至 Web 管理界面
-# 请在系统启动后通过前端界面进行配置
+# 系统级配置 (必需)
+DOOTASK_API_BASE_URL=http://localhost:2222
 ```
 
 ## 🏗️ 开发环境搭建
@@ -388,7 +382,7 @@ class DooTaskAgent:
         # 初始化 DooTask 客户端
         self.dootask_client = DooTaskClient(
             base_url=os.getenv("DOOTASK_API_BASE_URL"),
-            token=os.getenv("DOOTASK_API_TOKEN")
+            token="xxxxxxx" # 来自 DooTask 的用户的 Token
         )
 
         # 创建工具集
@@ -475,7 +469,7 @@ class DooTaskMCPServer:
     def __init__(self):
         self.client = DooTaskClient(
             base_url=os.getenv("DOOTASK_API_URL"),
-            token=os.getenv("DOOTASK_API_TOKEN")
+            token="xxxxxxx" # 来自 DooTask 的用户的 Token
         )
 
 async def serve_dootask_mcp():

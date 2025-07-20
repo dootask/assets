@@ -229,7 +229,7 @@ class DooTaskMCPServer:
     def __init__(self):
         self.client = DooTaskClient(
             base_url=os.getenv("DOOTASK_API_BASE_URL"),
-            token=os.getenv("DOOTASK_API_TOKEN")
+            token="xxxxxxx"    # 来自 DooTask 的用户的 Token
         )
 
     async def get_chat_messages(self, chat_id: str, limit: int = 50):
