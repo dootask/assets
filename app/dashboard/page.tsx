@@ -1,10 +1,11 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MockDataManager } from '@/lib/mock-data';
 import { Agent, Conversation, DashboardStats } from '@/lib/types';
-import { Activity, Bot, Database, MessageSquare, RefreshCcw, Zap } from 'lucide-react';
+import { Activity, Bot, Brain, Cpu, Database, Link, MessageSquare, RefreshCcw, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Dashboard() {
@@ -140,49 +141,82 @@ export default function Dashboard() {
             </CardTitle>
             <CardDescription>AI服务和组件运行状态</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Go API 服务</span>
-              <div className="flex items-center gap-2">
-                <div
-                  className={`h-2 w-2 rounded-full ${stats.systemStatus.goService === 'online' ? 'bg-green-500' : 'bg-red-500'}`}
-                ></div>
-                <span className="text-muted-foreground text-xs">
+          <CardContent className="space-y-4">
+            <div className="grid gap-3">
+              <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/30">
+                    <Cpu className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <span className="text-sm font-medium">Go API 服务</span>
+                </div>
+                <Badge
+                  variant={stats.systemStatus.goService === 'online' ? 'default' : 'destructive'}
+                  className={
+                    stats.systemStatus.goService === 'online'
+                      ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'
+                      : ''
+                  }
+                >
                   {stats.systemStatus.goService === 'online' ? '运行正常' : '服务异常'}
-                </span>
+                </Badge>
               </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Python AI 服务</span>
-              <div className="flex items-center gap-2">
-                <div
-                  className={`h-2 w-2 rounded-full ${stats.systemStatus.pythonService === 'online' ? 'bg-green-500' : 'bg-red-500'}`}
-                ></div>
-                <span className="text-muted-foreground text-xs">
+
+              <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900/30">
+                    <Brain className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <span className="text-sm font-medium">Python AI 服务</span>
+                </div>
+                <Badge
+                  variant={stats.systemStatus.pythonService === 'online' ? 'default' : 'destructive'}
+                  className={
+                    stats.systemStatus.pythonService === 'online'
+                      ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'
+                      : ''
+                  }
+                >
                   {stats.systemStatus.pythonService === 'online' ? '运行正常' : '服务异常'}
-                </span>
+                </Badge>
               </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">DooTask Webhook</span>
-              <div className="flex items-center gap-2">
-                <div
-                  className={`h-2 w-2 rounded-full ${stats.systemStatus.webhook === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}
-                ></div>
-                <span className="text-muted-foreground text-xs">
+
+              <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/30">
+                    <Link className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <span className="text-sm font-medium">DooTask Webhook</span>
+                </div>
+                <Badge
+                  variant={stats.systemStatus.webhook === 'connected' ? 'default' : 'destructive'}
+                  className={
+                    stats.systemStatus.webhook === 'connected'
+                      ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'
+                      : ''
+                  }
+                >
                   {stats.systemStatus.webhook === 'connected' ? '连接正常' : '连接异常'}
-                </span>
+                </Badge>
               </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">数据库连接</span>
-              <div className="flex items-center gap-2">
-                <div
-                  className={`h-2 w-2 rounded-full ${stats.systemStatus.database === 'online' ? 'bg-green-500' : 'bg-red-500'}`}
-                ></div>
-                <span className="text-muted-foreground text-xs">
+
+              <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-cyan-100 p-2 dark:bg-cyan-900/30">
+                    <Database className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                  </div>
+                  <span className="text-sm font-medium">数据库连接</span>
+                </div>
+                <Badge
+                  variant={stats.systemStatus.database === 'online' ? 'default' : 'destructive'}
+                  className={
+                    stats.systemStatus.database === 'online'
+                      ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'
+                      : ''
+                  }
+                >
                   {stats.systemStatus.database === 'online' ? '连接正常' : '连接异常'}
-                </span>
+                </Badge>
               </div>
             </div>
           </CardContent>
