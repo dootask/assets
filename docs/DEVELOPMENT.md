@@ -4,7 +4,7 @@
 
 ### 环境要求
 
-- **Node.js** 18+ 
+- **Node.js** 22+
 - **Go** 1.21+
 - **Python** 3.11+
 - **PostgreSQL** 15+
@@ -33,11 +33,15 @@ mkdir -p docs scripts docker
 cp config.example.env .env
 
 # 编辑环境变量 (.env 文件)
-DOOTASK_API_URL=http://your-dootask-instance.com/api
-DOOTASK_API_TOKEN=your-dootask-api-token
-OPENAI_API_KEY=your-openai-api-key
-DATABASE_URL=postgresql://dootask:password@localhost:5432/dootask_ai
+# 系统级配置 (必需)
+DATABASE_URL=postgresql://dootask:dootask123@localhost:5432/dootask_ai
 REDIS_URL=redis://localhost:6379/0
+DOOTASK_API_BASE_URL=http://localhost:7001
+DOOTASK_API_TOKEN=your-dootask-api-token
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+
+# 注意：AI 模型和 MCP 工具配置已移至 Web 管理界面
+# 请在系统启动后通过前端界面进行配置
 ```
 
 ## 🏗️ 开发环境搭建
@@ -55,6 +59,7 @@ psql -h localhost -U dootask -d dootask_ai -f scripts/init.sql
 ### 2. 后端服务设置
 
 #### Go 服务初始化
+
 ```bash
 cd backend/go-service
 
@@ -70,6 +75,7 @@ go get github.com/gorilla/websocket
 ```
 
 #### Python AI 服务初始化
+
 ```bash
 cd backend/python-ai
 
@@ -118,6 +124,7 @@ npm run format:fix
 ```
 
 #### 格式化规则
+
 - **分号**: 使用分号结尾
 - **引号**: 使用单引号
 - **行宽**: 120 字符 (适合现代宽屏开发环境)
@@ -135,7 +142,7 @@ git commit -m "docs: 更新API文档"
 # 类型说明
 feat:     新功能
 fix:      修复bug
-docs:     文档更新  
+docs:     文档更新
 style:    代码格式调整
 refactor: 代码重构
 test:     添加测试
@@ -145,6 +152,7 @@ chore:    其他修改
 ### 代码规范
 
 #### Go 代码规范
+
 ```go
 // 包注释
 // Package handlers 提供HTTP请求处理器
@@ -166,26 +174,27 @@ func (h *WebhookHandler) HandleMessage(c *gin.Context) error {
 ```
 
 #### TypeScript 代码规范
+
 ```typescript
 // 接口定义
 interface Agent {
-  id: string
-  name: string
-  description: string
-  prompt: string
-  model: string
-  temperature: number
-  tools: string[]
-  knowledgeBases: string[]
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  name: string;
+  description: string;
+  prompt: string;
+  model: string;
+  temperature: number;
+  tools: string[];
+  knowledgeBases: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // 组件定义 - 使用shadcn/ui组件
 interface AgentConfigProps {
-  agent: Agent
-  onSave: (agent: Agent) => void
-  onCancel: () => void
+  agent: Agent;
+  onSave: (agent: Agent) => void;
+  onCancel: () => void;
 }
 
 export default function AgentConfig({ agent, onSave, onCancel }: AgentConfigProps) {
@@ -198,12 +207,14 @@ export default function AgentConfig({ agent, onSave, onCancel }: AgentConfigProp
 ### 1. Go 后端服务开发
 
 #### 项目结构创建
+
 ```bash
 # 在 backend/go-service 目录下创建结构
 mkdir -p {handlers,models,middleware,services,mcp,config,utils}
 ```
 
 #### 主入口文件
+
 ```go
 // backend/go-service/main.go
 package main
@@ -219,14 +230,14 @@ import (
 func main() {
     // 加载配置
     cfg := config.Load()
-    
+
     // 初始化路由
     r := gin.Default()
-    
+
     // 中间件
     r.Use(middleware.CORS())
     r.Use(middleware.Logger())
-    
+
     // 路由组
     api := r.Group("/api")
     {
@@ -234,7 +245,7 @@ func main() {
         {
             auth.POST("/login", handlers.Login)
         }
-        
+
         protected := api.Group("/")
         protected.Use(middleware.AuthRequired())
         {
@@ -244,13 +255,14 @@ func main() {
             protected.POST("/agents", handlers.CreateAgent)
         }
     }
-    
+
     log.Printf("服务启动在端口: %s", cfg.Port)
     r.Run(":" + cfg.Port)
 }
 ```
 
 #### Webhook 处理器
+
 ```go
 // backend/go-service/handlers/webhook.go
 package handlers
@@ -274,13 +286,13 @@ func HandleWebhook(c *gin.Context) {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
-    
+
     // 创建占位消息
     messageID := createPlaceholderMessage(payload.ChatID)
-    
+
     // 异步处理AI请求
     go processAIRequest(payload, messageID)
-    
+
     // 返回SSE连接地址
     c.JSON(http.StatusOK, gin.H{
         "sse_url":    "/api/sse/chat/" + messageID,
@@ -292,12 +304,14 @@ func HandleWebhook(c *gin.Context) {
 ### 2. Python AI 服务开发
 
 #### 项目结构创建
+
 ```bash
 # 在 backend/python-ai 目录下创建结构
 mkdir -p {agents,mcp,knowledge,models,services,config,utils}
 ```
 
 #### 主入口文件
+
 ```python
 # backend/python-ai/main.py
 from fastapi import FastAPI, HTTPException
@@ -312,20 +326,20 @@ class MessageRequest(BaseModel):
     message: str
     agent_id: str
     context: dict = {}
-    
+
 class MessageResponse(BaseModel):
     response: str
     used_tools: list = []
-    
+
 @app.post("/process", response_model=MessageResponse)
 async def process_message(request: MessageRequest):
     try:
         # 获取智能体配置
         agent = get_agent_by_id(request.agent_id)
-        
+
         # 处理消息
         response = agent.process_message(request.message, request.context)
-        
+
         return MessageResponse(
             response=response,
             used_tools=agent.get_used_tools()
@@ -342,6 +356,7 @@ if __name__ == "__main__":
 ```
 
 #### 智能体实现
+
 ```python
 # backend/python-ai/agents/dootask_agent.py
 from langchain.agents import initialize_agent, AgentType
@@ -354,26 +369,31 @@ import os
 class DooTaskAgent:
     def __init__(self, config):
         self.config = config
+
+        # 从数据库加载 AI 模型配置
+        ai_model = self.load_ai_model_config(config.model_id)
+
         self.llm = ChatOpenAI(
-            model=config.model,
-            temperature=config.temperature,
-            openai_api_key=config.openai_api_key
+            model=ai_model.model_name,
+            temperature=ai_model.temperature,
+            openai_api_key=ai_model.api_key,  # 从数据库加载
+            base_url=ai_model.base_url
         )
-        
+
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             return_messages=True
         )
-        
+
         # 初始化 DooTask 客户端
         self.dootask_client = DooTaskClient(
-            base_url=os.getenv("DOOTASK_API_URL"),
+            base_url=os.getenv("DOOTASK_API_BASE_URL"),
             token=os.getenv("DOOTASK_API_TOKEN")
         )
-        
+
         # 创建工具集
         self.tools = self._create_dootask_tools()
-        
+
         # 初始化智能体
         self.agent = initialize_agent(
             self.tools,
@@ -382,7 +402,7 @@ class DooTaskAgent:
             memory=self.memory,
             verbose=True
         )
-    
+
     def _create_dootask_tools(self):
         """创建 DooTask 工具集"""
         return [
@@ -399,9 +419,9 @@ class DooTaskAgent:
                 )
             ),
             Tool(
-                name="create_task", 
+                name="create_task",
                 description="创建新任务",
-                func=lambda title, project_id, assignee_id, description="", priority="medium": 
+                func=lambda title, project_id, assignee_id, description="", priority="medium":
                     self.dootask_client.task.create(
                         title=title,
                         description=description,
@@ -425,23 +445,24 @@ class DooTaskAgent:
                 )
             )
         ]
-    
+
     def process_message(self, message: str, context: dict = None) -> str:
         # 增强消息上下文
         if context:
             enhanced_message = f"上下文: {context}\n\n用户消息: {message}"
         else:
             enhanced_message = message
-            
+
         # 调用智能体
         response = self.agent.run(enhanced_message)
         return response
-    
+
     def get_used_tools(self) -> list:
         return [tool.name for tool in self.tools if hasattr(tool, 'was_used') and tool.was_used()]
 ```
 
 #### MCP 服务器实现
+
 ```python
 # backend/python-ai/mcp/dootask_mcp_server.py
 from mcp import Server
@@ -461,14 +482,14 @@ async def serve_dootask_mcp():
     """启动 DooTask MCP 服务器"""
     server = Server("dootask-internal")
     dootask_server = DooTaskMCPServer()
-    
+
     @server.list_tools()
     async def handle_list_tools() -> list[types.Tool]:
         """注册可用的工具"""
         return [
             types.Tool(
                 name="get_chat_messages",
-                description="获取指定聊天的消息记录", 
+                description="获取指定聊天的消息记录",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -493,7 +514,7 @@ async def serve_dootask_mcp():
             )
             # 更多工具定义...
         ]
-    
+
     @server.call_tool()
     async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         """处理工具调用"""
@@ -502,31 +523,32 @@ async def serve_dootask_mcp():
                 result = await dootask_server.client.chat.get_messages(**arguments)
                 return [types.TextContent(type="text", text=f"聊天记录: {result}")]
             elif name == "create_task":
-                result = await dootask_server.client.task.create(**arguments) 
+                result = await dootask_server.client.task.create(**arguments)
                 return [types.TextContent(type="text", text=f"任务创建成功: {result}")]
             else:
                 raise ValueError(f"Unknown tool: {name}")
         except Exception as e:
             return [types.TextContent(type="text", text=f"工具调用失败: {str(e)}")]
-    
+
     return server
 
 # 启动脚本
 if __name__ == "__main__":
     import asyncio
     from mcp.server.stdio import stdio_server
-    
+
     async def main():
         server = await serve_dootask_mcp()
         async with stdio_server() as (read_stream, write_stream):
             await server.run(read_stream, write_stream)
-    
+
     asyncio.run(main())
 ```
 
 ### 3. 前端组件开发
 
 #### 智能体管理页面
+
 ```typescript
 // app/agents/page.tsx
 'use client'
@@ -568,7 +590,7 @@ export default function AgentsPage() {
           创建智能体
         </Button>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {agents.map((agent) => (
           <Card key={agent.id} className="cursor-pointer hover:shadow-lg">
@@ -599,6 +621,7 @@ export default function AgentsPage() {
 ### 单元测试
 
 #### Go 测试
+
 ```go
 // backend/go-service/handlers/webhook_test.go
 package handlers
@@ -617,23 +640,23 @@ func TestHandleWebhook(t *testing.T) {
     gin.SetMode(gin.TestMode)
     r := gin.Default()
     r.POST("/webhook", HandleWebhook)
-    
+
     payload := WebhookPayload{
         ChatID:  "test-chat-123",
-        UserID:  "test-user-456", 
+        UserID:  "test-user-456",
         Message: "Hello AI",
         BotID:   "test-bot-789",
     }
-    
+
     jsonPayload, _ := json.Marshal(payload)
     req, _ := http.NewRequest("POST", "/webhook", bytes.NewBuffer(jsonPayload))
     req.Header.Set("Content-Type", "application/json")
-    
+
     w := httptest.NewRecorder()
     r.ServeHTTP(w, req)
-    
+
     assert.Equal(t, 200, w.Code)
-    
+
     var response map[string]string
     json.Unmarshal(w.Body.Bytes(), &response)
     assert.Contains(t, response, "sse_url")
@@ -642,6 +665,7 @@ func TestHandleWebhook(t *testing.T) {
 ```
 
 #### Python 测试
+
 ```python
 # backend/python-ai/tests/test_agent.py
 import pytest
@@ -657,7 +681,7 @@ def test_agent_initialization():
             temperature=0.7,
             openai_api_key="test-key"
         )
-        
+
         agent = DooTaskAgent(config)
         assert agent.config.model == "gpt-3.5-turbo"
         assert len(agent.tools) == 5  # DooTask 工具数量
@@ -668,12 +692,12 @@ def test_dootask_tools_creation():
     with patch('agents.dootask_agent.DooTaskClient') as mock_client:
         config = AgentConfig(model="gpt-3.5-turbo", temperature=0.7)
         agent = DooTaskAgent(config)
-        
+
         tools = agent._create_dootask_tools()
         tool_names = [tool.name for tool in tools]
-        
+
         expected_tools = [
-            "get_chat_messages", "create_project", "create_task", 
+            "get_chat_messages", "create_project", "create_task",
             "search_tasks", "send_message"
         ]
         assert all(tool_name in tool_names for tool_name in expected_tools)
@@ -682,7 +706,7 @@ def test_dootask_tools_creation():
 async def test_mcp_server():
     """测试 MCP 服务器"""
     from mcp.dootask_mcp_server import serve_dootask_mcp
-    
+
     with patch('mcp.dootask_mcp_server.DooTaskClient') as mock_client:
         server = await serve_dootask_mcp()
         assert server.name == "dootask-internal"
@@ -691,15 +715,15 @@ def test_process_message():
     """测试消息处理"""
     with patch('agents.dootask_agent.DooTaskClient'), \
          patch('agents.dootask_agent.ChatOpenAI') as mock_llm:
-        
+
         # 模拟 LangChain 智能体
         mock_agent = Mock()
         mock_agent.run.return_value = "AI response"
-        
+
         config = AgentConfig(model="gpt-3.5-turbo", temperature=0.7)
         agent = DooTaskAgent(config)
         agent.agent = mock_agent
-        
+
         response = agent.process_message("Hello")
         assert response == "AI response"
         mock_agent.run.assert_called_once()
@@ -722,6 +746,7 @@ pytest tests/ -m integration
 ### Webhook API
 
 #### 接收消息
+
 ```http
 POST /api/webhook/message
 Content-Type: application/json
@@ -729,7 +754,7 @@ Authorization: Bearer <token>
 
 {
   "chat_id": "chat-123",
-  "user_id": "user-456", 
+  "user_id": "user-456",
   "message": "Hello AI",
   "bot_id": "bot-789",
   "timestamp": 1703123456
@@ -737,6 +762,7 @@ Authorization: Bearer <token>
 ```
 
 #### 响应
+
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -750,12 +776,14 @@ Content-Type: application/json
 ### 智能体管理 API
 
 #### 获取智能体列表
+
 ```http
 GET /api/agents
 Authorization: Bearer <token>
 ```
 
 #### 创建智能体
+
 ```http
 POST /api/agents
 Content-Type: application/json
@@ -815,11 +843,12 @@ docker compose -f docker/docker-compose.prod.yml up -d
 ## 🔍 调试指南
 
 ### 日志查看
+
 ```bash
 # Go 服务日志
 docker logs -f dootask-ai-go-service
 
-# Python AI 服务日志  
+# Python AI 服务日志
 docker logs -f dootask-ai-python-ai
 
 # 前端开发服务器日志
@@ -840,4 +869,4 @@ npm run dev
    - 检查 CORS 配置
    - 确认防火墙设置
 
-这个开发指南为团队提供了完整的开发环境设置、代码规范、核心模块实现和测试部署等指导，确保项目能够高效、规范地进行开发。 
+这个开发指南为团队提供了完整的开发环境设置、代码规范、核心模块实现和测试部署等指导，确保项目能够高效、规范地进行开发。

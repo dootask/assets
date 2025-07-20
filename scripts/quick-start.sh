@@ -41,7 +41,17 @@ check_command() {
 check_dependencies() {
     log_info "检查系统依赖..."
     check_command "docker"
-    check_command "docker-compose"
+    
+    # 检查 Docker Compose（支持新旧版本）
+    if command -v "docker-compose" &> /dev/null; then
+        DOCKER_COMPOSE="docker-compose"
+    elif docker compose version &> /dev/null; then
+        DOCKER_COMPOSE="docker compose"
+    else
+        log_error "Docker Compose 未安装，请先安装 Docker Compose"
+        exit 1
+    fi
+    
     check_command "node"
     check_command "npm"
     check_command "go"
@@ -57,7 +67,15 @@ setup_env() {
         if [ -f "config.example.env" ]; then
             cp config.example.env .env
             log_success "已创建 .env 配置文件"
-            log_warning "请编辑 .env 文件，填入正确的配置值"
+            echo ""
+            log_warning "⚠️  请编辑 .env 文件，填入以下必需配置："
+            echo "   - DOOTASK_API_BASE_URL: DooTask 实例地址"
+            echo "   - DOOTASK_API_TOKEN: DooTask API 令牌"
+            echo "   - JWT_SECRET: JWT 密钥（生产环境请使用强密钥）"
+            echo ""
+            echo "💡 注意：AI 模型和 MCP 工具配置已移至 Web 管理界面"
+            echo "   请在系统启动后通过前端设置页面进行配置"
+            echo ""
         else
             log_error "找不到 config.example.env 文件"
             exit 1
@@ -98,11 +116,11 @@ start_databases() {
     log_info "启动数据库服务..."
     
     if [ -f "docker/docker-compose.dev.yml" ]; then
-        docker compose -f docker/docker-compose.dev.yml up -d postgres redis
+        $DOCKER_COMPOSE -f docker/docker-compose.dev.yml up -d postgres redis
         
         # 等待数据库启动
         log_info "等待数据库启动完成..."
-        sleep 10
+        sleep 15
         
         log_success "数据库服务启动完成"
     else
@@ -166,17 +184,37 @@ create_python_service() {
     
     if [ ! -f "backend/python-ai/requirements.txt" ]; then
         cat > backend/python-ai/requirements.txt << EOF
-fastapi==0.104.1
-uvicorn==0.24.0
-langchain==0.1.0
-openai==1.3.0
-redis==5.0.1
+# Web 框架
+fastapi==0.110.0
+uvicorn[standard]==0.27.0
+
+# AI 和机器学习
+langchain==0.1.13
+langchain-community==0.0.29
+langchain-openai==0.1.0
+openai==1.13.3
+
+# 数据库和缓存
 psycopg2-binary==2.9.9
-pydantic==2.5.0
-python-multipart==0.0.6
+redis==5.0.3
+
+# 数据处理
+pydantic==2.6.4
+python-multipart==0.0.9
 aiofiles==23.2.1
+
+# 安全和认证
 python-jose[cryptography]==3.3.0
 bcrypt==4.1.2
+
+# MCP 协议
+mcp==0.4.0
+
+# DooTask 工具（如果可用）
+dootask-tools==0.0.3
+
+# 开发工具
+python-dotenv==1.0.1
 EOF
         log_success "Python 依赖文件创建完成"
     else
@@ -239,7 +277,7 @@ main() {
 # 错误处理
 cleanup() {
     log_error "脚本执行过程中发生错误，正在清理..."
-    docker compose -f docker/docker-compose.dev.yml down > /dev/null 2>&1 || true
+    $DOCKER_COMPOSE -f docker/docker-compose.dev.yml down > /dev/null 2>&1 || true
     exit 1
 }
 

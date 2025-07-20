@@ -10,39 +10,39 @@ graph TB
         API_DT[(DooTask Tools)]
         DB_DT[(DooTask 数据库)]
     end
-    
+
     subgraph "AI 插件系统"
         subgraph "前端层"
             UI[Next.js 前端]
             COMP[shadcn/ui 组件]
             HTTP[Axios HTTP客户端]
         end
-        
+
         subgraph "API 网关层"
             GO[Go 主服务]
             AUTH[认证中间件]
             WEBHOOK[Webhook 处理器]
         end
-        
+
         subgraph "AI 引擎层"
             PY[Python AI 服务]
             LC[LangChain]
             AGENT[智能体引擎]
         end
-        
+
         subgraph "MCP 协议层"
             MCP_INT[内部 MCP]
             MCP_EXT[外部 MCP]
             TOOLS[工具注册中心]
         end
-        
+
         subgraph "数据层"
             PG[(PostgreSQL)]
             REDIS[(Redis)]
             VECTOR[(Vector DB)]
         end
     end
-    
+
     DT -->|Webhook| WEBHOOK
     BOT --> DT
     UI --> HTTP
@@ -66,7 +66,7 @@ graph TB
 ```go
 // 主要职责
 - HTTP API 路由
-- WebSocket/SSE 连接管理  
+- WebSocket/SSE 连接管理
 - 认证和授权
 - DooTask Webhook 处理
 - MCP 协议实现
@@ -74,6 +74,7 @@ graph TB
 ```
 
 #### 目录结构
+
 ```
 go-service/
 ├── main.go              # 主入口
@@ -93,6 +94,7 @@ go-service/
 ```
 
 #### 核心处理流程
+
 ```go
 // Webhook 处理流程
 type WebhookHandler struct {
@@ -105,19 +107,19 @@ func (h *WebhookHandler) HandleMessage(c *gin.Context) {
     // 1. 接收 DooTask webhook
     var payload WebhookPayload
     c.ShouldBindJSON(&payload)
-    
+
     // 2. 创建占位消息
     msgID := h.chatService.CreatePlaceholderMessage(
-        payload.ChatID, 
+        payload.ChatID,
         "🤖 AI 正在思考..."
     )
-    
+
     // 3. 异步调用 AI 服务
     go func() {
         response := h.aiService.ProcessMessage(payload)
         h.sseManager.StreamResponse(msgID, response)
     }()
-    
+
     // 4. 返回 SSE 连接地址
     c.JSON(200, gin.H{
         "sse_url": fmt.Sprintf("/sse/chat/%s", msgID),
@@ -138,6 +140,7 @@ func (h *WebhookHandler) HandleMessage(c *gin.Context) {
 ```
 
 #### 目录结构
+
 ```
 python-ai/
 ├── main.py              # FastAPI 主入口
@@ -157,6 +160,7 @@ python-ai/
 ```
 
 #### 智能体实现
+
 ```python
 from langchain.agents import initialize_agent
 from langchain.chat_models import ChatOpenAI
@@ -176,20 +180,21 @@ class DooTaskAgent:
             agent="chat-conversational-react-description",
             memory=self.memory
         )
-    
+
     def process_message(self, message, context):
         # 添加上下文信息
         enhanced_message = self.enhance_with_context(message, context)
-        
+
         # 调用智能体处理
         response = self.agent.run(enhanced_message)
-        
+
         return response
 ```
 
 ### 3. MCP 协议实现
 
 #### MCP 协议定义
+
 ```go
 type MCPRequest struct {
     Jsonrpc string                 `json:"jsonrpc"`
@@ -223,14 +228,14 @@ import asyncio
 class DooTaskMCPServer:
     def __init__(self):
         self.client = DooTaskClient(
-            base_url=os.getenv("DOOTASK_API_URL"),
+            base_url=os.getenv("DOOTASK_API_BASE_URL"),
             token=os.getenv("DOOTASK_API_TOKEN")
         )
-    
+
     async def get_chat_messages(self, chat_id: str, limit: int = 50):
         """获取聊天记录"""
         return await self.client.chat.get_messages(chat_id, limit=limit)
-    
+
     async def create_project(self, name: str, description: str = "", owner_id: str = ""):
         """创建项目"""
         return await self.client.project.create(
@@ -238,8 +243,8 @@ class DooTaskMCPServer:
             description=description,
             owner_id=owner_id
         )
-    
-    async def create_task(self, title: str, project_id: str, assignee_id: str, 
+
+    async def create_task(self, title: str, project_id: str, assignee_id: str,
                          description: str = "", priority: str = "medium"):
         """创建任务"""
         return await self.client.task.create(
@@ -249,11 +254,11 @@ class DooTaskMCPServer:
             assignee_id=assignee_id,
             priority=priority
         )
-    
+
     async def get_user_info(self, user_id: str):
         """获取用户信息"""
         return await self.client.user.get(user_id)
-    
+
     async def search_tasks(self, query: str, project_id: str = "", status: str = ""):
         """搜索任务"""
         return await self.client.task.search(
@@ -261,7 +266,7 @@ class DooTaskMCPServer:
             project_id=project_id,
             status=status
         )
-    
+
     async def send_message(self, chat_id: str, content: str, type: str = "text"):
         """发送消息"""
         return await self.client.chat.send_message(
@@ -274,7 +279,7 @@ class DooTaskMCPServer:
 async def serve_dootask_mcp():
     server = Server("dootask-internal")
     dootask_server = DooTaskMCPServer()
-    
+
     @server.list_tools()
     async def handle_list_tools() -> list[types.Tool]:
         return [
@@ -345,7 +350,7 @@ async def serve_dootask_mcp():
                 }
             )
         ]
-    
+
     @server.call_tool()
     async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         try:
@@ -368,14 +373,14 @@ async def serve_dootask_mcp():
                 raise ValueError(f"Unknown tool: {name}")
         except Exception as e:
             return [types.TextContent(type="text", text=f"工具调用失败: {str(e)}")]
-    
+
     return server
 
 # 启动 MCP 服务器
 if __name__ == "__main__":
     import asyncio
     from mcp.server.stdio import stdio_server
-    
+
     async def main():
         server = await serve_dootask_mcp()
         async with stdio_server() as (read_stream, write_stream):
@@ -387,7 +392,7 @@ if __name__ == "__main__":
                     server_version="1.0.0"
                 )
             )
-    
+
     asyncio.run(main())
 ```
 
@@ -461,13 +466,13 @@ CREATE TABLE kb_documents (
 const (
     // 对话上下文缓存 (TTL: 1小时)
     ConversationContextKey = "conversation:%s:context"
-    
+
     // 智能体配置缓存 (TTL: 30分钟)
     AgentConfigKey = "agent:%d:config"
-    
+
     // SSE 连接管理
     SSEConnectionKey = "sse:connection:%s"
-    
+
     // MCP 工具缓存 (TTL: 10分钟)
     MCPToolsKey = "mcp:tools:%s"
 )
@@ -486,13 +491,13 @@ sequenceDiagram
     participant MCP as MCP 工具
     participant KB as 知识库
     participant SSE as SSE 服务
-    
+
     U->>DT: 发送消息给机器人
     DT->>WH: POST /webhook/message
     WH->>DT: 创建占位消息
     WH->>SSE: 创建 SSE 连接
     WH-->>DT: 返回 SSE URL
-    
+
     par 异步处理
         WH->>AI: 处理消息请求
         AI->>KB: 检索相关知识
@@ -502,7 +507,7 @@ sequenceDiagram
         AI->>AI: 生成 AI 回复
         AI->>SSE: 流式发送回复
     end
-    
+
     SSE->>DT: 更新消息内容
     DT->>U: 显示完整回复
 ```
@@ -510,6 +515,7 @@ sequenceDiagram
 ## 🔒 安全架构
 
 ### 认证和授权
+
 ```go
 type AuthMiddleware struct {
     jwtSecret string
@@ -518,7 +524,7 @@ type AuthMiddleware struct {
 
 func (a *AuthMiddleware) ValidateToken(c *gin.Context) {
     token := c.GetHeader("Authorization")
-    
+
     // 验证 JWT Token
     claims, err := jwt.Parse(token, a.jwtSecret)
     if err != nil {
@@ -529,7 +535,7 @@ func (a *AuthMiddleware) ValidateToken(c *gin.Context) {
         })
         return
     }
-    
+
     // 检查用户权限
     hasPermission := a.checkPermission(claims.UserID, c.Request.URL.Path)
     if !hasPermission {
@@ -540,13 +546,14 @@ func (a *AuthMiddleware) ValidateToken(c *gin.Context) {
         })
         return
     }
-    
+
     c.Set("user_id", claims.UserID)
     c.Next()
 }
 ```
 
 ### 数据加密
+
 - **传输加密**：HTTPS/TLS 1.3
 - **存储加密**：数据库字段级加密
 - **会话加密**：Redis 数据加密存储
@@ -554,16 +561,19 @@ func (a *AuthMiddleware) ValidateToken(c *gin.Context) {
 ## 📈 性能优化
 
 ### 缓存策略
+
 1. **多级缓存**：Redis + 应用内存缓存
 2. **智能预热**：常用智能体配置预加载
 3. **过期策略**：LRU + TTL 组合策略
 
 ### 并发处理
+
 1. **连接池**：数据库连接池优化
 2. **异步处理**：AI 调用异步化
 3. **限流控制**：用户级别的 QPS 限制
 
 ### 数据库优化
+
 1. **索引优化**：针对查询模式建立复合索引
 2. **分区表**：消息表按时间分区
 3. **读写分离**：主从数据库架构
@@ -571,6 +581,7 @@ func (a *AuthMiddleware) ValidateToken(c *gin.Context) {
 ## 🚀 部署架构
 
 ### Docker 容器化
+
 ```yaml
 # docker-compose.yml
 version: '3.8'
@@ -578,30 +589,30 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
-    
+      - '3000:3000'
+
   go-service:
     build: ./backend/go-service
     ports:
-      - "8080:8080"
+      - '8080:8080'
     depends_on:
       - postgres
       - redis
-    
+
   python-ai:
     build: ./backend/python-ai
     ports:
-      - "8001:8001"
-    
+      - '8001:8001'
+
   postgres:
     image: pgvector/pgvector:pg15
     environment:
       POSTGRES_DB: dootask_ai
       POSTGRES_USER: dootask
       POSTGRES_PASSWORD: password
-    
+
   redis:
     image: redis:7-alpine
 ```
 
-这个技术架构为 AI 智能体插件提供了强大、可扩展、安全的技术基础，支持企业级的高并发和高可用需求。 
+这个技术架构为 AI 智能体插件提供了强大、可扩展、安全的技术基础，支持企业级的高并发和高可用需求。
