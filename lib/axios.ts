@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { toast } from 'sonner';
+import { storage } from './storage';
 
 // 创建axios实例
 const apiClient = axios.create({
@@ -13,7 +14,7 @@ const apiClient = axios.create({
 // 请求拦截器 - 添加认证头等
 apiClient.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('authToken');
+    const token = storage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

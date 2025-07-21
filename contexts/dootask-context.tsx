@@ -8,6 +8,7 @@ import {
   DooTaskUserInfo,
 } from '@dootask/tools';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { storage } from '../lib/storage';
 
 interface DootaskContextType {
   loading: boolean;
@@ -15,6 +16,7 @@ interface DootaskContextType {
   isMainElectron: boolean;
   isSubElectron: boolean;
   dooTaskUser: DooTaskUserInfo | null;
+  isAdmin: boolean;
 }
 
 const DootaskContext = createContext<DootaskContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export function DootaskProvider({ children }: { children: React.ReactNode }) {
   const [isMainElectron, setIsMainElectron] = useState(false);
   const [isSubElectron, setIsSubElectron] = useState(false);
   const [dooTaskUser, setDooTaskUser] = useState<DooTaskUserInfo | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const cleanInterceptBack = useRef<(() => void) | null>(null);
 
   // 关闭窗口前拦截
@@ -62,6 +65,8 @@ export function DootaskProvider({ children }: { children: React.ReactNode }) {
         setIsMainElectron(isMainElec);
         setIsSubElectron(isSubElec);
         setDooTaskUser(dooTaskUser);
+        setIsAdmin(dooTaskUser?.identity?.includes('admin') ?? false);
+        storage.setItem('authToken', dooTaskUser?.token ?? '');
       } catch (error) {
         setError(error as string);
       } finally {
@@ -83,6 +88,7 @@ export function DootaskProvider({ children }: { children: React.ReactNode }) {
         isMainElectron,
         isSubElectron,
         dooTaskUser,
+        isAdmin,
       }}
     >
       {children}

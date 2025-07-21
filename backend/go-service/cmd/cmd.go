@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"dootask-ai/go-service/api/health"
 	"dootask-ai/go-service/database"
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/middleware"
 	"dootask-ai/go-service/pkg/utils"
+	"dootask-ai/go-service/routes/api/test"
+	"dootask-ai/go-service/routes/health"
 	"fmt"
 	"log"
 	"os"
@@ -79,12 +80,16 @@ func runServer(*cobra.Command, []string) {
 	// CORS中间件
 	r.Use(middleware.CorsMiddleware())
 
-	// DooTask中间件
-	r.Use(middleware.DootaskMiddleware())
+	// 认证中间件
+	r.Use(middleware.AuthMiddleware())
 
 	// 注册路由
 	root := r.Group("/")
 	health.RegisterRoutes(root)
+
+	// 注册API路由
+	api := r.Group("/api")
+	test.RegisterRoutes(api)
 
 	// 获取端口
 	port := utils.GetEnvWithDefault("GO_SERVICE_PORT", "8000")
