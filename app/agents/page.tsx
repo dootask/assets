@@ -1,15 +1,5 @@
 'use client';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
 import { Agent } from '@/lib/types';
 import { Activity, Bot, Clock, Edit, MessageSquare, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
@@ -28,9 +19,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function AgentsPage() {
+  const { Confirm } = useAppContext();
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [agentToDelete, setAgentToDelete] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadAgents = () => {
@@ -56,23 +46,22 @@ export default function AgentsPage() {
     }
   };
 
-  const handleDeleteAgent = (agentId: string) => {
-    setAgentToDelete(agentId);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (agentToDelete) {
-      const success = MockDataManager.deleteAgent(agentToDelete);
+  const handleDeleteAgent = async (agentId: string) => {
+    if (
+      await Confirm({
+        title: '确认删除智能体',
+        message: '此操作将永久删除该智能体及其相关配置。此操作无法撤销。',
+        variant: 'destructive',
+      })
+    ) {
+      const success = MockDataManager.deleteAgent(agentId);
       if (success) {
-        setAgents(agents.filter(agent => agent.id !== agentToDelete));
+        setAgents(agents.filter(agent => agent.id !== agentId));
         toast.success('智能体已删除');
       } else {
         toast.error('删除失败');
       }
     }
-    setDeleteDialogOpen(false);
-    setAgentToDelete(null);
   };
 
   const getModelBadgeVariant = (model: string) => {
@@ -271,25 +260,6 @@ export default function AgentsPage() {
           ))}
         </div>
       )}
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除智能体</AlertDialogTitle>
-            <AlertDialogDescription>此操作将永久删除该智能体及其相关配置。此操作无法撤销。</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:text-destructive-foreground"
-            >
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

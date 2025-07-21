@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { cn } from '../lib/utils';
+import { cn } from '@/lib/utils';
 
 type AlertType = 'alert' | 'confirm';
 type AlertVariant = 'default' | 'destructive';

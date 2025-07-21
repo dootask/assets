@@ -1,15 +1,5 @@
 'use client';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
 import { KnowledgeBase } from '@/lib/types';
 import { Calendar, Database, Eye, FileText, MoreHorizontal, Plus, Settings, Trash2, Upload } from 'lucide-react';
@@ -27,9 +18,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function KnowledgeBasePage() {
+  const { Confirm } = useAppContext();
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [kbToDelete, setKbToDelete] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadKnowledgeBases = () => {
@@ -46,19 +36,18 @@ export default function KnowledgeBasePage() {
     loadKnowledgeBases();
   }, []);
 
-  const handleDeleteKB = (kbId: string) => {
-    setKbToDelete(kbId);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (kbToDelete) {
+  const handleDeleteKB = async (kbId: string) => {
+    if (
+      await Confirm({
+        title: '确认删除知识库',
+        message: '此操作将永久删除该知识库及其所有文档。此操作无法撤销。',
+        variant: 'destructive',
+      })
+    ) {
       // 这里应该调用删除API，目前只是从本地数组中移除
-      setKnowledgeBases(kbs => kbs.filter(kb => kb.id !== kbToDelete));
+      setKnowledgeBases(kbs => kbs.filter(kb => kb.id !== kbId));
       toast.success('知识库已删除');
     }
-    setDeleteDialogOpen(false);
-    setKbToDelete(null);
   };
 
   const getEmbeddingModelBadge = (model: string) => {
@@ -226,25 +215,6 @@ export default function KnowledgeBasePage() {
           ))}
         </div>
       )}
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除知识库</AlertDialogTitle>
-            <AlertDialogDescription>此操作将永久删除该知识库及其所有文档。此操作无法撤销。</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:text-destructive-foreground"
-            >
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

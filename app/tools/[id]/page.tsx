@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
+import { safeString } from '@/lib/utils';
 import { MCPTool } from '@/lib/types';
 import { Edit, ExternalLink, Key, Settings, Shield, Trash2, Wrench, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -42,7 +43,13 @@ export default function MCPToolDetailPage() {
   }, [params.id]);
 
   const handleDelete = async () => {
-    if (await Confirm('确定要删除这个MCP工具吗？此操作不可撤销。')) {
+    if (
+      await Confirm({
+        title: '确定要删除这个MCP工具吗？',
+        message: '此操作不可撤销。',
+        variant: 'destructive',
+      })
+    ) {
       // MockDataManager.deleteMCPTool(params.id as string);
       toast.success('MCP工具删除成功');
       router.push('/tools');
@@ -222,28 +229,28 @@ export default function MCPToolDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {tool.type === 'external' && tool.config.baseUrl && (
+              {tool.type === 'external' && Boolean(tool.config.baseUrl) && (
                 <div>
                   <h4 className="text-muted-foreground mb-2 text-sm font-medium">API 基础地址</h4>
                   <div className="flex items-center gap-2">
                     <ExternalLink className="text-muted-foreground h-4 w-4" />
-                    <p className="font-mono text-sm break-all">{String(tool.config.baseUrl)}</p>
+                    <p className="font-mono text-sm break-all">{safeString(tool.config.baseUrl)}</p>
                   </div>
                 </div>
               )}
-              {tool.config.apiKey && (
+              {Boolean(tool.config.apiKey) && (
                 <div>
                   <h4 className="text-muted-foreground mb-2 text-sm font-medium">API 密钥</h4>
                   <div className="flex items-center gap-2">
                     <Key className="text-muted-foreground h-4 w-4" />
-                    <p className="font-mono text-sm">{'••••••••••••' + String(tool.config.apiKey).slice(-4)}</p>
+                    <p className="font-mono text-sm">{'••••••••••••' + safeString(tool.config.apiKey).slice(-4)}</p>
                   </div>
                 </div>
               )}
-              {tool.config.endpoint && (
+              {Boolean(tool.config.endpoint) && (
                 <div>
                   <h4 className="text-muted-foreground mb-2 text-sm font-medium">API 端点</h4>
-                  <p className="font-mono text-sm">{String(tool.config.endpoint)}</p>
+                  <p className="font-mono text-sm">{safeString(tool.config.endpoint)}</p>
                 </div>
               )}
               {Object.keys(tool.config).length === 0 && <p className="text-muted-foreground text-sm">暂无配置信息</p>}

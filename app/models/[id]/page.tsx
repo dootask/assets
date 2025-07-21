@@ -42,7 +42,13 @@ export default function ModelDetailPage() {
   }, [params.id]);
 
   const handleDelete = async () => {
-    if (await Confirm('确定要删除这个AI模型吗？此操作不可撤销。')) {
+    if (
+      await Confirm({
+        title: '确定要删除这个AI模型吗？',
+        message: '此操作不可撤销。',
+        variant: 'destructive',
+      })
+    ) {
       MockDataManager.deleteAIModel(params.id as string);
       toast.success('AI模型删除成功');
       router.push('/models');
@@ -220,11 +226,11 @@ export default function ModelDetailPage() {
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">创建时间</h4>
-                  <p className="text-sm">{new Date(model.createdAt).toLocaleString()}</p>
+                  <p className="text-sm">{model.createdAt ? new Date(model.createdAt).toLocaleString() : '未知'}</p>
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">更新时间</h4>
-                  <p className="text-sm">{new Date(model.updatedAt).toLocaleString()}</p>
+                  <p className="text-sm">{model.updatedAt ? new Date(model.updatedAt).toLocaleString() : '未知'}</p>
                 </div>
               </div>
             </CardContent>

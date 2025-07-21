@@ -80,7 +80,13 @@ export default function KnowledgeBaseDetailPage() {
   }, [params.id]);
 
   const handleDelete = async () => {
-    if (await Confirm('确定要删除这个知识库吗？此操作不可撤销。')) {
+    if (
+      await Confirm({
+        title: '确定要删除这个知识库吗？',
+        message: '此操作不可撤销。',
+        variant: 'destructive',
+      })
+    ) {
       MockDataManager.deleteKnowledgeBase(params.id as string);
       toast.success('知识库删除成功');
       router.push('/knowledge');
@@ -125,7 +131,13 @@ export default function KnowledgeBaseDetailPage() {
   };
 
   const handleDeleteDocument = async (docId: string) => {
-    if (await Confirm('确定要删除这个文档吗？')) {
+    if (
+      await Confirm({
+        title: '确定要删除这个文档吗？',
+        message: '此操作无法撤销。',
+        variant: 'destructive',
+      })
+    ) {
       setDocuments(prev => prev.filter(doc => doc.id !== docId));
       toast.success('文档删除成功');
     }

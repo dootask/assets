@@ -55,7 +55,13 @@ export default function AgentDetailPage() {
   }, [params.id]);
 
   const handleDelete = async () => {
-    if (await Confirm('确定要删除这个智能体吗？此操作不可撤销。')) {
+    if (
+      await Confirm({
+        title: '确定要删除这个智能体吗？',
+        message: '此操作不可撤销。',
+        variant: 'destructive',
+      })
+    ) {
       MockDataManager.deleteAgent(params.id as string);
       toast.success('智能体删除成功');
       router.push('/agents');

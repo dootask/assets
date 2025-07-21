@@ -1,15 +1,5 @@
 'use client';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
 import { AIModelConfig } from '@/lib/types';
 import { Activity, CheckCircle, Cpu, Edit, Eye, Key, MoreHorizontal, Plus, Settings, Star, Trash2 } from 'lucide-react';
@@ -28,9 +19,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function ModelsPage() {
+  const { Confirm } = useAppContext();
   const [models, setModels] = useState<AIModelConfig[]>([]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [modelToDelete, setModelToDelete] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadModels = () => {
@@ -65,21 +55,20 @@ export default function ModelsPage() {
     }
   };
 
-  const handleDeleteModel = (modelId: string) => {
-    setModelToDelete(modelId);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (modelToDelete) {
-      const success = MockDataManager.removeAIModel(modelToDelete);
+  const handleDeleteModel = async (modelId: string) => {
+    if (
+      await Confirm({
+        title: '确认删除AI模型',
+        message: '此操作将永久删除该AI模型配置。此操作无法撤销。',
+        variant: 'destructive',
+      })
+    ) {
+      const success = MockDataManager.removeAIModel(modelId);
       if (success) {
-        setModels(prevModels => prevModels.filter(model => model.id !== modelToDelete));
+        setModels(prevModels => prevModels.filter(model => model.id !== modelId));
         toast.success('模型已删除');
       }
     }
-    setDeleteDialogOpen(false);
-    setModelToDelete(null);
   };
 
   const getProviderInfo = (provider: string) => {
@@ -326,25 +315,6 @@ export default function ModelsPage() {
           </Button>
         </Card>
       )}
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除模型</AlertDialogTitle>
-            <AlertDialogDescription>此操作将永久删除该AI模型配置。此操作无法撤销。</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:text-destructive-foreground"
-            >
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
