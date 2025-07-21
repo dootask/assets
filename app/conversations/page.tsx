@@ -266,7 +266,7 @@ export default function ConversationsPage() {
 
             <div className="min-w-0 flex-1 sm:min-w-[200px]">
               <div className="relative">
-                <Search className="text-muted-foreground absolute left-2 top-2.5 h-4 w-4" />
+                <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
                 <Input
                   placeholder="搜索用户名或智能体..."
                   value={searchQuery}
@@ -407,7 +407,7 @@ export default function ConversationsPage() {
                                           </Badge>
                                         )}
                                       </div>
-                                      <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                                      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
                                     </div>
                                   ))}
                                 </div>

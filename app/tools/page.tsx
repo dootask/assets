@@ -251,7 +251,7 @@ export default function ToolsPage() {
             <div className="min-w-0 flex-1 sm:min-w-[200px]">
               <Label htmlFor="category">工具类别</Label>
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mt-2">
-                <TabsList className="gap-2 grid grid-cols-2 sm:grid-cols-4">
+                <TabsList className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <TabsTrigger value="all">全部</TabsTrigger>
                   <TabsTrigger value="dootask">DooTask</TabsTrigger>
                   <TabsTrigger value="external">外部工具</TabsTrigger>
