@@ -235,6 +235,15 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
       maxTokens: 4000,
       isDefault: true,
       isActive: true,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-10T00:00:00Z',
+      agentCount: 2,
+      conversationCount: 45,
+      tokenUsage: 12340,
+      lastUsedAt: '2024-01-15T10:30:00Z',
+      avgResponseTime: '2.1s',
+      successRate: '98.5%',
+      errorCount: 3,
     },
     {
       id: 'openai-gpt-4',
@@ -245,6 +254,15 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
       maxTokens: 8000,
       isDefault: false,
       isActive: true,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-12T00:00:00Z',
+      agentCount: 1,
+      conversationCount: 23,
+      tokenUsage: 8900,
+      lastUsedAt: '2024-01-14T15:20:00Z',
+      avgResponseTime: '3.4s',
+      successRate: '99.1%',
+      errorCount: 1,
     },
     {
       id: 'anthropic-claude-3',
@@ -255,6 +273,14 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
       maxTokens: 4096,
       isDefault: false,
       isActive: false,
+      createdAt: '2024-01-05T00:00:00Z',
+      updatedAt: '2024-01-05T00:00:00Z',
+      agentCount: 0,
+      conversationCount: 0,
+      tokenUsage: 0,
+      avgResponseTime: '-',
+      successRate: '-',
+      errorCount: 0,
     },
     {
       id: 'deepseek-v2.5',
@@ -266,6 +292,14 @@ const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
       maxTokens: 4000,
       isDefault: false,
       isActive: false,
+      createdAt: '2024-01-08T00:00:00Z',
+      updatedAt: '2024-01-08T00:00:00Z',
+      agentCount: 0,
+      conversationCount: 0,
+      tokenUsage: 0,
+      avgResponseTime: '-',
+      successRate: '-',
+      errorCount: 0,
     },
   ],
   dootaskIntegration: {
@@ -483,11 +517,24 @@ export class MockDataManager {
   }
 
   // AI模型管理方法
+  static getAIModels(): AIModelConfig[] {
+    const settings = this.getSystemSettings();
+    return settings.aiModels;
+  }
+
   static addAIModel(model: Omit<AIModelConfig, 'id'>): AIModelConfig {
     const settings = this.getSystemSettings();
     const newModel: AIModelConfig = {
       ...model,
       id: `${model.provider}-${Date.now()}`,
+      createdAt: formatTime(),
+      updatedAt: formatTime(),
+      agentCount: 0,
+      conversationCount: 0,
+      tokenUsage: 0,
+      avgResponseTime: '-',
+      successRate: '-',
+      errorCount: 0,
     };
 
     // 如果设置为默认，取消其他模型的默认状态
@@ -511,9 +558,17 @@ export class MockDataManager {
       settings.aiModels = settings.aiModels.map(m => ({ ...m, isDefault: false }));
     }
 
-    settings.aiModels[modelIndex] = { ...settings.aiModels[modelIndex], ...updates };
+    settings.aiModels[modelIndex] = {
+      ...settings.aiModels[modelIndex],
+      ...updates,
+      updatedAt: formatTime(),
+    };
     this.updateSystemSettings(settings);
     return settings.aiModels[modelIndex];
+  }
+
+  static deleteAIModel(modelId: string): boolean {
+    return this.removeAIModel(modelId);
   }
 
   static removeAIModel(modelId: string): boolean {
@@ -532,6 +587,30 @@ export class MockDataManager {
 
     this.updateSystemSettings(settings);
     return settings.aiModels.length < initialLength;
+  }
+
+  // 知识库管理方法补充
+  static updateKnowledgeBase(id: string, request: Partial<CreateKnowledgeBaseRequest>): KnowledgeBase | null {
+    const knowledgeBases = this.getKnowledgeBases();
+    const index = knowledgeBases.findIndex(kb => kb.id === id);
+    if (index === -1) return null;
+
+    knowledgeBases[index] = {
+      ...knowledgeBases[index],
+      ...request,
+      updatedAt: formatTime(),
+    };
+    this.setStorageData(STORAGE_KEYS.KNOWLEDGE_BASES, knowledgeBases);
+    return knowledgeBases[index];
+  }
+
+  static deleteKnowledgeBase(id: string): boolean {
+    const knowledgeBases = this.getKnowledgeBases();
+    const filteredKnowledgeBases = knowledgeBases.filter(kb => kb.id !== id);
+    if (filteredKnowledgeBases.length === knowledgeBases.length) return false;
+
+    this.setStorageData(STORAGE_KEYS.KNOWLEDGE_BASES, filteredKnowledgeBases);
+    return true;
   }
 
   // 初始化数据（首次使用时）

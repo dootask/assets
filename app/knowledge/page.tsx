@@ -159,13 +159,13 @@ export default function KnowledgeBasePage() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/knowledge/${kb.id}/upload`}>
+                        <Link href={`/knowledge/${kb.id}?tab=documents`}>
                           <Upload className="mr-2 h-4 w-4" />
                           上传文档
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/knowledge/${kb.id}/settings`}>
+                        <Link href={`/knowledge/${kb.id}?tab=settings`}>
                           <Settings className="mr-2 h-4 w-4" />
                           设置
                         </Link>
@@ -215,7 +215,7 @@ export default function KnowledgeBasePage() {
                     </Link>
                   </Button>
                   <Button variant="outline" size="sm" asChild className="flex-1">
-                    <Link href={`/knowledge/${kb.id}/upload`}>
+                    <Link href={`/knowledge/${kb.id}?tab=documents`}>
                       <Upload className="mr-1 h-3 w-3" />
                       上传
                     </Link>

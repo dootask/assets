@@ -251,7 +251,7 @@ export default function ToolsPage() {
             <div className="min-w-0 flex-1 sm:min-w-[200px]">
               <Label htmlFor="category">工具类别</Label>
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mt-2">
-                <TabsList className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <TabsList className="gap-2 grid grid-cols-2 sm:grid-cols-4">
                   <TabsTrigger value="all">全部</TabsTrigger>
                   <TabsTrigger value="dootask">DooTask</TabsTrigger>
                   <TabsTrigger value="external">外部工具</TabsTrigger>
@@ -263,7 +263,7 @@ export default function ToolsPage() {
             <div className="min-w-0 flex-1 sm:min-w-[200px]">
               <Label htmlFor="search">搜索工具</Label>
               <div className="relative mt-2">
-                <Search className="text-muted-foreground absolute left-2 top-2.5 h-4 w-4" />
+                <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
                 <Input
                   id="search"
                   placeholder="搜索工具名称或描述..."
@@ -307,13 +307,17 @@ export default function ToolsPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      配置
+                    <DropdownMenuItem asChild>
+                      <Link href={`/tools/${tool.id}`}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        配置
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      查看统计
+                    <DropdownMenuItem asChild>
+                      <Link href={`/tools/${tool.id}`}>
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        查看统计
+                      </Link>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

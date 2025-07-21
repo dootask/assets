@@ -163,6 +163,16 @@ export interface AIModelConfig {
   maxTokens: number;
   isDefault: boolean;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  // 统计信息（用于详情页面显示）
+  agentCount?: number;
+  conversationCount?: number;
+  tokenUsage?: number;
+  lastUsedAt?: string;
+  avgResponseTime?: string;
+  successRate?: string;
+  errorCount?: number;
 }
 
 export interface DooTaskIntegrationConfig {
@@ -258,4 +268,24 @@ export interface OperationResult {
   success: boolean;
   message: string;
   data?: unknown;
+}
+
+// 智能体详情页面的扩展类型
+export interface AgentDetail extends Agent {
+  toolDetails: MCPTool[];
+  knowledgeBaseDetails: KnowledgeBase[];
+  conversationCount?: number;
+  messageCount?: number;
+  lastUsedAt?: string;
+}
+
+// 知识库文档类型
+export interface KnowledgeBaseDocument {
+  id: string;
+  name: string;
+  size: string;
+  uploadedAt: string;
+  status: 'processed' | 'processing' | 'failed';
+  chunks: number;
+  type: string;
 }
