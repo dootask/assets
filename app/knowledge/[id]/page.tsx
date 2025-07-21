@@ -16,7 +16,13 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/app-context';
-import { MockDataManager } from '@/lib/mock-data';
+import {
+  formatDocumentForUI,
+  formatKnowledgeBaseForUI,
+  knowledgeBasesApi,
+  parseDocumentMetadata,
+  parseKnowledgeBaseMetadata,
+} from '@/lib/api/knowledge-bases';
 import { KnowledgeBase, KnowledgeBaseDocument } from '@/lib/types';
 import { Database, Edit, FileText, Plus, Search, Settings, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -38,46 +44,33 @@ export default function KnowledgeBaseDetailPage() {
   const defaultTab = 'documents';
 
   useEffect(() => {
-    // 模拟获取知识库详情
-    const kbId = params.id as string;
-    const kbData = MockDataManager.getKnowledgeBases().find(kb => kb.id === kbId);
-
-    if (kbData) {
-      setKnowledgeBase(kbData);
-      // 模拟获取文档列表
-      const mockDocuments: KnowledgeBaseDocument[] = [
-        {
-          id: '1',
-          name: '产品需求文档.pdf',
-          size: '2.3 MB',
-          uploadedAt: '2024-01-15T10:00:00Z',
-          status: 'processed' as const,
-          chunks: 45,
-          type: 'pdf',
-        },
-        {
-          id: '2',
-          name: 'API接口文档.md',
-          size: '856 KB',
-          uploadedAt: '2024-01-14T14:30:00Z',
-          status: 'processed' as const,
-          chunks: 23,
-          type: 'markdown',
-        },
-        {
-          id: '3',
-          name: '用户手册.docx',
-          size: '1.7 MB',
-          uploadedAt: '2024-01-13T09:15:00Z',
-          status: 'processing' as const,
-          chunks: 0,
-          type: 'docx',
-        },
-      ];
-      setDocuments(mockDocuments);
-    }
-    setLoading(false);
+    loadData();
   }, [params.id]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const kbId = parseInt(params.id as string);
+
+      // 获取知识库详情
+      const kbData = await knowledgeBasesApi.get(kbId);
+      const parsedKB = parseKnowledgeBaseMetadata(kbData);
+      setKnowledgeBase(formatKnowledgeBaseForUI(parsedKB));
+
+      // 获取文档列表
+      const docsResponse = await knowledgeBasesApi.getDocuments(kbId);
+      const formattedDocs = docsResponse.items.map(doc => {
+        const parsedDoc = parseDocumentMetadata(doc);
+        return formatDocumentForUI(parsedDoc);
+      });
+      setDocuments(formattedDocs);
+    } catch (error) {
+      console.error('加载知识库数据失败:', error);
+      toast.error('加载知识库数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (
@@ -87,9 +80,14 @@ export default function KnowledgeBaseDetailPage() {
         variant: 'destructive',
       })
     ) {
-      MockDataManager.deleteKnowledgeBase(params.id as string);
-      toast.success('知识库删除成功');
-      router.push('/knowledge');
+      try {
+        await knowledgeBasesApi.delete(parseInt(params.id as string));
+        toast.success('知识库删除成功');
+        router.push('/knowledge');
+      } catch (error) {
+        console.error('删除知识库失败:', error);
+        toast.error('删除知识库失败');
+      }
     }
   };
 
@@ -100,37 +98,30 @@ export default function KnowledgeBaseDetailPage() {
     setUploading(true);
     const file = files[0];
 
-    // 模拟文件上传
-    setTimeout(() => {
-      const newDocument: KnowledgeBaseDocument = {
-        id: `${Date.now()}`,
-        name: file.name,
-        size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-        uploadedAt: new Date().toISOString(),
-        status: 'processing' as const,
-        chunks: 0,
-        type: file.name.split('.').pop()?.toLowerCase() || 'unknown',
+    try {
+      // 简化的文件上传逻辑
+      const content = await file.text(); // 对于文本文件
+      const documentData = {
+        title: file.name,
+        content: content,
+        fileType: file.name.split('.').pop()?.toLowerCase() || 'unknown',
+        fileSize: file.size,
+        filePath: `/uploads/${file.name}`,
       };
 
-      setDocuments(prev => [newDocument, ...prev] as KnowledgeBaseDocument[]);
-      setUploading(false);
-      toast.success(`文件 "${file.name}" 上传成功，正在处理中...`);
+      const newDocument = await knowledgeBasesApi.uploadDocument(parseInt(params.id as string), documentData);
 
-      // 模拟处理完成
-      setTimeout(() => {
-        setDocuments(prev =>
-          prev.map(doc =>
-            doc.id === newDocument.id
-              ? { ...doc, status: 'processed', chunks: Math.floor(Math.random() * 50) + 10 }
-              : doc
-          )
-        );
-        toast.success(`文件 "${file.name}" 处理完成`);
-      }, 3000);
-    }, 1000);
+      setDocuments(prev => [newDocument, ...prev]);
+      toast.success(`文件 "${file.name}" 上传成功`);
+    } catch (error) {
+      console.error('文件上传失败:', error);
+      toast.error('文件上传失败');
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleDeleteDocument = async (docId: string) => {
+  const handleDeleteDocument = async (docId: number) => {
     if (
       await Confirm({
         title: '确定要删除这个文档吗？',
@@ -138,12 +129,20 @@ export default function KnowledgeBaseDetailPage() {
         variant: 'destructive',
       })
     ) {
-      setDocuments(prev => prev.filter(doc => doc.id !== docId));
-      toast.success('文档删除成功');
+      try {
+        await knowledgeBasesApi.deleteDocument(parseInt(params.id as string), docId);
+        setDocuments(prev => prev.filter(doc => doc.id !== docId));
+        toast.success('文档删除成功');
+      } catch (error) {
+        console.error('删除文档失败:', error);
+        toast.error('删除文档失败');
+      }
     }
   };
 
-  const filteredDocuments = documents.filter(doc => doc.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredDocuments = documents.filter(doc =>
+    (doc.name || doc.title)?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -203,7 +202,7 @@ export default function KnowledgeBaseDetailPage() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Breadcrumb导航 */}
+      {/* Breadcrumb 导航 */}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -220,17 +219,18 @@ export default function KnowledgeBaseDetailPage() {
 
       {/* 页面标题和操作 */}
       <div className="flex items-start justify-between">
-        <div className="space-y-2">
+        <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <Database className="text-primary h-8 w-8" />
-            <h1 className="text-3xl font-bold tracking-tight">{knowledgeBase.name}</h1>
-            <Badge variant="outline" className="text-xs">
-              {documents.length} 个文档
-            </Badge>
+            <div className="rounded-lg bg-blue-100 p-2">
+              <Database className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">{knowledgeBase.name}</h1>
+              <p className="text-muted-foreground">{knowledgeBase.description}</p>
+            </div>
           </div>
-          <p className="text-muted-foreground max-w-2xl">{knowledgeBase.description}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Button variant="outline" asChild>
             <Link href={`/knowledge/${knowledgeBase.id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
@@ -243,6 +243,45 @@ export default function KnowledgeBaseDetailPage() {
           </Button>
         </div>
       </div>
+
+      {/* 知识库信息 */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">文档统计</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {knowledgeBase.documentsCount || knowledgeBase.documents_count || 0}
+            </div>
+            <p className="text-muted-foreground text-sm">已上传文档</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">向量化模型</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-semibold">{knowledgeBase.embeddingModel || knowledgeBase.embedding_model}</div>
+            <p className="text-muted-foreground text-sm">Embedding 模型</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">创建时间</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-semibold">
+              {new Date(knowledgeBase.createdAt || knowledgeBase.created_at).toLocaleDateString('zh-CN')}
+            </div>
+            <p className="text-muted-foreground text-sm">知识库创建日期</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator />
 
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="gap-2">
@@ -290,50 +329,56 @@ export default function KnowledgeBaseDetailPage() {
                   <input
                     id="file-upload"
                     type="file"
-                    accept=".pdf,.doc,.docx,.txt,.md"
                     onChange={handleFileUpload}
                     className="hidden"
+                    accept=".pdf,.doc,.docx,.md,.txt"
                     disabled={uploading}
                   />
                 </div>
               </div>
             </CardHeader>
+
             <CardContent>
               {filteredDocuments.length === 0 ? (
-                <div className="flex h-32 items-center justify-center">
-                  <div className="text-center">
-                    <FileText className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
-                    <p className="text-muted-foreground">{searchTerm ? '没有找到匹配的文档' : '还没有上传任何文档'}</p>
-                  </div>
+                <div className="text-muted-foreground flex h-32 flex-col items-center justify-center">
+                  <FileText className="mb-2 h-8 w-8" />
+                  <p>{searchTerm ? '没有找到匹配的文档' : '还没有上传任何文档'}</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>文档名称</TableHead>
+                      <TableHead>类型</TableHead>
                       <TableHead>大小</TableHead>
                       <TableHead>状态</TableHead>
-                      <TableHead>文本块</TableHead>
+                      <TableHead>分块数</TableHead>
                       <TableHead>上传时间</TableHead>
-                      <TableHead>操作</TableHead>
+                      <TableHead className="text-right">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredDocuments.map(document => (
-                      <TableRow key={document.id}>
-                        <TableCell>
+                    {filteredDocuments.map(doc => (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            {getTypeIcon(document.type)}
-                            <span className="font-medium">{document.name}</span>
+                            {getTypeIcon(doc.type || doc.file_type)}
+                            {doc.name || doc.title}
                           </div>
                         </TableCell>
-                        <TableCell>{document.size}</TableCell>
-                        <TableCell>{getStatusBadge(document.status)}</TableCell>
-                        <TableCell>{document.chunks || '-'}</TableCell>
-                        <TableCell>{new Date(document.uploadedAt).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteDocument(document.id)}>
-                            <Trash2 className="h-3 w-3" />
+                        <TableCell>{doc.type || doc.file_type}</TableCell>
+                        <TableCell>{doc.size}</TableCell>
+                        <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                        <TableCell>{doc.chunks || doc.chunks_count || 0}</TableCell>
+                        <TableCell>{new Date(doc.uploadedAt || doc.created_at).toLocaleDateString('zh-CN')}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -346,84 +391,63 @@ export default function KnowledgeBaseDetailPage() {
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
-          {/* 知识库设置 */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    基本设置
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                知识库设置
+              </CardTitle>
+              <CardDescription>管理知识库的配置和参数</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">基本信息</h3>
+                  <div className="space-y-3">
                     <div>
-                      <h4 className="text-muted-foreground text-sm font-medium">知识库名称</h4>
-                      <p className="text-sm">{knowledgeBase.name}</p>
+                      <span className="text-muted-foreground text-sm">知识库名称</span>
+                      <p className="font-medium">{knowledgeBase.name}</p>
                     </div>
                     <div>
-                      <h4 className="text-muted-foreground text-sm font-medium">Embedding 模型</h4>
-                      <p className="text-sm">{knowledgeBase.embeddingModel}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-muted-foreground text-sm font-medium">创建时间</h4>
-                      <p className="text-sm">{new Date(knowledgeBase.createdAt).toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-muted-foreground text-sm font-medium">更新时间</h4>
-                      <p className="text-sm">{new Date(knowledgeBase.updatedAt).toLocaleString()}</p>
+                      <span className="text-muted-foreground text-sm">描述</span>
+                      <p className="font-medium">{knowledgeBase.description || '暂无描述'}</p>
                     </div>
                   </div>
-                  <div>
-                    <h4 className="text-muted-foreground mb-2 text-sm font-medium">描述</h4>
-                    <p className="text-sm leading-relaxed">{knowledgeBase.description}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
 
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>统计信息</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">总文档数</span>
-                    <span className="text-sm font-medium">{documents.length}</span>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium">向量化配置</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-muted-foreground text-sm">Embedding 模型</span>
+                      <p className="font-medium">{knowledgeBase.embeddingModel || knowledgeBase.embedding_model}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-sm">分块大小</span>
+                      <p className="font-medium">{knowledgeBase.chunk_size || 1000} 字符</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-sm">重叠字符</span>
+                      <p className="font-medium">{knowledgeBase.chunk_overlap || 200} 字符</p>
+                    </div>
                   </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">已处理文档</span>
-                    <span className="text-sm font-medium">
-                      {documents.filter(d => d.status === 'processed').length}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">总文本块数</span>
-                    <span className="text-sm font-medium">
-                      {documents.reduce((sum, doc) => sum + (doc.chunks || 0), 0)}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm">存储空间</span>
-                    <span className="text-sm font-medium">
-                      {documents
-                        .reduce((sum, doc) => {
-                          const size = parseFloat(doc.size.split(' ')[0]);
-                          return sum + (doc.size.includes('MB') ? size : size / 1024);
-                        }, 0)
-                        .toFixed(1)}{' '}
-                      MB
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium">危险操作</h3>
+                  <p className="text-muted-foreground text-sm">这些操作无法撤销，请谨慎使用</p>
+                </div>
+                <Button variant="destructive" onClick={handleDelete}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  删除知识库
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAppContext } from '@/contexts/app-context';
-import { MockDataManager } from '@/lib/mock-data';
+import { formatKnowledgeBaseForUI, knowledgeBasesApi, parseKnowledgeBaseMetadata } from '@/lib/api/knowledge-bases';
 import { KnowledgeBase } from '@/lib/types';
 import { Calendar, Database, Eye, FileText, MoreHorizontal, Plus, Settings, Trash2, Upload } from 'lucide-react';
 import Link from 'next/link';
@@ -22,21 +22,28 @@ export default function KnowledgeBasePage() {
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadKnowledgeBases = () => {
+  const loadKnowledgeBases = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      MockDataManager.initializeData();
-      const kbList = MockDataManager.getKnowledgeBases();
-      setKnowledgeBases(kbList);
+    try {
+      const response = await knowledgeBasesApi.list();
+      const formattedKBs = response.items.map(kb => {
+        const parsedKB = parseKnowledgeBaseMetadata(kb);
+        return formatKnowledgeBaseForUI(parsedKB);
+      });
+      setKnowledgeBases(formattedKBs);
+    } catch (error) {
+      console.error('加载知识库列表失败:', error);
+      toast.error('加载知识库列表失败');
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   };
 
   useEffect(() => {
     loadKnowledgeBases();
   }, []);
 
-  const handleDeleteKB = async (kbId: string) => {
+  const handleDeleteKB = async (kbId: number) => {
     if (
       await Confirm({
         title: '确认删除知识库',
@@ -44,9 +51,14 @@ export default function KnowledgeBasePage() {
         variant: 'destructive',
       })
     ) {
-      // 这里应该调用删除API，目前只是从本地数组中移除
-      setKnowledgeBases(kbs => kbs.filter(kb => kb.id !== kbId));
-      toast.success('知识库已删除');
+      try {
+        await knowledgeBasesApi.delete(kbId);
+        setKnowledgeBases(kbs => kbs.filter(kb => kb.id !== kbId));
+        toast.success('知识库已删除');
+      } catch (error) {
+        console.error('删除知识库失败:', error);
+        toast.error('删除知识库失败');
+      }
     }
   };
 
@@ -131,7 +143,7 @@ export default function KnowledgeBasePage() {
                     </div>
                     <div>
                       <CardTitle className="text-lg">{kb.name}</CardTitle>
-                      {getEmbeddingModelBadge(kb.embeddingModel)}
+                      {getEmbeddingModelBadge(kb.embeddingModel || kb.embedding_model)}
                     </div>
                   </div>
                   <DropdownMenu>
@@ -154,7 +166,7 @@ export default function KnowledgeBasePage() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href={`/knowledge/${kb.id}?tab=settings`}>
+                        <Link href={`/knowledge/${kb.id}/edit`}>
                           <Settings className="mr-2 h-4 w-4" />
                           设置
                         </Link>
@@ -176,21 +188,19 @@ export default function KnowledgeBasePage() {
                     <FileText className="text-muted-foreground h-4 w-4" />
                     <span className="text-sm font-medium">文档数量</span>
                   </div>
-                  <Badge variant="outline" className="text-lg font-semibold">
-                    {kb.documentsCount}
-                  </Badge>
+                  <Badge variant="secondary">{kb.documentsCount || kb.documents_count || 0}</Badge>
                 </div>
 
                 {/* 时间信息 */}
                 <div className="space-y-2">
                   <div className="text-muted-foreground flex items-center gap-2 text-sm">
                     <Calendar className="h-3 w-3" />
-                    <span>创建时间：{new Date(kb.createdAt).toLocaleDateString('zh-CN')}</span>
+                    <span>创建时间：{new Date(kb.createdAt || kb.created_at).toLocaleDateString('zh-CN')}</span>
                   </div>
-                  {kb.updatedAt !== kb.createdAt && (
+                  {(kb.updatedAt || kb.updated_at) !== (kb.createdAt || kb.created_at) && (
                     <div className="text-muted-foreground flex items-center gap-2 text-sm">
                       <Calendar className="h-3 w-3" />
-                      <span>更新时间：{new Date(kb.updatedAt).toLocaleDateString('zh-CN')}</span>
+                      <span>更新时间：{new Date(kb.updatedAt || kb.updated_at).toLocaleDateString('zh-CN')}</span>
                     </div>
                   )}
                 </div>

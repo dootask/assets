@@ -14,21 +14,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MockDataManager } from '@/lib/mock-data';
-import { CreateKnowledgeBaseRequest } from '@/lib/types';
+import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
 import { Database, Save, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+// 前端表单数据类型
+interface KnowledgeBaseFormData {
+  name: string;
+  description?: string;
+  embeddingModel: string;
+  chunkSize?: number;
+  chunkOverlap?: number;
+  metadata?: Record<string, unknown>;
+}
+
 export default function CreateKnowledgeBasePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<CreateKnowledgeBaseRequest>({
+  const [formData, setFormData] = useState<KnowledgeBaseFormData>({
     name: '',
     description: '',
     embeddingModel: 'text-embedding-ada-002',
+    chunkSize: 1000,
+    chunkOverlap: 200,
   });
 
   // 可用的 Embedding 模型
@@ -66,7 +77,7 @@ export default function CreateKnowledgeBasePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.description.trim()) {
+    if (!formData.name.trim() || !formData.description?.trim()) {
       toast.error('请填写所有必填字段');
       return;
     }
@@ -74,14 +85,13 @@ export default function CreateKnowledgeBasePage() {
     setIsLoading(true);
 
     try {
-      // 模拟创建API调用
-      setTimeout(() => {
-        const newKB = MockDataManager.createKnowledgeBase(formData);
-        toast.success(`知识库 "${newKB.name}" 创建成功！`);
-        router.push('/knowledge');
-      }, 1000);
-    } catch {
+      const newKB = await knowledgeBasesApi.create(formData);
+      toast.success(`知识库 "${newKB.name}" 创建成功！`);
+      router.push('/knowledge');
+    } catch (error) {
+      console.error('创建知识库失败:', error);
       toast.error('创建知识库失败');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -189,43 +199,40 @@ export default function CreateKnowledgeBasePage() {
                     onValueChange={value => setFormData(prev => ({ ...prev, embeddingModel: value }))}
                     placeholder="选择 Embedding 模型"
                     searchPlaceholder="搜索模型..."
-                    emptyMessage="没有找到相关模型"
                   />
+                  {selectedModel && (
+                    <div className="text-muted-foreground mt-2 text-sm">
+                      <p>向量维度：{selectedModel.dimensions}</p>
+                      <p>成本：{selectedModel.cost}</p>
+                    </div>
+                  )}
                 </div>
 
-                {selectedModel && (
-                  <div className="bg-muted/50 space-y-2 rounded-lg p-4">
-                    <h4 className="text-sm font-medium">模型详情</h4>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">维度数</span>
-                        <p className="font-medium">{selectedModel.dimensions}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">成本</span>
-                        <p className="font-medium">{selectedModel.cost}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">适用场景</span>
-                        <p className="font-medium">
-                          {selectedModel.cost === '低' ? '通用' : selectedModel.cost === '中' ? '平衡' : '高精度'}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground mt-2 text-xs">{selectedModel.description}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="chunkSize">分块大小</Label>
+                    <Input
+                      id="chunkSize"
+                      type="number"
+                      min="100"
+                      max="4000"
+                      value={formData.chunkSize || 1000}
+                      onChange={e => setFormData(prev => ({ ...prev, chunkSize: parseInt(e.target.value) || 1000 }))}
+                    />
+                    <p className="text-muted-foreground text-xs">文档分块的字符数量 (100-4000)</p>
                   </div>
-                )}
 
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                  <div className="flex items-start gap-2">
-                    <div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500"></div>
-                    <div className="text-sm">
-                      <p className="font-medium text-blue-900">关于 Embedding 模型</p>
-                      <p className="mt-1 text-blue-700">
-                        Embedding 模型用于将文档转换为向量表示，影响 AI 的检索精度和相关性判断。
-                        选择更高性能的模型可以获得更好的检索效果，但会增加处理成本。
-                      </p>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="chunkOverlap">重叠字符</Label>
+                    <Input
+                      id="chunkOverlap"
+                      type="number"
+                      min="0"
+                      max="1000"
+                      value={formData.chunkOverlap || 200}
+                      onChange={e => setFormData(prev => ({ ...prev, chunkOverlap: parseInt(e.target.value) || 200 }))}
+                    />
+                    <p className="text-muted-foreground text-xs">分块间的重叠字符数 (0-1000)</p>
                   </div>
                 </div>
               </CardContent>
@@ -233,59 +240,40 @@ export default function CreateKnowledgeBasePage() {
           </form>
         </div>
 
-        {/* 右侧帮助信息 */}
+        {/* 右侧信息面板 */}
         <div className="space-y-6">
-          {/* 下一步提示 */}
-          <Card className="border-green-200 bg-green-50">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-green-900">创建后可以做什么</CardTitle>
+              <CardTitle className="text-lg">创建知识库</CardTitle>
+              <CardDescription>配置并创建新的知识库</CardDescription>
             </CardHeader>
-            <CardContent className="text-sm">
-              <ul className="space-y-2 text-green-700">
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-500"></span>
-                  <span>上传 PDF、Word、Markdown 等格式文档</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-500"></span>
-                  <span>查看文档处理状态和向量化进度</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-500"></span>
-                  <span>测试知识库搜索和检索效果</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-500"></span>
-                  <span>将知识库关联到智能体</span>
-                </li>
-              </ul>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Embedding 模型:</span>
+                  <span className="font-medium">{selectedModel?.label}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">分块大小:</span>
+                  <span className="font-medium">{formData.chunkSize || 1000} 字符</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">重叠字符:</span>
+                  <span className="font-medium">{formData.chunkOverlap || 200} 字符</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* 最佳实践 */}
-          <Card className="border-amber-200 bg-amber-50">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-amber-900">最佳实践</CardTitle>
+              <CardTitle className="text-lg">使用说明</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm">
-              <ul className="space-y-2 text-amber-800">
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500"></span>
-                  <span>按主题或用途分类创建不同的知识库</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500"></span>
-                  <span>定期更新文档内容保持知识库时效性</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500"></span>
-                  <span>使用清晰的文档结构和标题</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500"></span>
-                  <span>避免上传重复或过时的文档</span>
-                </li>
-              </ul>
+            <CardContent className="text-muted-foreground space-y-3 text-sm">
+              <p>• 知识库名称应该简洁明了地描述内容主题</p>
+              <p>• 详细的描述有助于 AI 更好地理解和使用知识库</p>
+              <p>• 选择合适的 Embedding 模型可以提高检索准确性</p>
+              <p>• 分块大小和重叠设置会影响文档处理和检索效果</p>
             </CardContent>
           </Card>
         </div>

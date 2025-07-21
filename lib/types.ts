@@ -116,13 +116,24 @@ export interface Message {
 
 // 知识库相关类型
 export interface KnowledgeBase {
-  id: string;
+  id: number; // 后端返回number类型
   name: string;
-  description: string;
-  documentsCount: number;
-  embeddingModel: string;
-  createdAt: string;
-  updatedAt: string;
+  description?: string | null;
+  embedding_model: string; // 后端字段名
+  chunk_size: number;
+  chunk_overlap: number;
+  metadata: unknown; // JSONB字段
+  is_active: boolean; // 后端字段名
+  created_at: string; // 后端字段名
+  updated_at: string; // 后端字段名
+  documents_count?: number; // 后端字段名
+
+  // 前端兼容字段
+  embeddingModel?: string; // 从embedding_model映射
+  documentsCount?: number; // 从documents_count映射
+  createdAt?: string; // 从created_at映射
+  updatedAt?: string; // 从updated_at映射
+  isActive?: boolean; // 从is_active映射
   documents?: Document[];
 }
 
@@ -141,14 +152,20 @@ export interface Document {
 
 export interface CreateKnowledgeBaseRequest {
   name: string;
-  description: string;
-  embeddingModel?: string;
+  description?: string | null;
+  embedding_model: string; // 后端字段名
+  chunk_size?: number;
+  chunk_overlap?: number;
+  metadata?: string; // JSON字符串
 }
 
 export interface UploadDocumentRequest {
-  knowledgeBaseId: string;
-  file: File;
-  title?: string;
+  title: string; // 修改为title而不是knowledgeBaseId
+  content: string;
+  file_type: string;
+  file_size: number;
+  file_path?: string | null;
+  metadata?: string; // JSON字符串
 }
 
 // MCP工具相关类型
@@ -366,11 +383,26 @@ export interface AgentDetail extends Agent {
 
 // 知识库文档类型
 export interface KnowledgeBaseDocument {
-  id: string;
-  name: string;
-  size: string;
-  uploadedAt: string;
-  status: 'processed' | 'processing' | 'failed';
-  chunks: number;
-  type: string;
+  id: number; // 后端返回number类型
+  knowledge_base_id: number; // 后端字段名
+  title: string; // 后端字段名
+  content: string;
+  file_path?: string | null;
+  file_type: string; // 后端字段名
+  file_size: number; // 后端字段名
+  metadata: unknown; // JSONB字段
+  chunk_index: number;
+  parent_doc_id?: number | null;
+  status: 'processed' | 'processing' | 'failed'; // 处理状态
+  is_active: boolean; // 后端字段名
+  created_at: string; // 后端字段名
+  updated_at: string; // 后端字段名
+  chunks_count?: number; // 后端字段名
+
+  // 前端兼容字段
+  name?: string; // 从title映射
+  size?: string; // 从file_size映射
+  uploadedAt?: string; // 从created_at映射
+  chunks?: number; // 从chunks_count映射
+  type?: string; // 从file_type映射
 }
