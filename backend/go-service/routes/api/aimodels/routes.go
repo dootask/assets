@@ -59,9 +59,10 @@ func (h *Handler) GetAIModels(c *gin.Context) {
 		db = db.Where("provider = ?", provider)
 	}
 	if enabled := c.Query("enabled"); enabled != "" {
-		if enabled == "true" {
+		switch enabled {
+		case "true":
 			db = db.Where("is_enabled = true")
-		} else if enabled == "false" {
+		case "false":
 			db = db.Where("is_enabled = false")
 		}
 	}
@@ -80,7 +81,7 @@ func (h *Handler) GetAIModels(c *gin.Context) {
 	// 获取数据
 	var models []AIModel
 	offset := (page - 1) * size
-	if err := db.Offset(offset).Limit(size).Order("created_at DESC").Find(&models).Error; err != nil {
+	if err := db.Offset(offset).Limit(size).Order("created_at DESC, id DESC").Find(&models).Error; err != nil {
 		c.JSON(http.StatusUnprocessableEntity, ErrorResponse{
 			Success: false,
 			Error:   "查询AI模型列表失败",
