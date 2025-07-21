@@ -14,6 +14,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 // 导航菜单配置
@@ -72,6 +73,14 @@ const menuGroups = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  // 处理菜单项点击，在移动端自动关闭侧边栏
+  const handleMenuItemClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar>
@@ -94,7 +103,7 @@ export function AppSidebar() {
                       asChild
                       isActive={pathname === item.url || (item.url !== '/' && pathname.startsWith(item.url))}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={handleMenuItemClick}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>

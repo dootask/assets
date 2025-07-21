@@ -1,11 +1,11 @@
-import './globals.css';
 import { AppSidebar } from '@/components/app-sidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import ProtectedRoute from '@/components/protected-route';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppProvider } from '@/contexts/app-context';
 import { DootaskProvider } from '@/contexts/dootask-context';
-import ProtectedRoute from '@/components/protected-route';
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -24,7 +24,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <SidebarProvider>
                 <div className="flex h-screen w-full">
                   <AppSidebar />
-                  <main className="flex-1">{children}</main>
+                  <main className="flex flex-1 flex-col">
+                    {/* 移动端触发按钮 */}
+                    <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-white p-4 md:hidden">
+                      <SidebarTrigger />
+                      <h1 className="text-lg font-semibold">DooTask AI</h1>
+                    </div>
+                    <div className="flex-1 overflow-auto">{children}</div>
+                  </main>
                 </div>
               </SidebarProvider>
             </ProtectedRoute>
