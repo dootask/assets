@@ -11,8 +11,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
-import { aiModelsApi, getModelDisplayName } from '@/lib/api/ai-models';
 import { getProviderInfo } from '@/lib/ai';
+import { agentsApi } from '@/lib/api/agents';
+import { aiModelsApi, getModelDisplayName } from '@/lib/api/ai-models';
 import { AIModelConfig } from '@/lib/types';
 import { Activity, CheckCircle, Cpu, Edit, Eye, Key, MoreHorizontal, Plus, Settings, Star, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -78,21 +79,45 @@ export default function ModelsPage() {
   };
 
   const handleDeleteModel = async (modelId: number) => {
-    if (
-      await Confirm({
-        title: '确认删除AI模型',
-        message: '此操作将永久删除该AI模型配置。此操作无法撤销。',
-        variant: 'destructive',
-      })
-    ) {
-      try {
-        await aiModelsApi.deleteAIModel(modelId);
-        setModels(prevModels => prevModels.filter(model => model.id !== modelId));
-        toast.success('模型已删除');
-      } catch (error) {
-        console.error('删除模型失败:', error);
-        toast.error('删除模型失败');
+    try {
+      // 首先检查是否有智能体正在使用该AI模型
+      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
+      const usingAgents = agentsResponse.items.filter(agent => agent.ai_model_id === modelId);
+
+      if (usingAgents.length > 0) {
+        const agentNames = usingAgents.map(agent => agent.name).join('、');
+        const confirmed = await Confirm({
+          title: '确认删除AI模型',
+          message: `该模型正在被 ${usingAgents.length} 个智能体使用：${agentNames}。\n\n删除后这些智能体将无法正常工作，需要重新配置模型。是否继续删除？`,
+          variant: 'destructive',
+        });
+
+        if (!confirmed) {
+          return;
+        }
+      } else {
+        const confirmed = await Confirm({
+          title: '确认删除AI模型',
+          message: '此操作将永久删除该AI模型配置。此操作无法撤销。',
+          variant: 'destructive',
+        });
+
+        if (!confirmed) {
+          return;
+        }
       }
+
+      await aiModelsApi.deleteAIModel(modelId);
+      setModels(prevModels => prevModels.filter(model => model.id !== modelId));
+
+      if (usingAgents.length > 0) {
+        toast.success(`模型已删除，${usingAgents.length} 个智能体需要重新配置模型`);
+      } else {
+        toast.success('模型已删除');
+      }
+    } catch (error) {
+      console.error('删除模型失败:', error);
+      toast.error('删除模型失败，请重试');
     }
   };
 

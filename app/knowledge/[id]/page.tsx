@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/app-context';
+import { agentsApi } from '@/lib/api/agents';
 import {
   formatDocumentForUI,
   formatKnowledgeBaseForUI,
@@ -69,21 +70,60 @@ export default function KnowledgeBaseDetailPage() {
   }, [params.id]);
 
   const handleDelete = async () => {
-    if (
-      await Confirm({
-        title: '确定要删除这个知识库吗？',
-        message: '此操作不可撤销。',
-        variant: 'destructive',
-      })
-    ) {
-      try {
-        await knowledgeBasesApi.delete(parseInt(params.id as string));
-        toast.success('知识库删除成功');
-        router.push('/knowledge');
-      } catch (error) {
-        console.error('删除知识库失败:', error);
-        toast.error('删除知识库失败');
+    if (!knowledgeBase) return;
+
+    try {
+      // 首先检查是否有智能体正在使用该知识库
+      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
+      const usingAgents = agentsResponse.items.filter(agent => {
+        try {
+          let kbIds: number[] = [];
+          if (typeof agent.knowledge_bases === 'string') {
+            kbIds = JSON.parse(agent.knowledge_bases);
+          } else if (Array.isArray(agent.knowledge_bases)) {
+            kbIds = agent.knowledge_bases.map(kb => (typeof kb === 'number' ? kb : parseInt(kb.toString())));
+          }
+          return kbIds.includes(knowledgeBase.id);
+        } catch {
+          return false;
+        }
+      });
+
+      if (usingAgents.length > 0) {
+        const agentNames = usingAgents.map(agent => agent.name).join('、');
+        const confirmed = await Confirm({
+          title: '确定要删除这个知识库吗？',
+          message: `该知识库正在被 ${usingAgents.length} 个智能体使用：${agentNames}。\n\n删除后这些智能体将无法访问该知识库的内容。是否继续删除？`,
+          variant: 'destructive',
+        });
+
+        if (!confirmed) {
+          return;
+        }
+      } else {
+        const confirmed = await Confirm({
+          title: '确定要删除这个知识库吗？',
+          message: '此操作不可撤销。',
+          variant: 'destructive',
+        });
+
+        if (!confirmed) {
+          return;
+        }
       }
+
+      await knowledgeBasesApi.delete(parseInt(params.id as string));
+
+      if (usingAgents.length > 0) {
+        toast.success(`知识库删除成功，${usingAgents.length} 个智能体的关联已自动解除`);
+      } else {
+        toast.success('知识库删除成功');
+      }
+
+      router.push('/knowledge');
+    } catch (error) {
+      console.error('删除知识库失败:', error);
+      toast.error('删除知识库失败，请重试');
     }
   };
 

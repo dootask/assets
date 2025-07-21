@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
+import { agentsApi } from '@/lib/api/agents';
 import { mcpToolsApi } from '@/lib/api/mcp-tools';
 import { MCPTool } from '@/lib/types';
 import { safeString } from '@/lib/utils';
@@ -49,16 +50,60 @@ export default function MCPToolDetailPage() {
   }, [params.id]);
 
   const handleDelete = async () => {
-    if (
-      await Confirm({
-        title: '确定要删除这个MCP工具吗？',
-        message: '此操作不可撤销。',
-        variant: 'destructive',
-      })
-    ) {
-      await mcpToolsApi.delete(params.id as string);
-      toast.success('MCP工具删除成功');
+    if (!tool) return;
+
+    try {
+      // 首先检查是否有智能体正在使用该工具
+      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
+      const usingAgents = agentsResponse.items.filter(agent => {
+        try {
+          let toolIds: string[] = [];
+          if (typeof agent.tools === 'string') {
+            toolIds = JSON.parse(agent.tools);
+          } else if (Array.isArray(agent.tools)) {
+            toolIds = agent.tools.map(tool => (typeof tool === 'string' ? tool : tool.toString()));
+          }
+          return toolIds.includes(tool.id);
+        } catch {
+          return false;
+        }
+      });
+
+      if (usingAgents.length > 0) {
+        const agentNames = usingAgents.map(agent => agent.name).join('、');
+        const confirmed = await Confirm({
+          title: '确定要删除这个MCP工具吗？',
+          message: `该工具正在被 ${usingAgents.length} 个智能体使用：${agentNames}。\n\n删除后这些智能体将无法使用该工具的功能。是否继续删除？`,
+          variant: 'destructive',
+        });
+
+        if (!confirmed) {
+          return;
+        }
+      } else {
+        const confirmed = await Confirm({
+          title: '确定要删除这个MCP工具吗？',
+          message: '此操作不可撤销。',
+          variant: 'destructive',
+        });
+
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      await mcpToolsApi.delete(tool.id);
+
+      if (usingAgents.length > 0) {
+        toast.success(`MCP工具删除成功，${usingAgents.length} 个智能体的关联已自动解除`);
+      } else {
+        toast.success('MCP工具删除成功');
+      }
+
       router.push('/tools');
+    } catch (error) {
+      console.error('删除工具失败:', error);
+      toast.error('删除工具失败，请重试');
     }
   };
 

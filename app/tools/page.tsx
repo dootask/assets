@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/app-context';
+import { agentsApi } from '@/lib/api/agents';
 import { mcpToolsApi, type MCPToolQueryParams } from '@/lib/api/mcp-tools';
 import { MCPTool } from '@/lib/types';
 import {
@@ -105,24 +106,58 @@ export default function ToolsPage() {
     }
   };
 
-  const handleDeleteClick = async (tool: MCPTool) => {
-    const confirmed = await Confirm({
-      title: '确认删除工具',
-      message: `您确定要删除工具 "${tool.name}" 吗？此操作不可撤销。`,
-      variant: 'destructive',
-      confirmText: '删除',
-      cancelText: '取消',
-    });
+  const handleDeleteTool = async (toolId: string) => {
+    try {
+      // 首先检查是否有智能体正在使用该工具
+      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
+      const usingAgents = agentsResponse.items.filter(agent => {
+        try {
+          let toolIds: string[] = [];
+          if (typeof agent.tools === 'string') {
+            toolIds = JSON.parse(agent.tools);
+          } else if (Array.isArray(agent.tools)) {
+            toolIds = agent.tools.map(tool => (typeof tool === 'string' ? tool : tool.toString()));
+          }
+          return toolIds.includes(toolId);
+        } catch {
+          return false;
+        }
+      });
 
-    if (confirmed) {
-      try {
-        await mcpToolsApi.delete(tool.id);
-        setTools(prevTools => prevTools.filter(t => t.id !== tool.id));
-        toast.success(`工具 "${tool.name}" 删除成功`);
-      } catch (error) {
-        console.error('Failed to delete tool:', error);
-        toast.error('删除工具失败');
+      if (usingAgents.length > 0) {
+        const agentNames = usingAgents.map(agent => agent.name).join('、');
+        const confirmed = await Confirm({
+          title: '确认删除MCP工具',
+          message: `该工具正在被 ${usingAgents.length} 个智能体使用：${agentNames}。\n\n删除后这些智能体将无法使用该工具的功能。是否继续删除？`,
+          variant: 'destructive',
+        });
+
+        if (!confirmed) {
+          return;
+        }
+      } else {
+        const confirmed = await Confirm({
+          title: '确认删除MCP工具',
+          message: '此操作将永久删除该工具及其配置。此操作无法撤销。',
+          variant: 'destructive',
+        });
+
+        if (!confirmed) {
+          return;
+        }
       }
+
+      await mcpToolsApi.delete(toolId);
+      setTools(prevTools => prevTools.filter(tool => tool.id !== toolId));
+
+      if (usingAgents.length > 0) {
+        toast.success(`工具已删除，${usingAgents.length} 个智能体的关联已自动解除`);
+      } else {
+        toast.success('工具已删除');
+      }
+    } catch (error) {
+      console.error('删除工具失败:', error);
+      toast.error('删除工具失败，请重试');
     }
   };
 
@@ -389,7 +424,7 @@ export default function ToolsPage() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-red-600 focus:text-red-600"
-                      onClick={() => handleDeleteClick(tool)}
+                      onClick={() => handleDeleteTool(tool.id)}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       删除

@@ -11,13 +11,16 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { agentsApi, formatCreateRequestForAPI } from '@/lib/api/agents';
 import { aiModelsApi } from '@/lib/api/ai-models';
-import { AIModelConfig, CreateAgentRequest } from '@/lib/types';
+import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
+import { mcpToolsApi } from '@/lib/api/mcp-tools';
+import { AIModelConfig, CreateAgentRequest, KnowledgeBase, MCPTool } from '@/lib/types';
 import { Bot, Database, Save, Settings, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -26,19 +29,19 @@ import { toast } from 'sonner';
 
 interface FormData extends CreateAgentRequest {
   maxTokens: number;
+  selectedToolIds: string[];
+  selectedKnowledgeBaseIds: number[];
 }
 
 export default function CreateAgentPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [modelsLoading, setModelsLoading] = useState(true);
+  const [toolsLoading, setToolsLoading] = useState(true);
+  const [knowledgeBasesLoading, setKnowledgeBasesLoading] = useState(true);
   const [availableModels, setAvailableModels] = useState<CommandSelectOption[]>([]);
-  const [availableTools, setAvailableTools] = useState<
-    { id: string; name: string; description: string; category: string }[]
-  >([]);
-  const [availableKnowledgeBases, setAvailableKnowledgeBases] = useState<
-    { id: string; name: string; description: string }[]
-  >([]);
+  const [availableTools, setAvailableTools] = useState<MCPTool[]>([]);
+  const [availableKnowledgeBases, setAvailableKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: null,
@@ -48,33 +51,50 @@ export default function CreateAgentPage() {
     maxTokens: 2000,
     tools: '[]',
     knowledge_bases: '[]',
+    selectedToolIds: [],
+    selectedKnowledgeBaseIds: [],
   });
 
-  // 加载可用的AI模型
+  // 加载可用的AI模型、MCP工具和知识库
   useEffect(() => {
-    const loadAIModels = async () => {
+    const loadData = async () => {
       try {
-        const response = await aiModelsApi.getAIModels({ enabled: true });
-        const modelOptions = response.models.map((model: AIModelConfig) => ({
+        // 加载AI模型
+        const modelsResponse = await aiModelsApi.getAIModels({ enabled: true });
+        const modelOptions = modelsResponse.models.map((model: AIModelConfig) => ({
           value: model.id.toString(),
           label: model.name,
           description: `${model.provider} - ${model.model_name}`,
         }));
         setAvailableModels(modelOptions);
-      } catch (error) {
-        console.error('加载AI模型失败:', error);
-        setAvailableModels([]);
-      } finally {
         setModelsLoading(false);
+
+        // 加载MCP工具
+        const toolsResponse = await mcpToolsApi.list({
+          page: 1,
+          page_size: 100,
+          is_active: true,
+        });
+        setAvailableTools(toolsResponse.items);
+        setToolsLoading(false);
+
+        // 加载知识库
+        const kbResponse = await knowledgeBasesApi.list({
+          page: 1,
+          page_size: 100,
+        });
+        setAvailableKnowledgeBases(kbResponse.items);
+        setKnowledgeBasesLoading(false);
+      } catch (error) {
+        console.error('加载数据失败:', error);
+        setModelsLoading(false);
+        setToolsLoading(false);
+        setKnowledgeBasesLoading(false);
+        toast.error('加载数据失败，请检查网络连接');
       }
     };
 
-    loadAIModels();
-
-    // TODO: 加载MCP工具和知识库
-    // 暂时设置为空数组
-    setAvailableTools([]);
-    setAvailableKnowledgeBases([]);
+    loadData();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,8 +114,8 @@ export default function CreateAgentPage() {
         prompt: formData.prompt,
         ai_model_id: formData.ai_model_id ? parseInt(formData.ai_model_id.toString()) : null,
         temperature: formData.temperature,
-        tools: [],
-        knowledgeBases: [],
+        tools: formData.selectedToolIds,
+        knowledgeBases: formData.selectedKnowledgeBaseIds,
         metadata: {},
       });
 
@@ -111,13 +131,19 @@ export default function CreateAgentPage() {
   };
 
   const handleToolToggle = (toolId: string, checked: boolean) => {
-    // TODO: 实现工具选择逻辑
-    console.log('工具选择:', toolId, checked);
+    setFormData(prev => ({
+      ...prev,
+      selectedToolIds: checked ? [...prev.selectedToolIds, toolId] : prev.selectedToolIds.filter(id => id !== toolId),
+    }));
   };
 
-  const handleKnowledgeBaseToggle = (kbId: string, checked: boolean) => {
-    // TODO: 实现知识库选择逻辑
-    console.log('知识库选择:', kbId, checked);
+  const handleKnowledgeBaseToggle = (kbId: number, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedKnowledgeBaseIds: checked
+        ? [...prev.selectedKnowledgeBaseIds, kbId]
+        : prev.selectedKnowledgeBaseIds.filter(id => id !== kbId),
+    }));
   };
 
   return (
@@ -274,11 +300,57 @@ export default function CreateAgentPage() {
               <CardTitle className="flex items-center gap-2">
                 <Wrench className="h-5 w-5" />
                 MCP 工具
+                {formData.selectedToolIds.length > 0 && (
+                  <span className="bg-primary text-primary-foreground rounded-full px-2 py-1 text-xs">
+                    {formData.selectedToolIds.length}
+                  </span>
+                )}
               </CardTitle>
               <CardDescription>选择智能体可以使用的工具</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground py-4 text-center">暂无可用工具</p>
+              {toolsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="bg-muted h-12 animate-pulse rounded"></div>
+                  ))}
+                </div>
+              ) : availableTools.length === 0 ? (
+                <div className="py-6 text-center">
+                  <Wrench className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
+                  <p className="text-muted-foreground mb-3">还没有可用的工具</p>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/tools/create">创建工具</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="max-h-64 space-y-3 overflow-y-auto">
+                  {availableTools.map(tool => (
+                    <div key={tool.id} className="flex items-start space-x-3 rounded-lg border p-3">
+                      <Checkbox
+                        id={`tool-${tool.id}`}
+                        checked={formData.selectedToolIds.includes(tool.id)}
+                        onCheckedChange={checked => handleToolToggle(tool.id, Boolean(checked))}
+                        className="mt-1"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <label htmlFor={`tool-${tool.id}`} className="cursor-pointer text-sm font-medium">
+                          {tool.name}
+                        </label>
+                        <p className="text-muted-foreground mt-1 text-xs">{tool.description}</p>
+                        <div className="mt-1 flex gap-1">
+                          <span className="bg-secondary text-secondary-foreground rounded px-2 py-0.5 text-xs">
+                            {tool.category}
+                          </span>
+                          <span className="bg-secondary text-secondary-foreground rounded px-2 py-0.5 text-xs">
+                            {tool.type}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -288,17 +360,53 @@ export default function CreateAgentPage() {
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5" />
                 知识库
+                {formData.selectedKnowledgeBaseIds.length > 0 && (
+                  <span className="bg-primary text-primary-foreground rounded-full px-2 py-1 text-xs">
+                    {formData.selectedKnowledgeBaseIds.length}
+                  </span>
+                )}
               </CardTitle>
               <CardDescription>选择智能体可以访问的知识库</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="py-6 text-center">
-                <Database className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
-                <p className="text-muted-foreground mb-3">还没有知识库</p>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/knowledge/create">创建知识库</Link>
-                </Button>
-              </div>
+              {knowledgeBasesLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="bg-muted h-12 animate-pulse rounded"></div>
+                  ))}
+                </div>
+              ) : availableKnowledgeBases.length === 0 ? (
+                <div className="py-6 text-center">
+                  <Database className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
+                  <p className="text-muted-foreground mb-3">还没有知识库</p>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/knowledge/create">创建知识库</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="max-h-64 space-y-3 overflow-y-auto">
+                  {availableKnowledgeBases.map(kb => (
+                    <div key={kb.id} className="flex items-start space-x-3 rounded-lg border p-3">
+                      <Checkbox
+                        id={`kb-${kb.id}`}
+                        checked={formData.selectedKnowledgeBaseIds.includes(kb.id)}
+                        onCheckedChange={checked => handleKnowledgeBaseToggle(kb.id, Boolean(checked))}
+                        className="mt-1"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <label htmlFor={`kb-${kb.id}`} className="cursor-pointer text-sm font-medium">
+                          {kb.name}
+                        </label>
+                        <p className="text-muted-foreground mt-1 text-xs">{kb.description}</p>
+                        <div className="text-muted-foreground mt-1 text-xs">
+                          文档数: {kb.documentsCount || kb.documents_count || 0} | 模型:{' '}
+                          {kb.embeddingModel || kb.embedding_model}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
