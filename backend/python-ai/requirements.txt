@@ -9,3 +9,6 @@ python-multipart==0.0.9
 
 # 开发工具
 python-dotenv==1.0.1 
+
+# 对接DooTask
+dootask-tools==0.0.4

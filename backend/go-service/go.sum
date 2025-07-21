@@ -19,6 +19,10 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
+github.com/dootask/tools/server/go v0.0.0-20250718100803-c7dfd4af2aae h1:19EoS0SOAuHqzqfQ9Bj1QL1om3TX2dZ+7Im8grgK4O0=
+github.com/dootask/tools/server/go v0.0.0-20250718100803-c7dfd4af2aae/go.mod h1:QTdgJGF8hr4pPTl7200zQbYJ2K0ag7UX5l2Tlm6LhgU=
+github.com/dootask/tools/server/go v0.0.0-20250720002503-27b0673edbbd h1:cubQe25Etty+eeqgICfBHPZdSHAQj6EWlKOEacoS+o8=
+github.com/dootask/tools/server/go v0.0.0-20250720002503-27b0673edbbd/go.mod h1:QTdgJGF8hr4pPTl7200zQbYJ2K0ag7UX5l2Tlm6LhgU=
 github.com/gabriel-vasile/mimetype v1.4.9 h1:5k+WDwEsD9eTLL8Tz3L0VnmVh9QxGjRmjBvAG7U/oYY=
 github.com/gabriel-vasile/mimetype v1.4.9/go.mod h1:WnSQhFKJuBlRyLiKohA/2DtIlPFAbguNaG7QCHcyGok=
 github.com/gin-contrib/cors v1.7.6 h1:3gQ8GMzs1Ylpf70y8bMw4fVpycXIeX1ZemuSQIsnQQY=

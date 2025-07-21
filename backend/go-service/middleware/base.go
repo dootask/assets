@@ -7,7 +7,6 @@ import (
 )
 
 // BaseMiddleware 基础中间件
-// 设置基础地址
 func BaseMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 基础地址

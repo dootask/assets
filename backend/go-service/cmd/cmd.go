@@ -79,6 +79,9 @@ func runServer(*cobra.Command, []string) {
 	// CORS中间件
 	r.Use(middleware.CorsMiddleware())
 
+	// DooTask中间件
+	r.Use(middleware.DootaskMiddleware())
+
 	// 注册路由
 	root := r.Group("/")
 	health.RegisterRoutes(root)
