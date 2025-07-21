@@ -20,12 +20,11 @@ export interface Agent {
   created_at: string;
   updated_at: string;
 
-  // 关联查询字段
-  ai_model_name?: string | null;
-  ai_model_provider?: string | null;
+  // 关联的AI模型对象
+  ai_model?: AIModelConfig | null;
 
   // 前端扩展字段（兼容现有UI）
-  model?: string; // 从ai_model_name映射
+  model?: string; // 从ai_model.name映射
   maxTokens?: number;
   isActive?: boolean; // 从is_active映射
   avatar?: string;

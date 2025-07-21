@@ -71,7 +71,7 @@ export const formatAgentForUI = (agent: Agent): Agent & { model: string; isActiv
   return {
     ...agent,
     // 映射字段以兼容现有UI
-    model: agent.ai_model_name || 'unknown',
+    model: agent.ai_model?.name || 'unknown',
     isActive: agent.is_active,
   };
 };

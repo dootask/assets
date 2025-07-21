@@ -20,9 +20,15 @@ type Agent struct {
 	CreatedAt      time.Time       `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt      time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
 
-	// 关联查询字段
-	AIModelName     *string `gorm:"-" json:"ai_model_name,omitempty"`
-	AIModelProvider *string `gorm:"-" json:"ai_model_provider,omitempty"`
+	// 关联模型
+	AIModel *AIModel `gorm:"foreignKey:AIModelID" json:"ai_model,omitempty"`
+}
+
+// AIModel AI模型简化结构（用于关联查询）
+type AIModel struct {
+	ID       int64  `gorm:"primaryKey" json:"id"`
+	Name     string `json:"name"`
+	Provider string `json:"provider"`
 }
 
 // TableName 指定表名

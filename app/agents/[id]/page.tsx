@@ -157,7 +157,7 @@ export default function AgentDetailPage() {
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">AI 模型</h4>
-                  <p className="text-sm">{agent.ai_model_name || '未设置'}</p>
+                  <p className="text-sm">{agent.ai_model?.name || '未设置'}</p>
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">创建时间</h4>

@@ -84,8 +84,7 @@ func ListAgents(c *gin.Context) {
 
 	var agents []Agent
 	if err := query.
-		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
-		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Preload("AIModel").
 		Order(orderBy).
 		Limit(params.PageSize).
 		Offset(offset).
@@ -212,8 +211,7 @@ func CreateAgent(c *gin.Context) {
 	// 查询完整的智能体信息（包含关联数据）
 	var createdAgent Agent
 	if err := global.DB.
-		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
-		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Preload("AIModel").
 		Where("agents.id = ?", agent.ID).
 		First(&createdAgent).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -242,8 +240,7 @@ func GetAgent(c *gin.Context) {
 
 	var agent Agent
 	if err := global.DB.
-		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
-		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Preload("AIModel").
 		Where("agents.id = ?", id).
 		First(&agent).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -434,8 +431,7 @@ func UpdateAgent(c *gin.Context) {
 	// 查询更新后的智能体信息
 	var updatedAgent Agent
 	if err := global.DB.
-		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
-		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Preload("AIModel").
 		Where("agents.id = ?", id).
 		First(&updatedAgent).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -575,8 +571,7 @@ func ToggleAgentActive(c *gin.Context) {
 	// 返回更新后的智能体
 	var updatedAgent Agent
 	if err := global.DB.
-		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
-		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Preload("AIModel").
 		Where("agents.id = ?", id).
 		First(&updatedAgent).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

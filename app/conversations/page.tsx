@@ -253,7 +253,7 @@ export default function ConversationsPage() {
                 <SelectContent>
                   <SelectItem value="all">所有智能体</SelectItem>
                   {agents.map(agent => (
-                    <SelectItem key={agent.id} value={agent.id}>
+                    <SelectItem key={agent.id} value={agent.id.toString()}>
                       <div className="flex items-center gap-2">
                         <Bot className="h-4 w-4" />
                         {agent.name}

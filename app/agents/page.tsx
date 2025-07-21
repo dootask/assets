@@ -46,12 +46,27 @@ export default function AgentsPage() {
 
   const handleToggleActive = async (agentId: number, isActive: boolean) => {
     try {
+      // 乐观更新：先更新UI状态
+      setAgents(prevAgents =>
+        prevAgents.map(agent => (agent.id === agentId ? { ...agent, is_active: isActive } : agent))
+      );
+
+      // 后端更新
       const updatedAgent = await agentsApi.toggle(agentId, isActive);
       const formattedAgent = formatAgentForUI(parseAgentJSONBFields(updatedAgent));
-      setAgents(agents.map(agent => (agent.id === agentId ? formattedAgent : agent)));
+
+      // 确认更新：用服务器返回的数据更新状态
+      setAgents(prevAgents => prevAgents.map(agent => (agent.id === agentId ? formattedAgent : agent)));
+
       toast.success(isActive ? '智能体已启用' : '智能体已停用');
     } catch (error) {
       console.error('切换智能体状态失败:', error);
+
+      // 错误回滚：恢复原始状态
+      setAgents(prevAgents =>
+        prevAgents.map(agent => (agent.id === agentId ? { ...agent, is_active: !isActive } : agent))
+      );
+
       toast.error('操作失败，请重试');
     }
   };
@@ -173,8 +188,8 @@ export default function AgentsPage() {
                     </div>
                     <div>
                       <CardTitle className="text-lg">{agent.name}</CardTitle>
-                      <Badge variant={getModelBadgeVariant(agent.ai_model_name || undefined)} className="mt-1 text-xs">
-                        {agent.ai_model_name || 'unknown'}
+                      <Badge variant={getModelBadgeVariant(agent.ai_model?.name || undefined)} className="mt-1 text-xs">
+                        {agent.ai_model?.name || 'unknown'}
                       </Badge>
                     </div>
                   </div>

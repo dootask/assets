@@ -15,8 +15,8 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
-import { safeString } from '@/lib/utils';
 import { MCPTool } from '@/lib/types';
+import { safeString } from '@/lib/utils';
 import { Edit, ExternalLink, Key, Settings, Shield, Trash2, Wrench, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -341,7 +341,10 @@ export default function MCPToolDetailPage() {
             <CardContent>
               <div className="space-y-2">
                 {MockDataManager.getAgents()
-                  .filter(agent => agent.tools?.includes(tool.id))
+                  .filter(agent => {
+                    const tools = Array.isArray(agent.tools) ? agent.tools : [];
+                    return tools.includes(tool.id);
+                  })
                   .map(agent => (
                     <div key={agent.id} className="flex items-center justify-between rounded border p-2">
                       <span className="text-sm">{agent.name}</span>
@@ -350,9 +353,10 @@ export default function MCPToolDetailPage() {
                       </Badge>
                     </div>
                   ))}
-                {MockDataManager.getAgents().filter(agent => agent.tools?.includes(tool.id)).length === 0 && (
-                  <p className="text-muted-foreground py-4 text-center text-sm">暂无关联的智能体</p>
-                )}
+                {MockDataManager.getAgents().filter(agent => {
+                  const tools = Array.isArray(agent.tools) ? agent.tools : [];
+                  return tools.includes(tool.id);
+                }).length === 0 && <p className="text-muted-foreground py-4 text-center text-sm">暂无关联的智能体</p>}
               </div>
             </CardContent>
           </Card>

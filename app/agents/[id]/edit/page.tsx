@@ -51,7 +51,7 @@ export default function EditAgentPage() {
     const loadData = async () => {
       try {
         // 加载AI模型
-        const modelsResponse = await aiModelsApi.getAIModels();
+        const modelsResponse = await aiModelsApi.getAIModels({ enabled: true });
         const modelOptions = modelsResponse.models.map((model: AIModelConfig) => ({
           value: model.id.toString(),
           label: model.name,

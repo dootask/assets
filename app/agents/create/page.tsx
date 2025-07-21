@@ -54,7 +54,7 @@ export default function CreateAgentPage() {
   useEffect(() => {
     const loadAIModels = async () => {
       try {
-        const response = await aiModelsApi.getAIModels();
+        const response = await aiModelsApi.getAIModels({ enabled: true });
         const modelOptions = response.models.map((model: AIModelConfig) => ({
           value: model.id.toString(),
           label: model.name,

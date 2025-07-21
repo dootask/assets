@@ -42,11 +42,24 @@ export default function ModelsPage() {
 
   const handleToggleActive = async (modelId: number, isActive: boolean) => {
     try {
+      // 乐观更新：先更新UI状态
+      setModels(prevModels =>
+        prevModels.map(model => (model.id === modelId ? { ...model, is_enabled: isActive } : model))
+      );
+
+      // 后端更新
       const updatedModel = await aiModelsApi.updateAIModel(modelId, { is_enabled: isActive });
       setModels(prevModels => prevModels.map(model => (model.id === modelId ? updatedModel : model)));
+
       toast.success(isActive ? '模型已启用' : '模型已停用');
     } catch (error) {
       console.error('更新模型状态失败:', error);
+
+      // 错误回滚：恢复原始状态
+      setModels(prevModels =>
+        prevModels.map(model => (model.id === modelId ? { ...model, is_enabled: !isActive } : model))
+      );
+
       toast.error('更新模型状态失败');
     }
   };
