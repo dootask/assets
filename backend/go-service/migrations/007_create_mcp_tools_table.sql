@@ -4,13 +4,11 @@
 CREATE TABLE IF NOT EXISTS mcp_tools (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    display_name VARCHAR(255) NOT NULL,
     description TEXT,
-    category VARCHAR(100) DEFAULT 'general',
-    provider VARCHAR(100),
-    config_schema JSONB DEFAULT '{}',
-    config_values JSONB DEFAULT '{}',
-    is_internal BOOLEAN DEFAULT false,
+    category VARCHAR(50) NOT NULL DEFAULT 'external' CHECK (category IN ('dootask', 'external', 'custom')),
+    type VARCHAR(20) NOT NULL DEFAULT 'external' CHECK (type IN ('internal', 'external')),
+    config JSONB DEFAULT '{}',
+    permissions JSONB DEFAULT '["read"]',
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()

@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MockDataManager } from '@/lib/mock-data';
+
 import { Agent, Conversation, DashboardStats } from '@/lib/types';
 import { Activity, Bot, Brain, Cpu, Database, Link, MessageSquare, RefreshCcw, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -18,19 +18,28 @@ export default function Dashboard() {
     setIsLoading(true);
     // 模拟异步加载
     setTimeout(() => {
-      // 初始化Mock数据
-      MockDataManager.initializeData();
-
-      // 获取统计数据
-      const dashboardStats = MockDataManager.getDashboardStats();
+      // TODO: Replace with real API calls
+      const dashboardStats: DashboardStats = {
+        agents: { total: 0, active: 0, inactive: 0 },
+        conversations: { total: 0, today: 0, active: 0 },
+        messages: { total: 0, today: 0, averageResponseTime: 0 },
+        knowledgeBases: { total: 0, documentsCount: 0 },
+        mcpTools: { total: 0, active: 0 },
+        systemStatus: {
+          goService: 'online',
+          pythonService: 'online',
+          database: 'online',
+          webhook: 'connected',
+        },
+      };
       setStats(dashboardStats);
 
       // 获取最近的智能体
-      const agents = MockDataManager.getAgents();
+      const agents: Agent[] = [];
       setRecentAgents(agents.slice(0, 3));
 
       // 获取最近的对话
-      const conversations = MockDataManager.getConversations();
+      const conversations: Conversation[] = [];
       setRecentConversations(conversations.slice(0, 3));
 
       setIsLoading(false);

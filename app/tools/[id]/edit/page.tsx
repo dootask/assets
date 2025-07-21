@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MockDataManager } from '@/lib/mock-data';
+import { mcpToolsApi, type MCPToolFormData } from '@/lib/api/mcp-tools';
 import { CreateMCPToolRequest } from '@/lib/types';
 import { ExternalLink, Key, Save, Settings, Shield, Wrench } from 'lucide-react';
 import Link from 'next/link';
@@ -66,23 +66,30 @@ export default function EditMCPToolPage() {
   ];
 
   useEffect(() => {
-    // 获取要编辑的工具数据
-    const toolId = params.id as string;
-    const tool = MockDataManager.getMCPTools().find(t => t.id === toolId);
+    const loadTool = async () => {
+      setLoading(true);
+      try {
+        const toolId = params.id as string;
+        const tool = await mcpToolsApi.get(toolId);
 
-    if (tool) {
-      setFormData({
-        name: tool.name || '',
-        description: tool.description || '',
-        category: tool.category || 'external',
-        type: tool.type || 'external',
-        config: tool.config || {},
-        permissions: tool.permissions || ['read'],
-        apiKey: ((tool.config as Record<string, unknown>)?.apiKey as string) || '',
-        baseUrl: ((tool.config as Record<string, unknown>)?.baseUrl as string) || '',
-      });
-    }
-    setLoading(false);
+        setFormData({
+          name: tool.name || '',
+          description: tool.description || '',
+          category: tool.category || 'external',
+          type: tool.type || 'external',
+          config: tool.config || {},
+          permissions: tool.permissions || ['read'],
+          apiKey: ((tool.config as Record<string, unknown>)?.apiKey as string) || '',
+          baseUrl: ((tool.config as Record<string, unknown>)?.baseUrl as string) || '',
+        });
+      } catch (error) {
+        console.error('Failed to load tool:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTool();
   }, [params.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,12 +127,21 @@ export default function EditMCPToolPage() {
         permissions: formData.permissions,
       };
 
-      // 模拟更新API调用
-      setTimeout(() => {
-        MockDataManager.updateMCPTool(params.id as string, toolRequest);
-        toast.success(`MCP 工具 "${formData.name}" 更新成功！`);
-        router.push('/tools');
-      }, 1000);
+      // 使用真实API调用
+      const toolFormData: MCPToolFormData = {
+        name: formData.name,
+        description: formData.description || '',
+        category: formData.category,
+        type: formData.type,
+        config: formData.config,
+        permissions: formData.permissions,
+        apiKey: formData.apiKey,
+        baseUrl: formData.baseUrl,
+      };
+
+      await mcpToolsApi.update(params.id as string, toolFormData);
+      toast.success(`MCP 工具 "${formData.name}" 更新成功！`);
+      router.push('/tools');
     } catch {
       toast.error('更新 MCP 工具失败');
       setIsLoading(false);

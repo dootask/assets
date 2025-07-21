@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MockDataManager } from '@/lib/mock-data';
+
 import { Agent, Conversation, Message } from '@/lib/types';
 import { Bot, Calendar, CheckCircle, Clock, Eye, Filter, MessageSquare, Search, TrendingUp, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -88,9 +88,9 @@ export default function ConversationsPage() {
   const loadData = () => {
     setIsLoading(true);
     setTimeout(() => {
-      MockDataManager.initializeData();
-      const conversationList = MockDataManager.getConversations();
-      const agentList = MockDataManager.getAgents();
+      // TODO: Replace with real API calls
+      const conversationList: Conversation[] = [];
+      const agentList: Agent[] = [];
 
       setConversations(conversationList);
       setAgents(agentList);

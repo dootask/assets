@@ -109,109 +109,93 @@ WHERE NOT EXISTS (SELECT 1 FROM agents WHERE agents.name = tmp.name);
 -- =============================================================================
 
 -- DooTask 内置工具
-INSERT INTO mcp_tools (name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active) 
-SELECT name, display_name, description, category, provider, config_schema::JSONB, config_values::JSONB, is_internal, is_active FROM (VALUES
-    ('dootask_chat', 'DooTask 聊天记录', 'DooTask 聊天记录查询', 'dootask', 'internal', 
-     '{"fields": []}', '{"endpoint": "/api/chat", "methods": ["get_messages", "search_messages"]}', true, true),
-    ('dootask_project', 'DooTask 项目管理', 'DooTask 项目管理工具', 'dootask', 'internal', 
-     '{"fields": []}', '{"endpoint": "/api/project", "methods": ["create_project", "get_projects", "update_project"]}', true, true),
-    ('dootask_task', 'DooTask 任务管理', 'DooTask 任务管理工具', 'dootask', 'internal', 
-     '{"fields": []}', '{"endpoint": "/api/task", "methods": ["create_task", "get_tasks", "update_task", "delete_task"]}', true, true)
-) AS tmp(name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active)
+INSERT INTO mcp_tools (name, description, category, type, config, permissions, is_active) 
+SELECT name, description, category, type, config::JSONB, permissions::JSONB, is_active FROM (VALUES
+    ('dootask_chat', 'DooTask 聊天记录查询', 'dootask', 'internal', 
+     '{"endpoint": "/api/chat", "methods": ["get_messages", "search_messages"]}', '["read"]', true),
+    ('dootask_project', 'DooTask 项目管理工具', 'dootask', 'internal', 
+     '{"endpoint": "/api/project", "methods": ["create_project", "get_projects", "update_project"]}', '["read", "write"]', true),
+    ('dootask_task', 'DooTask 任务管理工具', 'dootask', 'internal', 
+     '{"endpoint": "/api/task", "methods": ["create_task", "get_tasks", "update_task", "delete_task"]}', '["read", "write"]', true)
+) AS tmp(name, description, category, type, config, permissions, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM mcp_tools WHERE mcp_tools.name = tmp.name);
 
 -- 文件处理工具
-INSERT INTO mcp_tools (name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active) 
-SELECT name, display_name, description, category, provider, config_schema::JSONB, config_values::JSONB, is_internal, is_active FROM (VALUES
-    ('file_reader', '文件读取器', '读取和分析各种格式的文件内容', 'file', 'internal', 
-     '{"fields": [{"name": "supported_formats", "label": "支持的格式", "type": "text", "default": "txt,md,pdf,docx,xlsx"}]}', 
-     '{"supported_formats": "txt,md,pdf,docx,xlsx", "max_file_size": "10MB"}', true, true),
+INSERT INTO mcp_tools (name, description, category, type, config, permissions, is_active) 
+SELECT name, description, category, type, config::JSONB, permissions::JSONB, is_active FROM (VALUES
+    ('file_reader', '读取和分析各种格式的文件内容', 'custom', 'internal', 
+     '{"supported_formats": "txt,md,pdf,docx,xlsx", "max_file_size": "10MB"}', '["read"]', true),
     
-    ('file_converter', '文件转换器', '文件格式转换工具', 'file', 'internal', 
-     '{"fields": [{"name": "input_formats", "label": "输入格式", "type": "text"}, {"name": "output_formats", "label": "输出格式", "type": "text"}]}', 
-     '{"input_formats": "pdf,docx,xlsx", "output_formats": "txt,md,json"}', true, true)
-) AS tmp(name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active)
+    ('file_converter', '文件格式转换工具', 'custom', 'internal', 
+     '{"input_formats": "pdf,docx,xlsx", "output_formats": "txt,md,json"}', '["read", "write"]', true)
+) AS tmp(name, description, category, type, config, permissions, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM mcp_tools WHERE mcp_tools.name = tmp.name);
 
 -- 网络和API工具
-INSERT INTO mcp_tools (name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active) 
-SELECT name, display_name, description, category, provider, config_schema::JSONB, config_values::JSONB, is_internal, is_active FROM (VALUES
-    ('http_client', 'HTTP客户端', '通用HTTP请求工具', 'network', 'internal', 
-     '{"fields": [{"name": "timeout", "label": "超时时间(秒)", "type": "number", "default": 30}, {"name": "max_retries", "label": "最大重试次数", "type": "number", "default": 3}]}', 
-     '{"timeout": 30, "max_retries": 3, "user_agent": "DooTask-AI/1.0"}', true, true),
+INSERT INTO mcp_tools (name, description, category, type, config, permissions, is_active) 
+SELECT name, description, category, type, config::JSONB, permissions::JSONB, is_active FROM (VALUES
+    ('http_client', '通用HTTP请求工具', 'custom', 'internal', 
+     '{"timeout": 30, "max_retries": 3, "user_agent": "DooTask-AI/1.0"}', '["read", "write"]', true),
     
-    ('webhook_sender', 'Webhook发送器', '发送Webhook通知', 'network', 'internal', 
-     '{"fields": [{"name": "default_timeout", "label": "默认超时", "type": "number", "default": 15}]}', 
-     '{"default_timeout": 15, "retry_attempts": 3}', true, true)
-) AS tmp(name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active)
+    ('webhook_sender', '发送Webhook通知', 'custom', 'internal', 
+     '{"default_timeout": 15, "retry_attempts": 3}', '["write"]', true)
+) AS tmp(name, description, category, type, config, permissions, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM mcp_tools WHERE mcp_tools.name = tmp.name);
 
 -- 数据处理工具
-INSERT INTO mcp_tools (name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active) 
-SELECT name, display_name, description, category, provider, config_schema::JSONB, config_values::JSONB, is_internal, is_active FROM (VALUES
-    ('json_processor', 'JSON处理器', 'JSON数据解析和处理工具', 'data', 'internal', 
-     '{"fields": [{"name": "max_depth", "label": "最大嵌套深度", "type": "number", "default": 10}]}', 
-     '{"max_depth": 10, "pretty_print": true}', true, true),
+INSERT INTO mcp_tools (name, description, category, type, config, permissions, is_active) 
+SELECT name, description, category, type, config::JSONB, permissions::JSONB, is_active FROM (VALUES
+    ('json_processor', 'JSON数据解析和处理工具', 'custom', 'internal', 
+     '{"max_depth": 10, "pretty_print": true}', '["read", "write"]', true),
     
-    ('csv_processor', 'CSV处理器', 'CSV文件读取和处理工具', 'data', 'internal', 
-     '{"fields": [{"name": "delimiter", "label": "分隔符", "type": "text", "default": ","}, {"name": "encoding", "label": "编码", "type": "text", "default": "utf-8"}]}', 
-     '{"delimiter": ",", "encoding": "utf-8", "skip_empty_lines": true}', true, true)
-) AS tmp(name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active)
+    ('csv_processor', 'CSV文件读取和处理工具', 'custom', 'internal', 
+     '{"delimiter": ",", "encoding": "utf-8", "skip_empty_lines": true}', '["read", "write"]', true)
+) AS tmp(name, description, category, type, config, permissions, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM mcp_tools WHERE mcp_tools.name = tmp.name);
 
 -- AI和机器学习工具
-INSERT INTO mcp_tools (name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active) 
-SELECT name, display_name, description, category, provider, config_schema::JSONB, config_values::JSONB, is_internal, is_active FROM (VALUES
-    ('text_analyzer', '文本分析器', '文本情感分析和关键词提取', 'ai', 'internal', 
-     '{"fields": [{"name": "language", "label": "语言", "type": "text", "default": "zh"}, {"name": "enable_sentiment", "label": "启用情感分析", "type": "boolean", "default": true}]}', 
-     '{"language": "zh", "enable_sentiment": true, "enable_keywords": true}', true, true),
+INSERT INTO mcp_tools (name, description, category, type, config, permissions, is_active) 
+SELECT name, description, category, type, config::JSONB, permissions::JSONB, is_active FROM (VALUES
+    ('text_analyzer', '文本情感分析和关键词提取', 'custom', 'internal', 
+     '{"language": "zh", "enable_sentiment": true, "enable_keywords": true}', '["read"]', true),
     
-    ('image_analyzer', '图像分析器', '图像识别和分析工具', 'ai', 'internal', 
-     '{"fields": [{"name": "max_size", "label": "最大文件大小(MB)", "type": "number", "default": 5}, {"name": "supported_formats", "label": "支持格式", "type": "text", "default": "jpg,png,gif,webp"}]}', 
-     '{"max_size": 5, "supported_formats": "jpg,png,gif,webp", "enable_ocr": true}', true, true)
-) AS tmp(name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active)
+    ('image_analyzer', '图像识别和分析工具', 'custom', 'internal', 
+     '{"max_size": 5, "supported_formats": "jpg,png,gif,webp", "enable_ocr": true}', '["read"]', true)
+) AS tmp(name, description, category, type, config, permissions, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM mcp_tools WHERE mcp_tools.name = tmp.name);
 
 -- 实用工具
-INSERT INTO mcp_tools (name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active) 
-SELECT name, display_name, description, category, provider, config_schema::JSONB, config_values::JSONB, is_internal, is_active FROM (VALUES
-    ('qr_generator', '二维码生成器', '生成QR码', 'utility', 'internal', 
-     '{"fields": [{"name": "size", "label": "尺寸", "type": "number", "default": 200}, {"name": "format", "label": "格式", "type": "text", "default": "png"}]}', 
-     '{"size": 200, "format": "png", "error_correction": "M"}', true, true),
+INSERT INTO mcp_tools (name, description, category, type, config, permissions, is_active) 
+SELECT name, description, category, type, config::JSONB, permissions::JSONB, is_active FROM (VALUES
+    ('qr_generator', '生成QR码', 'custom', 'internal', 
+     '{"size": 200, "format": "png", "error_correction": "M"}', '["read", "write"]', true),
     
-    ('url_shortener', '链接缩短器', '生成短链接', 'utility', 'internal', 
-     '{"fields": [{"name": "domain", "label": "域名", "type": "text", "default": "short.ly"}, {"name": "expiry_days", "label": "过期天数", "type": "number", "default": 30}]}', 
-     '{"domain": "short.ly", "expiry_days": 30, "custom_alias": true}', true, true),
+    ('url_shortener', '生成短链接', 'custom', 'internal', 
+     '{"domain": "short.ly", "expiry_days": 30, "custom_alias": true}', '["read", "write"]', true),
     
-    ('password_generator', '密码生成器', '生成安全密码', 'security', 'internal', 
-     '{"fields": [{"name": "length", "label": "长度", "type": "number", "default": 16}, {"name": "include_symbols", "label": "包含符号", "type": "boolean", "default": true}]}', 
-     '{"length": 16, "include_symbols": true, "include_numbers": true, "exclude_ambiguous": true}', true, true)
-) AS tmp(name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active)
+    ('password_generator', '生成安全密码', 'custom', 'internal', 
+     '{"length": 16, "include_symbols": true, "include_numbers": true, "exclude_ambiguous": true}', '["read"]', true)
+) AS tmp(name, description, category, type, config, permissions, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM mcp_tools WHERE mcp_tools.name = tmp.name);
 
 -- 外部服务集成工具 (需要配置API密钥)
-INSERT INTO mcp_tools (name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active) 
-SELECT name, display_name, description, category, provider, config_schema::JSONB, config_values::JSONB, is_internal, is_active FROM (VALUES
-    ('google_search', 'Google 搜索', '网页搜索工具', 'search', 'google', 
-     '{"fields": [{"name": "api_key", "label": "API Key", "type": "password", "required": true}, {"name": "cx", "label": "Search Engine ID", "type": "text", "required": true}]}', 
-     '{"api_key": "", "cx": ""}', false, true),
+INSERT INTO mcp_tools (name, description, category, type, config, permissions, is_active) 
+SELECT name, description, category, type, config::JSONB, permissions::JSONB, is_active FROM (VALUES
+    ('google_search', '网页搜索工具', 'external', 'external', 
+     '{"api_key": "", "cx": ""}', '["read"]', true),
     
-    ('weather', '天气查询', '天气信息查询工具', 'weather', 'openweather', 
-     '{"fields": [{"name": "api_key", "label": "API Key", "type": "password", "required": true}]}', 
-     '{"api_key": ""}', false, true),
+    ('weather', '天气信息查询工具', 'external', 'external', 
+     '{"api_key": ""}', '["read"]', true),
     
-    ('github_api', 'GitHub API', 'GitHub仓库和代码管理', 'code', 'github', 
-     '{"fields": [{"name": "token", "label": "GitHub Token", "type": "password", "required": true}, {"name": "base_url", "label": "API Base URL", "type": "text", "default": "https://api.github.com"}]}', 
-     '{"token": "", "base_url": "https://api.github.com", "timeout": 30}', false, true),
+    ('github_api', 'GitHub仓库和代码管理', 'external', 'external', 
+     '{"token": "", "base_url": "https://api.github.com", "timeout": 30}', '["read", "write"]', true),
     
-    ('slack_api', 'Slack API', 'Slack消息和通知工具', 'communication', 'slack', 
-     '{"fields": [{"name": "bot_token", "label": "Bot Token", "type": "password", "required": true}, {"name": "webhook_url", "label": "Webhook URL", "type": "text"}]}', 
-     '{"bot_token": "", "webhook_url": "", "default_channel": "#general"}', false, true),
+    ('slack_api', 'Slack消息和通知工具', 'external', 'external', 
+     '{"bot_token": "", "webhook_url": "", "default_channel": "#general"}', '["write"]', true),
     
-    ('email_sender', '邮件发送器', '发送邮件通知', 'communication', 'smtp', 
-     '{"fields": [{"name": "smtp_host", "label": "SMTP服务器", "type": "text", "required": true}, {"name": "smtp_port", "label": "端口", "type": "number", "default": 587}, {"name": "username", "label": "用户名", "type": "text", "required": true}, {"name": "password", "label": "密码", "type": "password", "required": true}]}', 
-     '{"smtp_host": "", "smtp_port": 587, "username": "", "password": "", "use_tls": true}', false, true)
-) AS tmp(name, display_name, description, category, provider, config_schema, config_values, is_internal, is_active)
+    ('email_sender', '发送邮件通知', 'external', 'external', 
+     '{"smtp_host": "", "smtp_port": 587, "username": "", "password": "", "use_tls": true}', '["write"]', true)
+) AS tmp(name, description, category, type, config, permissions, is_active)
 WHERE NOT EXISTS (SELECT 1 FROM mcp_tools WHERE mcp_tools.name = tmp.name);
 
 -- =============================================================================

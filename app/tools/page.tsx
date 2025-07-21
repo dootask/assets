@@ -21,18 +21,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MockDataManager } from '@/lib/mock-data';
+import { useAppContext } from '@/contexts/app-context';
+import { mcpToolsApi, type MCPToolQueryParams } from '@/lib/api/mcp-tools';
 import { MCPTool } from '@/lib/types';
 import {
   Activity,
   BarChart3,
   CheckCircle,
   Clock,
+  Edit,
   Filter,
   MoreHorizontal,
   Plus,
   Search,
   Settings,
+  Trash2,
   TrendingUp,
   Wrench,
 } from 'lucide-react';
@@ -47,15 +50,26 @@ export default function ToolsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadTools = () => {
+  const { Confirm } = useAppContext();
+
+  const loadTools = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      MockDataManager.initializeData();
-      const toolsList = MockDataManager.getMCPTools();
-      setTools(toolsList);
-      setFilteredTools(toolsList);
+    try {
+      const params: MCPToolQueryParams = {
+        page: 1,
+        page_size: 100, // 加载所有工具用于前端筛选
+        order_by: 'created_at',
+        order_dir: 'desc',
+      };
+      const response = await mcpToolsApi.list(params);
+      setTools(response.items);
+      setFilteredTools(response.items);
+    } catch (error) {
+      console.error('Failed to load tools:', error);
+      toast.error('加载工具列表失败');
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   };
 
   useEffect(() => {
@@ -80,11 +94,35 @@ export default function ToolsPage() {
     setFilteredTools(filtered);
   }, [tools, selectedCategory, searchQuery]);
 
-  const handleToggleActive = (toolId: string, isActive: boolean) => {
-    const updatedTool = MockDataManager.updateMCPTool(toolId, { isActive });
-    if (updatedTool) {
+  const handleToggleActive = async (toolId: string, isActive: boolean) => {
+    try {
+      const updatedTool = await mcpToolsApi.toggle(toolId, isActive);
       setTools(prevTools => prevTools.map(tool => (tool.id === toolId ? updatedTool : tool)));
       toast.success(isActive ? '工具已启用' : '工具已停用');
+    } catch (error) {
+      console.error('Failed to toggle tool status:', error);
+      toast.error('更新工具状态失败');
+    }
+  };
+
+  const handleDeleteClick = async (tool: MCPTool) => {
+    const confirmed = await Confirm({
+      title: '确认删除工具',
+      message: `您确定要删除工具 "${tool.name}" 吗？此操作不可撤销。`,
+      variant: 'destructive',
+      confirmText: '删除',
+      cancelText: '取消',
+    });
+
+    if (confirmed) {
+      try {
+        await mcpToolsApi.delete(tool.id);
+        setTools(prevTools => prevTools.filter(t => t.id !== tool.id));
+        toast.success(`工具 "${tool.name}" 删除成功`);
+      } catch (error) {
+        console.error('Failed to delete tool:', error);
+        toast.error('删除工具失败');
+      }
     }
   };
 
@@ -110,6 +148,30 @@ export default function ToolsPage() {
         );
       default:
         return <Badge variant="outline">{category}</Badge>;
+    }
+  };
+
+  const getCategoryText = (category: string) => {
+    switch (category) {
+      case 'dootask':
+        return 'DooTask';
+      case 'external':
+        return '外部工具';
+      case 'custom':
+        return '自定义';
+      default:
+        return category;
+    }
+  };
+
+  const getTypeText = (type: string) => {
+    switch (type) {
+      case 'internal':
+        return '内部工具';
+      case 'external':
+        return '外部工具';
+      default:
+        return type;
     }
   };
 
@@ -319,6 +381,19 @@ export default function ToolsPage() {
                         查看统计
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/tools/${tool.id}/edit`}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        修改
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600"
+                      onClick={() => handleDeleteClick(tool)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      删除
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -376,7 +451,15 @@ export default function ToolsPage() {
                 <div className="flex flex-wrap gap-1">
                   {tool.permissions.map(permission => (
                     <Badge key={permission} variant="outline" className="text-xs">
-                      {permission === 'read' ? '只读' : permission === 'write' ? '读写' : permission}
+                      {permission === 'read'
+                        ? '只读'
+                        : permission === 'write'
+                          ? '读写'
+                          : permission === 'execute'
+                            ? '执行'
+                            : permission === 'admin'
+                              ? '管理员'
+                              : permission}
                     </Badge>
                   ))}
                 </div>
@@ -405,11 +488,11 @@ export default function ToolsPage() {
                       <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg p-4">
                         <div>
                           <p className="text-sm font-medium">工具类别</p>
-                          <p className="text-muted-foreground text-sm">{tool.category}</p>
+                          <p className="text-muted-foreground text-sm">{getCategoryText(tool.category)}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium">工具类型</p>
-                          <p className="text-muted-foreground text-sm">{tool.type}</p>
+                          <p className="text-muted-foreground text-sm">{getTypeText(tool.type)}</p>
                         </div>
                         <div>
                           <p className="text-sm font-medium">创建时间</p>

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MockDataManager } from '@/lib/mock-data';
+
 import { SystemSettings } from '@/lib/types';
 import { AlertTriangle, Key, Link as LinkIcon, RefreshCw, Save, Settings, Webhook } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -23,9 +23,31 @@ export default function SettingsPage() {
   const loadSettings = () => {
     setIsLoading(true);
     setTimeout(() => {
-      MockDataManager.initializeData();
-      const systemSettings = MockDataManager.getSystemSettings();
-      setSettings(systemSettings);
+      // TODO: Replace with real API call
+      const mockSettings: SystemSettings = {
+        id: '1',
+        aiModels: [],
+        dootaskIntegration: {
+          apiBaseUrl: '',
+          token: '',
+          isConnected: false,
+          lastSync: new Date().toISOString(),
+        },
+        webhookConfig: {
+          url: '',
+          secret: '',
+          isActive: false,
+        },
+        generalSettings: {
+          defaultLanguage: 'zh-CN',
+          timezone: 'Asia/Shanghai',
+          logLevel: 'info',
+          maxConversationHistory: 100,
+          autoCleanupDays: 30,
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      setSettings(mockSettings);
       setIsLoading(false);
     }, 300);
   };
@@ -39,7 +61,7 @@ export default function SettingsPage() {
 
     setIsSaving(true);
     setTimeout(() => {
-      MockDataManager.updateSystemSettings(settings);
+      // TODO: Replace with real API call
       toast.success('设置已保存');
       setIsSaving(false);
     }, 1000);

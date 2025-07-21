@@ -29,8 +29,9 @@ CREATE INDEX IF NOT EXISTS idx_ai_models_default ON ai_models(is_default);
 
 -- MCP工具索引
 CREATE INDEX IF NOT EXISTS idx_mcp_tools_category ON mcp_tools(category);
-CREATE INDEX IF NOT EXISTS idx_mcp_tools_provider ON mcp_tools(provider);
+CREATE INDEX IF NOT EXISTS idx_mcp_tools_type ON mcp_tools(type);
 CREATE INDEX IF NOT EXISTS idx_mcp_tools_active ON mcp_tools(is_active);
+CREATE INDEX IF NOT EXISTS idx_mcp_tools_name ON mcp_tools(name);
 
 -- Webhook配置索引
 CREATE INDEX IF NOT EXISTS idx_webhook_configs_bot_id ON webhook_configs(bot_id);

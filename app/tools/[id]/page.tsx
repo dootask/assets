@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
-import { MockDataManager } from '@/lib/mock-data';
+import { mcpToolsApi } from '@/lib/api/mcp-tools';
 import { MCPTool } from '@/lib/types';
 import { safeString } from '@/lib/utils';
 import { Edit, ExternalLink, Key, Settings, Shield, Trash2, Wrench, Zap } from 'lucide-react';
@@ -32,14 +32,20 @@ export default function MCPToolDetailPage() {
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    // 模拟获取工具详情
-    const toolId = params.id as string;
-    const toolData = MockDataManager.getMCPTools().find(t => t.id === toolId);
+    const loadTool = async () => {
+      setLoading(true);
+      try {
+        const toolId = params.id as string;
+        const toolData = await mcpToolsApi.get(toolId);
+        setTool(toolData);
+      } catch (error) {
+        console.error('Failed to load tool:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (toolData) {
-      setTool(toolData);
-    }
-    setLoading(false);
+    loadTool();
   }, [params.id]);
 
   const handleDelete = async () => {
@@ -50,33 +56,42 @@ export default function MCPToolDetailPage() {
         variant: 'destructive',
       })
     ) {
-      // MockDataManager.deleteMCPTool(params.id as string);
+      await mcpToolsApi.delete(params.id as string);
       toast.success('MCP工具删除成功');
       router.push('/tools');
     }
   };
 
-  const handleToggleStatus = async () => {
+  const handleToggleStatus = async (isActive: boolean) => {
     if (!tool) return;
 
-    const newStatus = !tool.isActive;
-    setTool(prev => (prev ? { ...prev, isActive: newStatus } : null));
-
-    // 模拟API调用
-    setTimeout(() => {
-      toast.success(`工具已${newStatus ? '启用' : '停用'}`);
-    }, 500);
+    try {
+      const updatedTool = await mcpToolsApi.toggle(tool.id, isActive);
+      setTool(updatedTool);
+      toast.success(`工具已${isActive ? '启用' : '停用'}`);
+    } catch (error) {
+      console.error('Failed to toggle tool status:', error);
+      toast.error('更新工具状态失败');
+    }
   };
 
   const testTool = async () => {
     if (!tool) return;
 
     setTesting(true);
-    // 模拟工具测试
-    setTimeout(() => {
-      toast.success('工具测试成功！');
+    try {
+      const result = await mcpToolsApi.test(tool.id);
+      if (result.success) {
+        toast.success(result.message || '工具测试成功！');
+      } else {
+        toast.error(result.message || '工具测试失败');
+      }
+    } catch (error) {
+      console.error('Failed to test tool:', error);
+      toast.error('工具测试失败');
+    } finally {
       setTesting(false);
-    }, 2000);
+    }
   };
 
   if (loading) {
@@ -340,23 +355,8 @@ export default function MCPToolDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {MockDataManager.getAgents()
-                  .filter(agent => {
-                    const tools = Array.isArray(agent.tools) ? agent.tools : [];
-                    return tools.includes(tool.id);
-                  })
-                  .map(agent => (
-                    <div key={agent.id} className="flex items-center justify-between rounded border p-2">
-                      <span className="text-sm">{agent.name}</span>
-                      <Badge variant={agent.isActive ? 'default' : 'secondary'} className="text-xs">
-                        {agent.isActive ? '活跃' : '停用'}
-                      </Badge>
-                    </div>
-                  ))}
-                {MockDataManager.getAgents().filter(agent => {
-                  const tools = Array.isArray(agent.tools) ? agent.tools : [];
-                  return tools.includes(tool.id);
-                }).length === 0 && <p className="text-muted-foreground py-4 text-center text-sm">暂无关联的智能体</p>}
+                {/* TODO: Replace with real API call to get associated agents */}
+                <p className="text-muted-foreground py-4 text-center text-sm">暂无关联的智能体</p>
               </div>
             </CardContent>
           </Card>

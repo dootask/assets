@@ -15,15 +15,20 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MockDataManager } from '@/lib/mock-data';
-import { CreateMCPToolRequest } from '@/lib/types';
+import { mcpToolsApi, type MCPToolFormData } from '@/lib/api/mcp-tools';
 import { ExternalLink, Key, Save, Settings, Shield, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-interface FormData extends CreateMCPToolRequest {
+interface FormData {
+  name: string;
+  description?: string;
+  category: 'dootask' | 'external' | 'custom';
+  type: 'internal' | 'external';
+  config: Record<string, unknown>;
+  permissions: string[];
   apiKey?: string;
   baseUrl?: string;
 }
@@ -66,7 +71,7 @@ export default function CreateMCPToolPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.description.trim()) {
+    if (!formData.name.trim() || !formData.description?.trim()) {
       toast.error('请填写所有必填字段');
       return;
     }
@@ -79,33 +84,25 @@ export default function CreateMCPToolPage() {
     setIsLoading(true);
 
     try {
-      // 构建配置对象
-      const config: Record<string, unknown> = {};
-      if (formData.type === 'external' && formData.baseUrl) {
-        config.baseUrl = formData.baseUrl;
-      }
-      if (formData.apiKey) {
-        config.apiKey = formData.apiKey;
-      }
-
-      // 创建工具请求
-      const toolRequest: CreateMCPToolRequest = {
+      // 构建表单数据用于API调用
+      const toolFormData: MCPToolFormData = {
         name: formData.name,
-        description: formData.description,
+        description: formData.description || '',
         category: formData.category,
         type: formData.type,
-        config,
+        config: formData.config,
         permissions: formData.permissions,
+        apiKey: formData.apiKey,
+        baseUrl: formData.baseUrl,
       };
 
-      // 模拟创建API调用
-      setTimeout(() => {
-        const newTool = MockDataManager.createMCPTool(toolRequest);
-        toast.success(`MCP 工具 "${newTool.name}" 创建成功！`);
-        router.push('/tools');
-      }, 1000);
-    } catch {
+      const newTool = await mcpToolsApi.create(toolFormData);
+      toast.success(`MCP 工具 "${newTool.name}" 创建成功！`);
+      router.push('/tools');
+    } catch (error) {
+      console.error('Failed to create tool:', error);
       toast.error('创建 MCP 工具失败');
+    } finally {
       setIsLoading(false);
     }
   };
