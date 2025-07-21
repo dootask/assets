@@ -1,5 +1,6 @@
 'use client';
 
+import { CommandSelect, CommandSelectOption } from '@/components/command-select';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { MockDataManager } from '@/lib/mock-data';
 import { CreateKnowledgeBaseRequest } from '@/lib/types';
@@ -58,6 +58,13 @@ export default function EditKnowledgeBasePage() {
     },
   ];
 
+  // 转换为CommandSelect选项
+  const modelSelectOptions: CommandSelectOption[] = availableModels.map(model => ({
+    value: model.value,
+    label: model.label,
+    description: model.description,
+  }));
+
   useEffect(() => {
     // 获取要编辑的知识库数据
     const kbId = params.id as string;
@@ -65,8 +72,8 @@ export default function EditKnowledgeBasePage() {
 
     if (kb) {
       setFormData({
-        name: kb.name,
-        description: kb.description,
+        name: kb.name || '',
+        description: kb.description || '',
         embeddingModel: kb.embeddingModel || 'text-embedding-ada-002',
       });
     }
@@ -207,24 +214,14 @@ export default function EditKnowledgeBasePage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="embeddingModel">Embedding 模型 *</Label>
-                  <Select
+                  <CommandSelect
+                    options={modelSelectOptions}
                     value={formData.embeddingModel}
                     onValueChange={value => setFormData(prev => ({ ...prev, embeddingModel: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择 Embedding 模型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableModels.map(model => (
-                        <SelectItem key={model.value} value={model.value} className="flex-col items-start p-2">
-                          {model.label}
-                          <div className="text-muted-foreground mt-1 max-w-[220px] text-xs leading-tight">
-                            {model.description}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="选择 Embedding 模型"
+                    searchPlaceholder="搜索模型..."
+                    emptyMessage="没有找到相关模型"
+                  />
                 </div>
 
                 {selectedModel && (

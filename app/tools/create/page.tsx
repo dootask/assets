@@ -1,5 +1,6 @@
 'use client';
 
+import { CommandSelect, CommandSelectOption } from '@/components/command-select';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { MockDataManager } from '@/lib/mock-data';
 import { CreateMCPToolRequest } from '@/lib/types';
@@ -43,14 +43,14 @@ export default function CreateMCPToolPage() {
   });
 
   // 工具类别选项
-  const categoryOptions = [
+  const categoryOptions: CommandSelectOption[] = [
     { value: 'dootask', label: 'DooTask', description: 'DooTask 内部功能' },
     { value: 'external', label: '外部工具', description: '第三方服务和 API' },
     { value: 'custom', label: '自定义', description: '用户自定义工具' },
   ];
 
   // 类型选项
-  const typeOptions = [
+  const typeOptions: CommandSelectOption[] = [
     { value: 'internal', label: '内部', description: '系统内部工具' },
     { value: 'external', label: '外部', description: '外部 API 服务' },
   ];
@@ -187,52 +187,32 @@ export default function CreateMCPToolPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">工具类别 *</Label>
-                    <Select
+                    <CommandSelect
+                      options={categoryOptions}
                       value={formData.category}
-                      onValueChange={(value: 'dootask' | 'external' | 'custom') =>
-                        setFormData(prev => ({ ...prev, category: value }))
+                      onValueChange={value =>
+                        setFormData(prev => ({ ...prev, category: value as 'dootask' | 'external' | 'custom' }))
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择工具类别" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value} className="flex-col items-start p-2">
-                            {option.label}
-                            <div className="text-muted-foreground mt-1 max-w-[180px] text-xs leading-tight">
-                              {option.description}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="选择工具类别"
+                      searchPlaceholder="搜索类别..."
+                      emptyMessage="没有找到相关类别"
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="type">工具类型 *</Label>
-                    <Select
+                    <CommandSelect
+                      options={typeOptions}
                       value={formData.type}
-                      onValueChange={(value: 'internal' | 'external') =>
-                        setFormData(prev => ({ ...prev, type: value }))
+                      onValueChange={value =>
+                        setFormData(prev => ({ ...prev, type: value as 'internal' | 'external' }))
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择工具类型" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {typeOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value} className="flex-col items-start p-2">
-                            {option.label}
-                            <div className="text-muted-foreground mt-1 max-w-[160px] text-xs leading-tight">
-                              {option.description}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="选择工具类型"
+                      searchPlaceholder="搜索类型..."
+                      emptyMessage="没有找到相关类型"
+                    />
                   </div>
                   <div className="space-y-2"></div>
                 </div>

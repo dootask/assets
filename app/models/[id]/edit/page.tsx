@@ -1,5 +1,6 @@
 'use client';
 
+import { CommandSelect, CommandSelectOption } from '@/components/command-select';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { MockDataManager } from '@/lib/mock-data';
 import { AIModelConfig } from '@/lib/types';
@@ -105,6 +105,13 @@ export default function EditModelPage() {
     },
   ];
 
+  // 转换为CommandSelect选项
+  const providerSelectOptions: CommandSelectOption[] = providerOptions.map(option => ({
+    value: option.value,
+    label: option.label,
+    description: option.description,
+  }));
+
   const selectedProvider = providerOptions.find(p => p.value === formData.provider);
 
   useEffect(() => {
@@ -114,14 +121,14 @@ export default function EditModelPage() {
 
     if (model) {
       setFormData({
-        name: model.name,
-        displayName: model.displayName,
-        provider: model.provider,
-        apiKey: model.apiKey,
-        baseUrl: model.baseUrl,
-        maxTokens: model.maxTokens,
-        isDefault: model.isDefault,
-        isActive: model.isActive,
+        name: model.name || '',
+        displayName: model.displayName || '',
+        provider: model.provider || 'openai',
+        apiKey: model.apiKey || '',
+        baseUrl: model.baseUrl || '',
+        maxTokens: model.maxTokens || 4000,
+        isDefault: model.isDefault || false,
+        isActive: model.isActive !== undefined ? model.isActive : true,
       });
     }
     setLoading(false);
@@ -163,6 +170,10 @@ export default function EditModelPage() {
       baseUrl: providerConfig?.baseUrl || '',
       name: (prev.provider === provider ? prev.name : null) || providerConfig?.models[0] || '',
     }));
+  };
+
+  const handleProviderSelectChange = (value: string) => {
+    handleProviderChange(value as AIModelConfig['provider']);
   };
 
   const testConnection = () => {
@@ -274,21 +285,14 @@ export default function EditModelPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="provider">AI 提供商 *</Label>
-                  <Select value={formData.provider} onValueChange={handleProviderChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择 AI 提供商" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {providerOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value} className="flex-col items-start p-2">
-                          {option.label}
-                          <div className="text-muted-foreground mt-1 max-w-[250px] text-xs leading-tight">
-                            {option.description}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CommandSelect
+                    options={providerSelectOptions}
+                    value={formData.provider}
+                    onValueChange={handleProviderSelectChange}
+                    placeholder="选择 AI 提供商"
+                    searchPlaceholder="搜索提供商..."
+                    emptyMessage="没有找到相关提供商"
+                  />
                 </div>
 
                 <div className="space-y-2">

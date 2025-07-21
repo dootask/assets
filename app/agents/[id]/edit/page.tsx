@@ -1,5 +1,6 @@
 'use client';
 
+import { CommandSelect, CommandSelectOption } from '@/components/command-select';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { MockDataManager } from '@/lib/mock-data';
@@ -44,8 +44,8 @@ export default function EditAgentPage() {
     knowledgeBases: [],
   });
 
-  // Mock数据
-  const availableModels = [
+  // Mock数据 - 在实际应用中这些应该从API获取
+  const availableModels: CommandSelectOption[] = [
     { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', description: '快速响应，成本较低' },
     { value: 'gpt-4', label: 'GPT-4', description: '更强大的推理能力，成本较高' },
     { value: 'gpt-4-turbo', label: 'GPT-4 Turbo', description: '平衡性能与成本' },
@@ -71,10 +71,10 @@ export default function EditAgentPage() {
 
     if (agent) {
       setFormData({
-        name: agent.name,
-        description: agent.description,
-        prompt: agent.prompt,
-        model: agent.model,
+        name: agent.name || '',
+        description: agent.description || '',
+        prompt: agent.prompt || '',
+        model: agent.model || 'gpt-3.5-turbo',
         temperature: agent.temperature || 0.7,
         maxTokens: agent.maxTokens || 2000,
         tools: agent.tools || [],
@@ -204,24 +204,14 @@ export default function EditAgentPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="model">AI 模型 *</Label>
-                  <Select
+                  <CommandSelect
+                    options={availableModels}
                     value={formData.model}
                     onValueChange={value => setFormData(prev => ({ ...prev, model: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择 AI 模型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableModels.map(model => (
-                        <SelectItem key={model.value} value={model.value} className="flex-col items-start p-2">
-                          {model.label}
-                          <div className="text-muted-foreground mt-1 max-w-[200px] text-xs leading-tight">
-                            {model.description}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="选择 AI 模型"
+                    searchPlaceholder="搜索模型..."
+                    emptyMessage="没有找到相关模型"
+                  />
                 </div>
               </div>
 
