@@ -24,8 +24,9 @@ import {
   parseDocumentMetadata,
   parseKnowledgeBaseMetadata,
 } from '@/lib/api/knowledge-bases';
-import { KnowledgeBase, KnowledgeBaseDocument } from '@/lib/types';
-import { Database, Edit, FileText, Plus, Search, Settings, Trash2 } from 'lucide-react';
+import { Agent, KnowledgeBase, KnowledgeBaseDocument } from '@/lib/types';
+import { getAllAgents } from '@/lib/utils';
+import { Bot, Database, Edit, Eye, FileText, Plus, Search, Settings, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -37,6 +38,7 @@ export default function KnowledgeBaseDetailPage() {
   const { Confirm } = useAppContext();
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(null);
   const [documents, setDocuments] = useState<KnowledgeBaseDocument[]>([]);
+  const [relatedAgents, setRelatedAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -61,6 +63,23 @@ export default function KnowledgeBaseDetailPage() {
         return formatDocumentForUI(parsedDoc);
       });
       setDocuments(formattedDocs);
+
+      // 获取关联的智能体
+      const agentsResponse = await agentsApi.list({ page: 1, page_size: 100 });
+      const usingAgents = agentsResponse.items.filter(agent => {
+        try {
+          let kbIds: number[] = [];
+          if (typeof agent.knowledge_bases === 'string') {
+            kbIds = JSON.parse(agent.knowledge_bases);
+          } else if (Array.isArray(agent.knowledge_bases)) {
+            kbIds = agent.knowledge_bases.map(kb => (typeof kb === 'number' ? kb : parseInt(kb.toString())));
+          }
+          return kbIds.includes(kbId);
+        } catch {
+          return false;
+        }
+      });
+      setRelatedAgents(usingAgents);
     } catch (error) {
       console.error('加载知识库数据失败:', error);
       toast.error('加载知识库数据失败');
@@ -73,9 +92,9 @@ export default function KnowledgeBaseDetailPage() {
     if (!knowledgeBase) return;
 
     try {
-      // 首先检查是否有智能体正在使用该知识库
-      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
-      const usingAgents = agentsResponse.items.filter(agent => {
+      // 使用getAllAgents确保检查所有智能体的关联关系
+      const allAgents = await getAllAgents();
+      const usingAgents = allAgents.filter(agent => {
         try {
           let kbIds: number[] = [];
           if (typeof agent.knowledge_bases === 'string') {
@@ -300,6 +319,16 @@ export default function KnowledgeBaseDetailPage() {
 
         <Card>
           <CardHeader className="pb-3">
+            <CardTitle className="text-base">关联智能体</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{relatedAgents.length}</div>
+            <p className="text-muted-foreground text-sm">正在使用此知识库</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
             <CardTitle className="text-base">向量化模型</CardTitle>
           </CardHeader>
           <CardContent>
@@ -472,6 +501,52 @@ export default function KnowledgeBaseDetailPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium">关联智能体</h3>
+                  <p className="text-muted-foreground text-sm">正在使用此知识库的智能体列表</p>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  添加智能体
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {relatedAgents.length === 0 ? (
+                  <p className="text-muted-foreground py-4 text-center">暂无关联智能体</p>
+                ) : (
+                  <div className="space-y-3">
+                    {relatedAgents.map(agent => (
+                      <div key={agent.id} className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-lg bg-blue-100 p-2">
+                            <Bot className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{agent.name}</p>
+                            <p className="text-muted-foreground text-sm">{agent.description || '暂无描述'}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/agents/${agent.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/agents/${agent.id}/edit`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <Separator />

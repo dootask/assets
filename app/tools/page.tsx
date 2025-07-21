@@ -22,9 +22,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/app-context';
-import { agentsApi } from '@/lib/api/agents';
 import { mcpToolsApi, type MCPToolQueryParams } from '@/lib/api/mcp-tools';
 import { MCPTool } from '@/lib/types';
+import { getAllAgents } from '@/lib/utils';
 import {
   Activity,
   BarChart3,
@@ -108,9 +108,9 @@ export default function ToolsPage() {
 
   const handleDeleteTool = async (toolId: string) => {
     try {
-      // 首先检查是否有智能体正在使用该工具
-      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
-      const usingAgents = agentsResponse.items.filter(agent => {
+      // 使用getAllAgents确保检查所有智能体的关联关系
+      const allAgents = await getAllAgents();
+      const usingAgents = allAgents.filter(agent => {
         try {
           let toolIds: string[] = [];
           if (typeof agent.tools === 'string') {

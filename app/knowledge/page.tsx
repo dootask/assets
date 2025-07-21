@@ -10,9 +10,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAppContext } from '@/contexts/app-context';
-import { agentsApi } from '@/lib/api/agents';
 import { formatKnowledgeBaseForUI, knowledgeBasesApi, parseKnowledgeBaseMetadata } from '@/lib/api/knowledge-bases';
 import { KnowledgeBase } from '@/lib/types';
+import { getAllAgents } from '@/lib/utils';
 import { Calendar, Database, Eye, FileText, MoreHorizontal, Plus, Settings, Trash2, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -46,9 +46,9 @@ export default function KnowledgeBasePage() {
 
   const handleDeleteKB = async (kbId: number) => {
     try {
-      // 首先检查是否有智能体正在使用该知识库
-      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
-      const usingAgents = agentsResponse.items.filter(agent => {
+      // 使用getAllAgents确保检查所有智能体的关联关系
+      const allAgents = await getAllAgents();
+      const usingAgents = allAgents.filter(agent => {
         try {
           let kbIds: number[] = [];
           if (typeof agent.knowledge_bases === 'string') {

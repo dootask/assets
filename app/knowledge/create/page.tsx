@@ -14,13 +14,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { aiModelsApi } from '@/lib/api/ai-models';
 import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
+import { AIModelConfig } from '@/lib/types';
 import { Database, Save, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { embeddingModels } from '@/lib/ai';
 
 // 前端表单数据类型
 interface KnowledgeBaseFormData {
@@ -35,19 +36,51 @@ interface KnowledgeBaseFormData {
 export default function CreateKnowledgeBasePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [availableModels, setAvailableModels] = useState<AIModelConfig[]>([]);
   const [formData, setFormData] = useState<KnowledgeBaseFormData>({
     name: '',
     description: '',
-    embeddingModel: 'text-embedding-ada-002',
+    embeddingModel: '',
     chunkSize: 1000,
     chunkOverlap: 200,
   });
 
+  // 加载可用的embedding模型
+  useEffect(() => {
+    const loadEmbeddingModels = async () => {
+      try {
+        setModelsLoading(true);
+        const response = await aiModelsApi.getAIModels({ enabled: true });
+        // 在客户端过滤embedding模型（如果模型类型信息存在的话）
+        const embeddingModels = response.models.filter(
+          model => model.model_name.includes('embedding') || model.name.toLowerCase().includes('embedding')
+        );
+        setAvailableModels(embeddingModels.length > 0 ? embeddingModels : response.models);
+
+        // 设置默认模型（如果有的话）
+        const modelsToUse = embeddingModels.length > 0 ? embeddingModels : response.models;
+        if (modelsToUse.length > 0) {
+          const defaultModel = modelsToUse.find(model => model.is_default) || modelsToUse[0];
+          setFormData(prev => ({ ...prev, embeddingModel: defaultModel.model_name }));
+        }
+      } catch (error) {
+        console.error('加载Embedding模型失败:', error);
+        toast.error('加载模型列表失败，请检查AI模型配置');
+        setAvailableModels([]);
+      } finally {
+        setModelsLoading(false);
+      }
+    };
+
+    loadEmbeddingModels();
+  }, []);
+
   // 转换为CommandSelect选项
-  const modelSelectOptions: CommandSelectOption[] = embeddingModels.map(model => ({
-    value: model.value,
-    label: model.label,
-    description: model.description,
+  const modelSelectOptions: CommandSelectOption[] = availableModels.map(model => ({
+    value: model.model_name,
+    label: model.name,
+    description: `${model.provider} - ${model.model_name}`,
   }));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +88,11 @@ export default function CreateKnowledgeBasePage() {
 
     if (!formData.name.trim() || !formData.description?.trim()) {
       toast.error('请填写所有必填字段');
+      return;
+    }
+
+    if (!formData.embeddingModel) {
+      toast.error('请选择Embedding模型');
       return;
     }
 
@@ -72,7 +110,7 @@ export default function CreateKnowledgeBasePage() {
     }
   };
 
-  const selectedModel = embeddingModels.find(model => model.value === formData.embeddingModel);
+  const selectedModel = availableModels.find(model => model.model_name === formData.embeddingModel);
 
   return (
     <div className="space-y-6 p-6">
@@ -169,17 +207,21 @@ export default function CreateKnowledgeBasePage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="embeddingModel">Embedding 模型 *</Label>
-                  <CommandSelect
-                    options={modelSelectOptions}
-                    value={formData.embeddingModel}
-                    onValueChange={value => setFormData(prev => ({ ...prev, embeddingModel: value }))}
-                    placeholder="选择 Embedding 模型"
-                    searchPlaceholder="搜索模型..."
-                  />
+                  {modelsLoading ? (
+                    <div className="bg-muted h-10 animate-pulse rounded"></div>
+                  ) : (
+                    <CommandSelect
+                      options={modelSelectOptions}
+                      value={formData.embeddingModel}
+                      onValueChange={value => setFormData(prev => ({ ...prev, embeddingModel: value }))}
+                      placeholder="选择 Embedding 模型"
+                      searchPlaceholder="搜索模型..."
+                    />
+                  )}
                   {selectedModel && (
                     <div className="text-muted-foreground mt-2 text-sm">
-                      <p>向量维度：{selectedModel.dimensions}</p>
-                      <p>成本：{selectedModel.cost}</p>
+                      <p>提供商：{selectedModel.provider}</p>
+                      <p>模型：{selectedModel.model_name}</p>
                     </div>
                   )}
                 </div>
@@ -227,7 +269,7 @@ export default function CreateKnowledgeBasePage() {
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Embedding 模型:</span>
-                  <span className="font-medium">{selectedModel?.label}</span>
+                  <span className="font-medium">{selectedModel?.name || '未选择'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">分块大小:</span>

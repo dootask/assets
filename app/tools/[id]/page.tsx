@@ -16,9 +16,9 @@ import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
 import { agentsApi } from '@/lib/api/agents';
 import { mcpToolsApi } from '@/lib/api/mcp-tools';
-import { MCPTool } from '@/lib/types';
-import { safeString } from '@/lib/utils';
-import { Edit, ExternalLink, Key, Settings, Shield, Trash2, Wrench, Zap } from 'lucide-react';
+import { Agent, MCPTool } from '@/lib/types';
+import { getAllAgents, safeString } from '@/lib/utils';
+import { Bot, Edit, ExternalLink, Eye, Key, Settings, Shield, Trash2, Wrench, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -29,6 +29,7 @@ export default function MCPToolDetailPage() {
   const router = useRouter();
   const { Confirm } = useAppContext();
   const [tool, setTool] = useState<MCPTool | null>(null);
+  const [relatedAgents, setRelatedAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
 
@@ -39,6 +40,23 @@ export default function MCPToolDetailPage() {
         const toolId = params.id as string;
         const toolData = await mcpToolsApi.get(toolId);
         setTool(toolData);
+
+        // 获取关联的智能体
+        const agentsResponse = await agentsApi.list({ page: 1, page_size: 100 });
+        const usingAgents = agentsResponse.items.filter(agent => {
+          try {
+            let toolIds: string[] = [];
+            if (typeof agent.tools === 'string') {
+              toolIds = JSON.parse(agent.tools);
+            } else if (Array.isArray(agent.tools)) {
+              toolIds = agent.tools.map(tool => (typeof tool === 'string' ? tool : tool.toString()));
+            }
+            return toolIds.includes(toolId);
+          } catch {
+            return false;
+          }
+        });
+        setRelatedAgents(usingAgents);
       } catch (error) {
         console.error('Failed to load tool:', error);
       } finally {
@@ -53,9 +71,9 @@ export default function MCPToolDetailPage() {
     if (!tool) return;
 
     try {
-      // 首先检查是否有智能体正在使用该工具
-      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
-      const usingAgents = agentsResponse.items.filter(agent => {
+      // 使用getAllAgents确保检查所有智能体的关联关系
+      const allAgents = await getAllAgents();
+      const usingAgents = allAgents.filter(agent => {
         try {
           let toolIds: string[] = [];
           if (typeof agent.tools === 'string') {
@@ -349,16 +367,32 @@ export default function MCPToolDetailPage() {
         <div className="space-y-6">
           {/* 状态控制 */}
           <Card>
-            <CardHeader>
-              <CardTitle>状态控制</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">状态信息</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-medium">启用状态</h4>
-                  <p className="text-muted-foreground text-xs">控制工具是否可用</p>
-                </div>
+                <span className="text-muted-foreground text-sm">工具状态</span>
                 <Switch checked={tool.isActive} onCheckedChange={handleToggleStatus} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-sm">关联智能体</span>
+                <span className="font-medium">{relatedAgents.length}</span>
+              </div>
+              <div className="pt-2">
+                <Button onClick={testTool} disabled={testing} className="w-full">
+                  {testing ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      测试中...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-2 h-4 w-4" />
+                      测试工具
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -399,9 +433,38 @@ export default function MCPToolDetailPage() {
               <CardTitle>关联智能体</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {/* TODO: Replace with real API call to get associated agents */}
-                <p className="text-muted-foreground py-4 text-center text-sm">暂无关联的智能体</p>
+              <div className="space-y-3">
+                {relatedAgents.length > 0 ? (
+                  <div className="space-y-3">
+                    {relatedAgents.map(agent => (
+                      <div key={agent.id} className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-lg bg-blue-100 p-2">
+                            <Bot className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{agent.name}</p>
+                            <p className="text-muted-foreground text-sm">{agent.description || '暂无描述'}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/agents/${agent.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/agents/${agent.id}/edit`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground py-4 text-center text-sm">暂无关联的智能体</p>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -12,9 +12,9 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
 import { getProviderInfo } from '@/lib/ai';
-import { agentsApi } from '@/lib/api/agents';
 import { aiModelsApi, getModelDisplayName } from '@/lib/api/ai-models';
 import { AIModelConfig } from '@/lib/types';
+import { getAllAgents } from '@/lib/utils';
 import { Activity, CheckCircle, Cpu, Edit, Eye, Key, MoreHorizontal, Plus, Settings, Star, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -80,9 +80,9 @@ export default function ModelsPage() {
 
   const handleDeleteModel = async (modelId: number) => {
     try {
-      // 首先检查是否有智能体正在使用该AI模型
-      const agentsResponse = await agentsApi.list({ page: 1, page_size: 1000 });
-      const usingAgents = agentsResponse.items.filter(agent => agent.ai_model_id === modelId);
+      // 使用getAllAgents确保检查所有智能体的关联关系
+      const allAgents = await getAllAgents();
+      const usingAgents = allAgents.filter(agent => agent.ai_model_id === modelId);
 
       if (usingAgents.length > 0) {
         const agentNames = usingAgents.map(agent => agent.name).join('、');

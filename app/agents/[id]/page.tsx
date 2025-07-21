@@ -14,8 +14,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { useAppContext } from '@/contexts/app-context';
 import { agentsApi } from '@/lib/api/agents';
-import { AgentResponse } from '@/lib/types';
-import { Bot, Database, Edit, MessageSquare, Settings, Trash2, Wrench } from 'lucide-react';
+import { aiModelsApi } from '@/lib/api/ai-models';
+import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
+import { mcpToolsApi } from '@/lib/api/mcp-tools';
+import { AgentResponse, AIModelConfig, KnowledgeBase, MCPTool } from '@/lib/types';
+import { Bot, Database, Edit, ExternalLink, MessageSquare, Settings, Trash2, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -26,6 +29,9 @@ export default function AgentDetailPage() {
   const router = useRouter();
   const { Confirm } = useAppContext();
   const [agent, setAgent] = useState<AgentResponse | null>(null);
+  const [aiModel, setAiModel] = useState<AIModelConfig | null>(null);
+  const [tools, setTools] = useState<MCPTool[]>([]);
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,6 +40,66 @@ export default function AgentDetailPage() {
         const agentId = parseInt(params.id as string);
         const response = await agentsApi.get(agentId);
         setAgent(response);
+
+        // 加载关联的AI模型
+        if (response.ai_model_id) {
+          try {
+            const modelResponse = await aiModelsApi.getAIModel(response.ai_model_id);
+            setAiModel(modelResponse);
+          } catch (error) {
+            console.error('加载AI模型失败:', error);
+          }
+        }
+
+        // 加载关联的工具
+        if (response.tools) {
+          try {
+            let toolIds: string[] = [];
+            if (typeof response.tools === 'string') {
+              toolIds = JSON.parse(response.tools);
+            } else if (Array.isArray(response.tools)) {
+              toolIds = response.tools.map(tool => (typeof tool === 'string' ? tool : tool.toString()));
+            }
+
+            if (toolIds.length > 0) {
+              const toolPromises = toolIds.map(toolId =>
+                mcpToolsApi.get(toolId).catch(error => {
+                  console.error(`加载工具 ${toolId} 失败:`, error);
+                  return null;
+                })
+              );
+              const toolResults = await Promise.all(toolPromises);
+              setTools(toolResults.filter(tool => tool !== null) as MCPTool[]);
+            }
+          } catch (error) {
+            console.error('解析工具数据失败:', error);
+          }
+        }
+
+        // 加载关联的知识库
+        if (response.knowledge_bases) {
+          try {
+            let kbIds: number[] = [];
+            if (typeof response.knowledge_bases === 'string') {
+              kbIds = JSON.parse(response.knowledge_bases);
+            } else if (Array.isArray(response.knowledge_bases)) {
+              kbIds = response.knowledge_bases.map(kb => (typeof kb === 'number' ? kb : parseInt(kb.toString())));
+            }
+
+            if (kbIds.length > 0) {
+              const kbPromises = kbIds.map(kbId =>
+                knowledgeBasesApi.get(kbId).catch(error => {
+                  console.error(`加载知识库 ${kbId} 失败:`, error);
+                  return null;
+                })
+              );
+              const kbResults = await Promise.all(kbPromises);
+              setKnowledgeBases(kbResults.filter(kb => kb !== null) as KnowledgeBase[]);
+            }
+          } catch (error) {
+            console.error('解析知识库数据失败:', error);
+          }
+        }
       } catch (error) {
         console.error('获取智能体详情失败:', error);
         setAgent(null);
@@ -62,18 +128,6 @@ export default function AgentDetailPage() {
         toast.error('删除智能体失败，请重试');
       }
     }
-  };
-
-  // 安全获取工具数组
-  const getToolsArray = (tools: unknown): string[] => {
-    if (Array.isArray(tools)) return tools;
-    return [];
-  };
-
-  // 安全获取知识库数组
-  const getKnowledgeBasesArray = (knowledgeBases: unknown): string[] => {
-    if (Array.isArray(knowledgeBases)) return knowledgeBases;
-    return [];
   };
 
   if (loading) {
@@ -157,7 +211,17 @@ export default function AgentDetailPage() {
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">AI 模型</h4>
-                  <p className="text-sm">{agent.ai_model?.name || '未设置'}</p>
+                  {aiModel ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{aiModel.name}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{aiModel.provider}</Badge>
+                        <span className="text-muted-foreground text-xs">{aiModel.model_name}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm">未设置</p>
+                  )}
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">创建时间</h4>
@@ -224,15 +288,36 @@ export default function AgentDetailPage() {
               <CardDescription>智能体可以使用的工具</CardDescription>
             </CardHeader>
             <CardContent>
-              {getToolsArray(agent.tools).length === 0 ? (
+              {tools.length === 0 ? (
                 <p className="text-muted-foreground py-4 text-center text-sm">未关联任何工具</p>
               ) : (
                 <div className="space-y-3">
-                  {getToolsArray(agent.tools).map((tool: string) => (
-                    <div key={tool} className="flex items-start space-x-3 rounded-lg border p-3">
-                      <Wrench className="text-muted-foreground mt-1 h-4 w-4" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{tool}</p>
+                  {tools.map((tool: MCPTool) => (
+                    <div key={tool.id} className="flex items-start justify-between rounded-lg border p-3">
+                      <div className="flex items-start space-x-3">
+                        <Wrench className="text-muted-foreground mt-1 h-4 w-4" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{tool.name}</p>
+                          <p className="text-muted-foreground text-xs">{tool.description}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {tool.category}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {tool.type}
+                            </Badge>
+                            <Badge variant={tool.isActive ? 'default' : 'secondary'} className="text-xs">
+                              {tool.isActive ? '活跃' : '停用'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/tools/${tool.id}`}>
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -251,15 +336,33 @@ export default function AgentDetailPage() {
               <CardDescription>智能体可以访问的知识库</CardDescription>
             </CardHeader>
             <CardContent>
-              {getKnowledgeBasesArray(agent.knowledge_bases).length === 0 ? (
+              {knowledgeBases.length === 0 ? (
                 <p className="text-muted-foreground py-4 text-center text-sm">未关联任何知识库</p>
               ) : (
                 <div className="space-y-3">
-                  {getKnowledgeBasesArray(agent.knowledge_bases).map((kb: string) => (
-                    <div key={kb} className="flex items-start space-x-3 rounded-lg border p-3">
-                      <Database className="text-muted-foreground mt-1 h-4 w-4" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{kb}</p>
+                  {knowledgeBases.map((kb: KnowledgeBase) => (
+                    <div key={kb.id} className="flex items-start justify-between rounded-lg border p-3">
+                      <div className="flex items-start space-x-3">
+                        <Database className="text-muted-foreground mt-1 h-4 w-4" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{kb.name}</p>
+                          <p className="text-muted-foreground text-xs">{kb.description}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              文档: {kb.documentsCount || kb.documents_count || 0}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {kb.embeddingModel || kb.embedding_model}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/knowledge/${kb.id}`}>
+                            <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        </Button>
                       </div>
                     </div>
                   ))}
