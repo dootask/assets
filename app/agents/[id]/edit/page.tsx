@@ -11,13 +11,13 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { MockDataManager } from '@/lib/mock-data';
-import { CreateAgentRequest } from '@/lib/types';
+import { agentsApi, formatUpdateRequestForAPI } from '@/lib/api/agents';
+import { aiModelsApi } from '@/lib/api/ai-models';
+import { AIModelConfig, CreateAgentRequest } from '@/lib/types';
 import { Bot, Database, Save, Settings, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -33,61 +33,65 @@ export default function EditAgentPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [availableModels, setAvailableModels] = useState<CommandSelectOption[]>([]);
   const [formData, setFormData] = useState<FormData>({
     name: '',
-    description: '',
+    description: null,
     prompt: '',
-    model: 'gpt-3.5-turbo',
+    ai_model_id: null,
     temperature: 0.7,
     maxTokens: 2000,
-    tools: [],
-    knowledgeBases: [],
+    tools: '[]',
+    knowledge_bases: '[]',
   });
 
-  // Mock数据 - 在实际应用中这些应该从API获取
-  const availableModels: CommandSelectOption[] = [
-    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', description: '快速响应，成本较低' },
-    { value: 'gpt-4', label: 'GPT-4', description: '更强大的推理能力，成本较高' },
-    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo', description: '平衡性能与成本' },
-  ];
-
-  const availableTools = MockDataManager.getMCPTools().map(tool => ({
-    id: tool.id,
-    name: tool.name,
-    description: tool.description,
-    category: tool.category,
-  }));
-
-  const availableKnowledgeBases = MockDataManager.getKnowledgeBases().map(kb => ({
-    id: kb.id,
-    name: kb.name,
-    description: kb.description,
-  }));
-
+  // 加载AI模型和智能体数据
   useEffect(() => {
-    // 获取要编辑的智能体数据
-    const agentId = params.id as string;
-    const agent = MockDataManager.getAgents().find(a => a.id === agentId);
+    const loadData = async () => {
+      try {
+        // 加载AI模型
+        const modelsResponse = await aiModelsApi.getAIModels();
+        const modelOptions = modelsResponse.models.map((model: AIModelConfig) => ({
+          value: model.id.toString(),
+          label: model.name,
+          description: `${model.provider} - ${model.model_name}`,
+        }));
+        setAvailableModels(modelOptions);
+        setModelsLoading(false);
 
-    if (agent) {
-      setFormData({
-        name: agent.name || '',
-        description: agent.description || '',
-        prompt: agent.prompt || '',
-        model: agent.model || 'gpt-3.5-turbo',
-        temperature: agent.temperature || 0.7,
-        maxTokens: agent.maxTokens || 2000,
-        tools: agent.tools || [],
-        knowledgeBases: agent.knowledgeBases || [],
-      });
-    }
-    setLoading(false);
+        // 加载智能体数据
+        const agentId = parseInt(params.id as string);
+        const agent = await agentsApi.get(agentId);
+
+        setFormData({
+          name: agent.name || '',
+          description: agent.description,
+          prompt: agent.prompt || '',
+          ai_model_id: agent.ai_model_id,
+          temperature: agent.temperature || 0.7,
+          maxTokens: 2000, // 默认值
+          tools: typeof agent.tools === 'string' ? agent.tools : JSON.stringify(agent.tools || []),
+          knowledge_bases:
+            typeof agent.knowledge_bases === 'string'
+              ? agent.knowledge_bases
+              : JSON.stringify(agent.knowledge_bases || []),
+        });
+      } catch (error) {
+        console.error('加载数据失败:', error);
+        toast.error('加载数据失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [params.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.description.trim() || !formData.prompt.trim()) {
+    if (!formData.name.trim() || !formData.prompt.trim()) {
       toast.error('请填写所有必填字段');
       return;
     }
@@ -95,30 +99,36 @@ export default function EditAgentPage() {
     setIsLoading(true);
 
     try {
-      // 模拟更新API调用
-      setTimeout(() => {
-        MockDataManager.updateAgent(params.id as string, formData);
-        toast.success(`智能体 "${formData.name}" 更新成功！`);
-        router.push(`/agents/${params.id}`);
-      }, 1000);
-    } catch {
-      toast.error('更新智能体失败');
+      const apiData = formatUpdateRequestForAPI({
+        name: formData.name,
+        description: formData.description || undefined,
+        prompt: formData.prompt,
+        ai_model_id: formData.ai_model_id,
+        temperature: formData.temperature,
+        tools: [],
+        knowledgeBases: [],
+        metadata: {},
+      });
+
+      const updatedAgent = await agentsApi.update(parseInt(params.id as string), apiData);
+      toast.success(`智能体 "${updatedAgent.name}" 更新成功！`);
+      router.push(`/agents/${params.id}`);
+    } catch (error) {
+      console.error('更新智能体失败:', error);
+      toast.error('更新智能体失败，请重试');
+    } finally {
       setIsLoading(false);
     }
   };
 
   const handleToolToggle = (toolId: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      tools: checked ? [...prev.tools!, toolId] : prev.tools!.filter(id => id !== toolId),
-    }));
+    // TODO: 实现工具选择逻辑
+    console.log('工具选择:', toolId, checked);
   };
 
   const handleKnowledgeBaseToggle = (kbId: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      knowledgeBases: checked ? [...prev.knowledgeBases!, kbId] : prev.knowledgeBases!.filter(id => id !== kbId),
-    }));
+    // TODO: 实现知识库选择逻辑
+    console.log('知识库选择:', kbId, checked);
   };
 
   if (loading) {
@@ -204,39 +214,52 @@ export default function EditAgentPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="model">AI 模型 *</Label>
-                  <CommandSelect
-                    options={availableModels}
-                    value={formData.model}
-                    onValueChange={value => setFormData(prev => ({ ...prev, model: value }))}
-                    placeholder="选择 AI 模型"
-                    searchPlaceholder="搜索模型..."
-                    emptyMessage="没有找到相关模型"
-                  />
+                  {modelsLoading ? (
+                    <div className="bg-muted h-10 animate-pulse rounded"></div>
+                  ) : (
+                    <CommandSelect
+                      options={availableModels}
+                      value={formData.ai_model_id?.toString() || ''}
+                      onValueChange={value => setFormData(prev => ({ ...prev, ai_model_id: parseInt(value) }))}
+                      placeholder="选择 AI 模型"
+                      searchPlaceholder="搜索模型..."
+                      emptyMessage="没有找到相关模型"
+                    />
+                  )}
                 </div>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="description">智能体描述 *</Label>
-                <Input
+                <Label htmlFor="description">描述</Label>
+                <Textarea
                   id="description"
-                  placeholder="描述智能体的作用和特点"
-                  value={formData.description}
+                  placeholder="智能体的简短描述"
+                  value={formData.description || ''}
                   onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  required
                 />
               </div>
+            </CardContent>
+          </Card>
 
+          {/* 系统提示词 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                系统提示词
+              </CardTitle>
+              <CardDescription>定义智能体的行为和个性</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="prompt">系统提示词 *</Label>
+                <Label htmlFor="prompt">提示词内容 *</Label>
                 <Textarea
                   id="prompt"
-                  placeholder="你是一个专业的助手，擅长..."
+                  placeholder="你是一个专业的AI助手..."
+                  className="min-h-32"
                   value={formData.prompt}
                   onChange={e => setFormData(prev => ({ ...prev, prompt: e.target.value }))}
-                  rows={8}
                   required
                 />
-                <p className="text-muted-foreground text-xs">提示词将决定智能体的行为风格和专业领域，请详细描述</p>
               </div>
             </CardContent>
           </Card>
@@ -248,35 +271,21 @@ export default function EditAgentPage() {
                 <Settings className="h-5 w-5" />
                 AI 参数设置
               </CardTitle>
-              <CardDescription>调整 AI 模型的生成参数</CardDescription>
+              <CardDescription>调整智能体的行为参数</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>创造性 (Temperature): {formData.temperature}</Label>
-                  <Slider
-                    value={[formData.temperature]}
-                    onValueChange={([value]: [number]) => setFormData(prev => ({ ...prev, temperature: value }))}
-                    max={1}
-                    min={0}
-                    step={0.1}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-xs">0 = 保守稳定，1 = 富有创意</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="maxTokens">最大输出长度: {formData.maxTokens}</Label>
-                  <Slider
-                    value={[formData.maxTokens]}
-                    onValueChange={([value]: [number]) => setFormData(prev => ({ ...prev, maxTokens: value }))}
-                    max={4000}
-                    min={500}
-                    step={100}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-xs">控制单次回复的最大长度</p>
-                </div>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="temperature">Temperature: {formData.temperature}</Label>
+                <Slider
+                  id="temperature"
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  value={[formData.temperature]}
+                  onValueChange={([value]) => setFormData(prev => ({ ...prev, temperature: value }))}
+                  className="w-full"
+                />
+                <p className="text-muted-foreground text-xs">控制输出的随机性，值越高输出越有创意</p>
               </div>
             </CardContent>
           </Card>
@@ -294,31 +303,7 @@ export default function EditAgentPage() {
               <CardDescription>选择智能体可以使用的工具</CardDescription>
             </CardHeader>
             <CardContent>
-              {availableTools.length === 0 ? (
-                <p className="text-muted-foreground py-4 text-center">暂无可用工具</p>
-              ) : (
-                <div className="space-y-3">
-                  {availableTools.map(tool => (
-                    <div key={tool.id} className="flex items-start space-x-3 rounded-lg border p-3">
-                      <Checkbox
-                        id={`tool-${tool.id}`}
-                        checked={formData.tools?.includes(tool.id) || false}
-                        onCheckedChange={(checked: boolean) => handleToolToggle(tool.id, checked)}
-                        className="mt-0.5"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <Label htmlFor={`tool-${tool.id}`} className="text-sm font-medium">
-                          {tool.name}
-                        </Label>
-                        <p className="text-muted-foreground mt-1 text-xs">{tool.description}</p>
-                        <span className="bg-secondary mt-1 inline-block rounded-full px-2 py-1 text-xs">
-                          {tool.category}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <p className="text-muted-foreground py-4 text-center">暂无可用工具</p>
             </CardContent>
           </Card>
 
@@ -332,34 +317,13 @@ export default function EditAgentPage() {
               <CardDescription>选择智能体可以访问的知识库</CardDescription>
             </CardHeader>
             <CardContent>
-              {availableKnowledgeBases.length === 0 ? (
-                <div className="py-6 text-center">
-                  <Database className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
-                  <p className="text-muted-foreground mb-3">还没有知识库</p>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/knowledge/create">创建知识库</Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {availableKnowledgeBases.map(kb => (
-                    <div key={kb.id} className="flex items-start space-x-3 rounded-lg border p-3">
-                      <Checkbox
-                        id={`kb-${kb.id}`}
-                        checked={formData.knowledgeBases?.includes(kb.id) || false}
-                        onCheckedChange={(checked: boolean) => handleKnowledgeBaseToggle(kb.id, checked)}
-                        className="mt-0.5"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <Label htmlFor={`kb-${kb.id}`} className="text-sm font-medium">
-                          {kb.name}
-                        </Label>
-                        <p className="text-muted-foreground mt-1 text-xs">{kb.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="py-6 text-center">
+                <Database className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
+                <p className="text-muted-foreground mb-3">还没有知识库</p>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/knowledge/create">创建知识库</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

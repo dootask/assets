@@ -13,45 +13,36 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAppContext } from '@/contexts/app-context';
-import { MockDataManager } from '@/lib/mock-data';
-import { Agent, KnowledgeBase, MCPTool } from '@/lib/types';
+import { agentsApi } from '@/lib/api/agents';
+import { AgentResponse } from '@/lib/types';
 import { Bot, Database, Edit, MessageSquare, Settings, Trash2, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-interface AgentDetail extends Agent {
-  toolDetails: MCPTool[];
-  knowledgeBaseDetails: KnowledgeBase[];
-}
-
 export default function AgentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { Confirm } = useAppContext();
-  const [agent, setAgent] = useState<AgentDetail | null>(null);
+  const [agent, setAgent] = useState<AgentResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 模拟获取智能体详情
-    const agentId = params.id as string;
-    const agentData = MockDataManager.getAgents().find(a => a.id === agentId);
+    const loadAgent = async () => {
+      try {
+        const agentId = parseInt(params.id as string);
+        const response = await agentsApi.get(agentId);
+        setAgent(response);
+      } catch (error) {
+        console.error('获取智能体详情失败:', error);
+        setAgent(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (agentData) {
-      // 获取关联的工具和知识库详细信息
-      const tools = MockDataManager.getMCPTools().filter(t => agentData.tools?.includes(t.id));
-      const knowledgeBases = MockDataManager.getKnowledgeBases().filter(kb =>
-        agentData.knowledgeBases?.includes(kb.id)
-      );
-
-      setAgent({
-        ...agentData,
-        toolDetails: tools,
-        knowledgeBaseDetails: knowledgeBases,
-      });
-    }
-    setLoading(false);
+    loadAgent();
   }, [params.id]);
 
   const handleDelete = async () => {
@@ -62,10 +53,27 @@ export default function AgentDetailPage() {
         variant: 'destructive',
       })
     ) {
-      MockDataManager.deleteAgent(params.id as string);
-      toast.success('智能体删除成功');
-      router.push('/agents');
+      try {
+        await agentsApi.delete(parseInt(params.id as string));
+        toast.success('智能体删除成功');
+        router.push('/agents');
+      } catch (error) {
+        console.error('删除智能体失败:', error);
+        toast.error('删除智能体失败，请重试');
+      }
     }
+  };
+
+  // 安全获取工具数组
+  const getToolsArray = (tools: unknown): string[] => {
+    if (Array.isArray(tools)) return tools;
+    return [];
+  };
+
+  // 安全获取知识库数组
+  const getKnowledgeBasesArray = (knowledgeBases: unknown): string[] => {
+    if (Array.isArray(knowledgeBases)) return knowledgeBases;
+    return [];
   };
 
   if (loading) {
@@ -112,9 +120,9 @@ export default function AgentDetailPage() {
           <div className="flex items-center gap-3">
             <Bot className="text-primary h-8 w-8" />
             <h1 className="text-3xl font-bold tracking-tight">{agent.name}</h1>
-            <Badge variant={agent.isActive ? 'default' : 'secondary'}>{agent.isActive ? '活跃' : '停用'}</Badge>
+            <Badge variant={agent.is_active ? 'default' : 'secondary'}>{agent.is_active ? '活跃' : '停用'}</Badge>
           </div>
-          <p className="text-muted-foreground max-w-2xl">{agent.description}</p>
+          <p className="text-muted-foreground max-w-2xl">{agent.description || '暂无描述'}</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" asChild>
@@ -149,21 +157,23 @@ export default function AgentDetailPage() {
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">AI 模型</h4>
-                  <p className="text-sm">{agent.model}</p>
+                  <p className="text-sm">{agent.ai_model_name || '未设置'}</p>
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">创建时间</h4>
-                  <p className="text-sm">{new Date(agent.createdAt).toLocaleString()}</p>
+                  <p className="text-sm">{new Date(agent.created_at).toLocaleString()}</p>
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">更新时间</h4>
-                  <p className="text-sm">{new Date(agent.updatedAt).toLocaleString()}</p>
+                  <p className="text-sm">{new Date(agent.updated_at).toLocaleString()}</p>
                 </div>
               </div>
-              <div>
-                <h4 className="text-muted-foreground mb-2 text-sm font-medium">描述</h4>
-                <p className="text-sm leading-relaxed">{agent.description}</p>
-              </div>
+              {agent.description && (
+                <div>
+                  <h4 className="text-muted-foreground mb-2 text-sm font-medium">描述</h4>
+                  <p className="text-sm leading-relaxed">{agent.description}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -191,31 +201,11 @@ export default function AgentDetailPage() {
                 AI 参数设置
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-6">
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-muted-foreground mb-2 text-sm font-medium">创造性 (Temperature)</h4>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-muted h-2 flex-1 rounded-full">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${(agent.temperature || 0.7) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium">{agent.temperature || 0.7}</span>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-muted-foreground mb-2 text-sm font-medium">最大输出长度</h4>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-muted h-2 flex-1 rounded-full">
-                      <div
-                        className="bg-primary h-2 rounded-full transition-all"
-                        style={{ width: `${((agent.maxTokens || 2000) / 4000) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium">{agent.maxTokens || 2000}</span>
-                  </div>
+                  <h4 className="text-muted-foreground text-sm font-medium">Temperature</h4>
+                  <p className="text-sm">{agent.temperature}</p>
                 </div>
               </div>
             </CardContent>
@@ -234,19 +224,15 @@ export default function AgentDetailPage() {
               <CardDescription>智能体可以使用的工具</CardDescription>
             </CardHeader>
             <CardContent>
-              {!agent.toolDetails || agent.toolDetails.length === 0 ? (
+              {getToolsArray(agent.tools).length === 0 ? (
                 <p className="text-muted-foreground py-4 text-center text-sm">未关联任何工具</p>
               ) : (
                 <div className="space-y-3">
-                  {agent.toolDetails.map(tool => (
-                    <div key={tool.id} className="flex items-start space-x-3 rounded-lg border p-3">
+                  {getToolsArray(agent.tools).map((tool: string) => (
+                    <div key={tool} className="flex items-start space-x-3 rounded-lg border p-3">
                       <Wrench className="text-muted-foreground mt-1 h-4 w-4" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{tool.name}</p>
-                        <p className="text-muted-foreground mt-1 text-xs">{tool.description}</p>
-                        <Badge variant="secondary" className="mt-2 text-xs">
-                          {tool.category}
-                        </Badge>
+                        <p className="text-sm font-medium">{tool}</p>
                       </div>
                     </div>
                   ))}
@@ -265,24 +251,15 @@ export default function AgentDetailPage() {
               <CardDescription>智能体可以访问的知识库</CardDescription>
             </CardHeader>
             <CardContent>
-              {!agent.knowledgeBaseDetails || agent.knowledgeBaseDetails.length === 0 ? (
+              {getKnowledgeBasesArray(agent.knowledge_bases).length === 0 ? (
                 <p className="text-muted-foreground py-4 text-center text-sm">未关联任何知识库</p>
               ) : (
                 <div className="space-y-3">
-                  {agent.knowledgeBaseDetails.map(kb => (
-                    <div key={kb.id} className="flex items-start space-x-3 rounded-lg border p-3">
+                  {getKnowledgeBasesArray(agent.knowledge_bases).map((kb: string) => (
+                    <div key={kb} className="flex items-start space-x-3 rounded-lg border p-3">
                       <Database className="text-muted-foreground mt-1 h-4 w-4" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{kb.name}</p>
-                        <p className="text-muted-foreground mt-1 text-xs">{kb.description}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {kb.documentsCount || 0} 个文档
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {kb.embeddingModel}
-                          </Badge>
-                        </div>
+                        <p className="text-sm font-medium">{kb}</p>
                       </div>
                     </div>
                   ))}
@@ -295,21 +272,22 @@ export default function AgentDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>使用统计</CardTitle>
+              <CardDescription>智能体的使用情况</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">对话总数</span>
-                <span className="text-sm font-medium">{agent.statistics?.totalMessages || 0}</span>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">关联对话</span>
+                <span className="text-2xl font-bold">{agent.conversation_count || 0}</span>
               </div>
               <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">消息总数</span>
-                <span className="text-sm font-medium">{agent.statistics?.todayMessages || 0}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">消息总数</span>
+                <span className="text-2xl font-bold">{agent.message_count || 0}</span>
               </div>
               <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">最后使用</span>
-                <span className="text-sm font-medium">从未使用</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Token使用量</span>
+                <span className="text-2xl font-bold">{(agent.token_usage || 0).toLocaleString()}</span>
               </div>
             </CardContent>
           </Card>

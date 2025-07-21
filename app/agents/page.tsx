@@ -11,9 +11,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
-import { MockDataManager } from '@/lib/mock-data';
+import { agentsApi, formatAgentForUI, parseAgentJSONBFields } from '@/lib/api/agents';
 import { Agent } from '@/lib/types';
-import { Activity, Bot, Clock, Edit, MessageSquare, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { Bot, Edit, MessageSquare, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -23,30 +23,40 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadAgents = () => {
+  const loadAgents = async () => {
     setIsLoading(true);
-    // 模拟异步加载
-    setTimeout(() => {
-      MockDataManager.initializeData();
-      const agentList = MockDataManager.getAgents();
-      setAgents(agentList);
+    try {
+      const response = await agentsApi.list();
+      const formattedAgents = response.items.map(agent => {
+        const parsedAgent = parseAgentJSONBFields(agent);
+        return formatAgentForUI(parsedAgent);
+      });
+      setAgents(formattedAgents);
+    } catch (error) {
+      console.error('加载智能体列表失败:', error);
+      setAgents([]);
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   };
 
   useEffect(() => {
     loadAgents();
   }, []);
 
-  const handleToggleActive = (agentId: string, isActive: boolean) => {
-    const updatedAgent = MockDataManager.updateAgent(agentId, { isActive });
-    if (updatedAgent) {
-      setAgents(agents.map(agent => (agent.id === agentId ? updatedAgent : agent)));
+  const handleToggleActive = async (agentId: number, isActive: boolean) => {
+    try {
+      const updatedAgent = await agentsApi.toggle(agentId, isActive);
+      const formattedAgent = formatAgentForUI(parseAgentJSONBFields(updatedAgent));
+      setAgents(agents.map(agent => (agent.id === agentId ? formattedAgent : agent)));
       toast.success(isActive ? '智能体已启用' : '智能体已停用');
+    } catch (error) {
+      console.error('切换智能体状态失败:', error);
+      toast.error('操作失败，请重试');
     }
   };
 
-  const handleDeleteAgent = async (agentId: string) => {
+  const handleDeleteAgent = async (agentId: number) => {
     if (
       await Confirm({
         title: '确认删除智能体',
@@ -54,17 +64,18 @@ export default function AgentsPage() {
         variant: 'destructive',
       })
     ) {
-      const success = MockDataManager.deleteAgent(agentId);
-      if (success) {
+      try {
+        await agentsApi.delete(agentId);
         setAgents(agents.filter(agent => agent.id !== agentId));
         toast.success('智能体已删除');
-      } else {
-        toast.error('删除失败');
+      } catch (error) {
+        console.error('删除智能体失败:', error);
+        toast.error('删除失败，请重试');
       }
     }
   };
 
-  const getModelBadgeVariant = (model: string) => {
+  const getModelBadgeVariant = (model?: string) => {
     switch (model) {
       case 'gpt-4':
         return 'default';
@@ -73,6 +84,18 @@ export default function AgentsPage() {
       default:
         return 'outline';
     }
+  };
+
+  // 辅助函数 - 安全获取工具数组
+  const getToolsArray = (tools: unknown): string[] => {
+    if (Array.isArray(tools)) return tools;
+    return [];
+  };
+
+  // 辅助函数 - 安全获取知识库数组
+  const getKnowledgeBasesArray = (knowledgeBases: unknown): string[] => {
+    if (Array.isArray(knowledgeBases)) return knowledgeBases;
+    return [];
   };
 
   if (isLoading) {
@@ -136,20 +159,22 @@ export default function AgentsPage() {
           {agents.map(agent => (
             <Card
               key={agent.id}
-              className={`transition-all ${agent.isActive ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/30' : ''}`}
+              className={`transition-all ${agent.is_active ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/30' : ''}`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`rounded-lg p-2 ${agent.isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+                    <div
+                      className={`rounded-lg p-2 ${agent.is_active ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
+                    >
                       <Bot
-                        className={`h-5 w-5 ${agent.isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+                        className={`h-5 w-5 ${agent.is_active ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
                       />
                     </div>
                     <div>
                       <CardTitle className="text-lg">{agent.name}</CardTitle>
-                      <Badge variant={getModelBadgeVariant(agent.model)} className="mt-1 text-xs">
-                        {agent.model}
+                      <Badge variant={getModelBadgeVariant(agent.ai_model_name || undefined)} className="mt-1 text-xs">
+                        {agent.ai_model_name || 'unknown'}
                       </Badge>
                     </div>
                   </div>
@@ -161,12 +186,21 @@ export default function AgentsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/agents/${agent.id}/edit`}>
+                        <Link href={`/agents/${agent.id}`} className="flex items-center">
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          查看详情
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/agents/${agent.id}/edit`} className="flex items-center">
                           <Edit className="mr-2 h-4 w-4" />
                           编辑
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDeleteAgent(agent.id)} className="text-destructive">
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteAgent(agent.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         删除
                       </DropdownMenuItem>
@@ -180,75 +214,76 @@ export default function AgentsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">状态</span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs ${agent.isActive ? 'text-green-600' : 'text-gray-500'}`}>
-                      {agent.isActive ? '运行中' : '已停用'}
+                    <span className={`text-xs ${agent.is_active ? 'text-green-600' : 'text-gray-500'}`}>
+                      {agent.is_active ? '运行中' : '已停用'}
                     </span>
                     <Switch
-                      checked={agent.isActive}
+                      checked={agent.is_active}
                       onCheckedChange={(checked: boolean) => handleToggleActive(agent.id, checked)}
                     />
                   </div>
                 </div>
 
-                {/* 统计信息 */}
-                {agent.statistics && (
+                {/* 统计信息 - 暂时隐藏，等有真实数据再显示 */}
+                {/* {agent.statistics && (
                   <div className="grid grid-cols-2 gap-4 border-t pt-2">
                     <div className="text-center">
-                      <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                        <MessageSquare className="h-3 w-3" />
-                        <span className="text-xs">今日消息</span>
+                      <div className="flex items-center justify-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-blue-500" />
+                        <span className="text-xs text-muted-foreground">今日对话</span>
                       </div>
                       <p className="text-lg font-semibold">{agent.statistics.todayMessages}</p>
                     </div>
                     <div className="text-center">
-                      <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span className="text-xs">响应时间</span>
+                      <div className="flex items-center justify-center gap-2">
+                        <Clock className="h-4 w-4 text-green-500" />
+                        <span className="text-xs text-muted-foreground">响应时间</span>
                       </div>
-                      <p className="text-lg font-semibold">{agent.statistics.averageResponseTime.toFixed(1)}s</p>
-                    </div>
-                    <div className="col-span-2 text-center">
-                      <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                        <Activity className="h-3 w-3" />
-                        <span className="text-xs">成功率</span>
-                      </div>
-                      <p className="text-lg font-semibold">{(agent.statistics.successRate * 100).toFixed(0)}%</p>
+                      <p className="text-lg font-semibold">{agent.statistics.averageResponseTime}ms</p>
                     </div>
                   </div>
-                )}
+                )} */}
 
                 {/* 工具和知识库 */}
                 <div className="space-y-2">
-                  {agent.tools.length > 0 && (
+                  {getToolsArray(agent.tools).length > 0 && (
                     <div>
-                      <p className="text-muted-foreground mb-1 text-xs">MCP工具 ({agent.tools.length})</p>
+                      <p className="text-muted-foreground mb-1 text-xs">
+                        MCP工具 ({getToolsArray(agent.tools).length})
+                      </p>
                       <div className="flex flex-wrap gap-1">
-                        {agent.tools.slice(0, 2).map(tool => (
-                          <Badge key={tool} variant="outline" className="text-xs">
-                            {tool}
-                          </Badge>
-                        ))}
-                        {agent.tools.length > 2 && (
+                        {getToolsArray(agent.tools)
+                          .slice(0, 2)
+                          .map((tool: string) => (
+                            <Badge key={tool} variant="outline" className="text-xs">
+                              {tool}
+                            </Badge>
+                          ))}
+                        {getToolsArray(agent.tools).length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{agent.tools.length - 2}
+                            +{getToolsArray(agent.tools).length - 2}
                           </Badge>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {agent.knowledgeBases.length > 0 && (
+                  {getKnowledgeBasesArray(agent.knowledge_bases).length > 0 && (
                     <div>
-                      <p className="text-muted-foreground mb-1 text-xs">知识库 ({agent.knowledgeBases.length})</p>
+                      <p className="text-muted-foreground mb-1 text-xs">
+                        知识库 ({getKnowledgeBasesArray(agent.knowledge_bases).length})
+                      </p>
                       <div className="flex flex-wrap gap-1">
-                        {agent.knowledgeBases.slice(0, 2).map(kb => (
-                          <Badge key={kb} variant="outline" className="text-xs">
-                            {kb}
-                          </Badge>
-                        ))}
-                        {agent.knowledgeBases.length > 2 && (
+                        {getKnowledgeBasesArray(agent.knowledge_bases)
+                          .slice(0, 2)
+                          .map((kb: string) => (
+                            <Badge key={kb} variant="outline" className="text-xs">
+                              {kb}
+                            </Badge>
+                          ))}
+                        {getKnowledgeBasesArray(agent.knowledge_bases).length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{agent.knowledgeBases.length - 2}
+                            +{getKnowledgeBasesArray(agent.knowledge_bases).length - 2}
                           </Badge>
                         )}
                       </div>

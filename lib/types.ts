@@ -7,19 +7,28 @@ export interface APIResponse<T> {
 
 // 智能体相关类型
 export interface Agent {
-  id: string;
+  id: number;
   name: string;
-  description: string;
-  avatar?: string;
+  description?: string | null;
   prompt: string;
-  model: string; // 'gpt-3.5-turbo' | 'gpt-4' | 'gpt-4-turbo'
+  ai_model_id?: number | null;
   temperature: number;
+  tools: unknown; // JSONB array
+  knowledge_bases: unknown; // JSONB array
+  metadata: unknown; // JSONB object
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+
+  // 关联查询字段
+  ai_model_name?: string | null;
+  ai_model_provider?: string | null;
+
+  // 前端扩展字段（兼容现有UI）
+  model?: string; // 从ai_model_name映射
   maxTokens?: number;
-  tools: string[]; // MCP工具ID列表
-  knowledgeBases: string[]; // 知识库ID列表
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  isActive?: boolean; // 从is_active映射
+  avatar?: string;
   statistics?: AgentStatistics;
 }
 
@@ -32,17 +41,52 @@ export interface AgentStatistics {
 
 export interface CreateAgentRequest {
   name: string;
-  description: string;
+  description?: string | null;
   prompt: string;
-  model: string;
+  ai_model_id?: number | null;
   temperature: number;
-  maxTokens?: number;
-  tools?: string[];
-  knowledgeBases?: string[];
+  tools?: unknown; // JSONB array
+  knowledge_bases?: unknown; // JSONB array
+  metadata?: unknown; // JSONB object
 }
 
-export interface UpdateAgentRequest extends Partial<CreateAgentRequest> {
-  isActive?: boolean;
+export interface UpdateAgentRequest {
+  name?: string;
+  description?: string | null;
+  prompt?: string;
+  ai_model_id?: number | null;
+  temperature?: number;
+  tools?: unknown; // JSONB array
+  knowledge_bases?: unknown; // JSONB array
+  metadata?: unknown; // JSONB object
+  is_active?: boolean;
+}
+
+// 智能体列表响应类型
+export interface AgentListResponse {
+  items: Agent[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+// 智能体详情响应类型（包含统计信息）
+export interface AgentResponse extends Agent {
+  conversation_count: number;
+  message_count: number;
+  token_usage: number;
+}
+
+// 智能体查询参数类型
+export interface AgentQueryParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  ai_model_id?: number;
+  is_active?: boolean;
+  order_by?: string;
+  order_dir?: 'asc' | 'desc';
 }
 
 // 对话相关类型

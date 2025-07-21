@@ -1,0 +1,591 @@
+package agents
+
+import (
+	"net/http"
+	"strconv"
+
+	"dootask-ai/go-service/global"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
+)
+
+// RegisterRoutes 注册智能体管理路由
+func RegisterRoutes(router *gin.RouterGroup) {
+	// 智能体管理 - 需要管理员权限
+	agentGroup := router.Group("/admin/agents")
+	{
+		agentGroup.GET("", ListAgents)                     // 获取智能体列表
+		agentGroup.POST("", CreateAgent)                   // 创建智能体
+		agentGroup.GET("/:id", GetAgent)                   // 获取智能体详情
+		agentGroup.PUT("/:id", UpdateAgent)                // 更新智能体
+		agentGroup.DELETE("/:id", DeleteAgent)             // 删除智能体
+		agentGroup.PATCH("/:id/toggle", ToggleAgentActive) // 切换智能体状态
+	}
+}
+
+// ListAgents 获取智能体列表
+func ListAgents(c *gin.Context) {
+	var params AgentQueryParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "查询参数格式错误",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	// 验证参数
+	validate := validator.New()
+	if err := validate.Struct(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "查询参数验证失败",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	// 构建查询
+	query := global.DB.Model(&Agent{})
+
+	// 搜索条件
+	if params.Search != "" {
+		searchTerm := "%" + params.Search + "%"
+		query = query.Where("name ILIKE ? OR description ILIKE ?", searchTerm, searchTerm)
+	}
+
+	// AI模型过滤
+	if params.AIModelID != nil {
+		query = query.Where("ai_model_id = ?", *params.AIModelID)
+	}
+
+	// 状态过滤
+	if params.IsActive != nil {
+		query = query.Where("is_active = ?", *params.IsActive)
+	}
+
+	// 获取总数
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "查询智能体总数失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 分页和排序
+	offset := (params.Page - 1) * params.PageSize
+	orderBy := params.GetOrderBy() + " " + params.OrderDir
+
+	var agents []Agent
+	if err := query.
+		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
+		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Order(orderBy).
+		Limit(params.PageSize).
+		Offset(offset).
+		Find(&agents).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "查询智能体列表失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 计算总页数
+	totalPages := int(total+int64(params.PageSize)-1) / params.PageSize
+
+	response := AgentListResponse{
+		Items:      agents,
+		Total:      total,
+		Page:       params.Page,
+		PageSize:   params.PageSize,
+		TotalPages: totalPages,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// CreateAgent 创建智能体
+func CreateAgent(c *gin.Context) {
+	var req CreateAgentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "请求数据格式错误",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	// 验证请求数据
+	validate := validator.New()
+	if err := validate.Struct(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    "VALIDATION_002",
+			"message": "数据验证失败",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	// 检查智能体名称是否已存在
+	var existingAgent Agent
+	if err := global.DB.Where("name = ?", req.Name).First(&existingAgent).Error; err == nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    "AGENT_001",
+			"message": "智能体名称已存在",
+			"data":    nil,
+		})
+		return
+	} else if err != gorm.ErrRecordNotFound {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "检查智能体名称失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 验证AI模型是否存在
+	if req.AIModelID != nil {
+		var modelCount int64
+		if err := global.DB.Model(&struct {
+			ID int64 `gorm:"primaryKey"`
+		}{}).Table("ai_models").Where("id = ? AND is_enabled = true", *req.AIModelID).Count(&modelCount).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "验证AI模型失败",
+				"data":    nil,
+			})
+			return
+		}
+		if modelCount == 0 {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"code":    "AI_MODEL_001",
+				"message": "指定的AI模型不存在或未启用",
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	// 处理JSONB字段默认值
+	if req.Tools == nil {
+		req.Tools = []byte("[]")
+	}
+	if req.KnowledgeBases == nil {
+		req.KnowledgeBases = []byte("[]")
+	}
+	if req.Metadata == nil {
+		req.Metadata = []byte("{}")
+	}
+
+	// 创建智能体
+	agent := Agent{
+		Name:           req.Name,
+		Description:    req.Description,
+		Prompt:         req.Prompt,
+		AIModelID:      req.AIModelID,
+		Temperature:    req.Temperature,
+		Tools:          req.Tools,
+		KnowledgeBases: req.KnowledgeBases,
+		Metadata:       req.Metadata,
+		IsActive:       true,
+	}
+
+	if err := global.DB.Create(&agent).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_002",
+			"message": "创建智能体失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 查询完整的智能体信息（包含关联数据）
+	var createdAgent Agent
+	if err := global.DB.
+		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
+		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Where("agents.id = ?", agent.ID).
+		First(&createdAgent).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "查询创建的智能体失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, createdAgent)
+}
+
+// GetAgent 获取智能体详情
+func GetAgent(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "无效的智能体ID",
+			"data":    nil,
+		})
+		return
+	}
+
+	var agent Agent
+	if err := global.DB.
+		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
+		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Where("agents.id = ?", id).
+		First(&agent).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"code":    "AGENT_002",
+				"message": "智能体不存在",
+				"data":    nil,
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "查询智能体失败",
+				"data":    nil,
+			})
+		}
+		return
+	}
+
+	// 查询使用统计
+	var conversationCount int64
+	global.DB.Model(&struct {
+		ID int64 `gorm:"primaryKey"`
+	}{}).Table("conversations").Where("agent_id = ?", id).Count(&conversationCount)
+
+	var messageCount int64
+	global.DB.Model(&struct {
+		ID int64 `gorm:"primaryKey"`
+	}{}).Table("messages").
+		Joins("JOIN conversations ON messages.conversation_id = conversations.id").
+		Where("conversations.agent_id = ?", id).
+		Count(&messageCount)
+
+	var tokenUsage int64
+	global.DB.Model(&struct {
+		TokensUsed int64 `gorm:"column:tokens_used"`
+	}{}).Table("messages").
+		Select("COALESCE(SUM(tokens_used), 0)").
+		Joins("JOIN conversations ON messages.conversation_id = conversations.id").
+		Where("conversations.agent_id = ?", id).
+		Scan(&tokenUsage)
+
+	response := AgentResponse{
+		Agent:             &agent,
+		ConversationCount: conversationCount,
+		MessageCount:      messageCount,
+		TokenUsage:        tokenUsage,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// UpdateAgent 更新智能体
+func UpdateAgent(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "无效的智能体ID",
+			"data":    nil,
+		})
+		return
+	}
+
+	var req UpdateAgentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "请求数据格式错误",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	// 验证请求数据
+	validate := validator.New()
+	if err := validate.Struct(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    "VALIDATION_002",
+			"message": "数据验证失败",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	// 检查智能体是否存在
+	var agent Agent
+	if err := global.DB.Where("id = ?", id).First(&agent).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"code":    "AGENT_002",
+				"message": "智能体不存在",
+				"data":    nil,
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "查询智能体失败",
+				"data":    nil,
+			})
+		}
+		return
+	}
+
+	// 检查智能体名称是否已被其他智能体使用
+	if req.Name != nil && *req.Name != agent.Name {
+		var existingAgent Agent
+		if err := global.DB.Where("name = ? AND id != ?", *req.Name, id).First(&existingAgent).Error; err == nil {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"code":    "AGENT_001",
+				"message": "智能体名称已存在",
+				"data":    nil,
+			})
+			return
+		} else if err != gorm.ErrRecordNotFound {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "检查智能体名称失败",
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	// 验证AI模型是否存在
+	if req.AIModelID != nil {
+		var modelCount int64
+		if err := global.DB.Model(&struct {
+			ID int64 `gorm:"primaryKey"`
+		}{}).Table("ai_models").Where("id = ? AND is_enabled = true", *req.AIModelID).Count(&modelCount).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "验证AI模型失败",
+				"data":    nil,
+			})
+			return
+		}
+		if modelCount == 0 {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"code":    "AI_MODEL_001",
+				"message": "指定的AI模型不存在或未启用",
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	// 构建更新数据
+	updates := make(map[string]interface{})
+	if req.Name != nil {
+		updates["name"] = *req.Name
+	}
+	if req.Description != nil {
+		updates["description"] = *req.Description
+	}
+	if req.Prompt != nil {
+		updates["prompt"] = *req.Prompt
+	}
+	if req.AIModelID != nil {
+		updates["ai_model_id"] = *req.AIModelID
+	}
+	if req.Temperature != nil {
+		updates["temperature"] = *req.Temperature
+	}
+	if req.Tools != nil {
+		updates["tools"] = req.Tools
+	}
+	if req.KnowledgeBases != nil {
+		updates["knowledge_bases"] = req.KnowledgeBases
+	}
+	if req.Metadata != nil {
+		updates["metadata"] = req.Metadata
+	}
+	if req.IsActive != nil {
+		updates["is_active"] = *req.IsActive
+	}
+
+	// 执行更新
+	if err := global.DB.Model(&agent).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_002",
+			"message": "更新智能体失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 查询更新后的智能体信息
+	var updatedAgent Agent
+	if err := global.DB.
+		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
+		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Where("agents.id = ?", id).
+		First(&updatedAgent).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "查询更新的智能体失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedAgent)
+}
+
+// DeleteAgent 删除智能体
+func DeleteAgent(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "无效的智能体ID",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 检查智能体是否存在
+	var agent Agent
+	if err := global.DB.Where("id = ?", id).First(&agent).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"code":    "AGENT_002",
+				"message": "智能体不存在",
+				"data":    nil,
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "查询智能体失败",
+				"data":    nil,
+			})
+		}
+		return
+	}
+
+	// 检查是否有关联的对话记录
+	var conversationCount int64
+	if err := global.DB.Model(&struct {
+		ID int64 `gorm:"primaryKey"`
+	}{}).Table("conversations").Where("agent_id = ?", id).Count(&conversationCount).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "检查关联对话失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	if conversationCount > 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    "AGENT_003",
+			"message": "智能体有关联的对话记录，无法删除",
+			"data":    map[string]int64{"conversation_count": conversationCount},
+		})
+		return
+	}
+
+	// 删除智能体
+	if err := global.DB.Delete(&agent).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_002",
+			"message": "删除智能体失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "智能体删除成功",
+	})
+}
+
+// ToggleAgentActive 切换智能体活跃状态
+func ToggleAgentActive(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "无效的智能体ID",
+			"data":    nil,
+		})
+		return
+	}
+
+	var req struct {
+		IsActive bool `json:"is_active" validate:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "请求数据格式错误",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	// 检查智能体是否存在
+	var agent Agent
+	if err := global.DB.Where("id = ?", id).First(&agent).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"code":    "AGENT_002",
+				"message": "智能体不存在",
+				"data":    nil,
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "查询智能体失败",
+				"data":    nil,
+			})
+		}
+		return
+	}
+
+	// 更新状态
+	if err := global.DB.Model(&agent).Update("is_active", req.IsActive).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_002",
+			"message": "更新智能体状态失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	// 返回更新后的智能体
+	var updatedAgent Agent
+	if err := global.DB.
+		Select("agents.*, ai_models.name as ai_model_name, ai_models.provider as ai_model_provider").
+		Joins("LEFT JOIN ai_models ON agents.ai_model_id = ai_models.id").
+		Where("agents.id = ?", id).
+		First(&updatedAgent).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "查询更新的智能体失败",
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedAgent)
+}
