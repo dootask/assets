@@ -1,3 +1,4 @@
+import { getProviderInfo } from '@/lib/ai';
 import apiClient from '@/lib/axios';
 import {
   AIModelConfig,
@@ -52,24 +53,6 @@ export const aiModelsApi = {
     const response = await apiClient.delete<{ success: boolean; data: { message: string } }>(`/admin/ai-models/${id}`);
     return response.data.data;
   },
-};
-
-// 工具函数
-export const getProviderInfo = (provider: string) => {
-  const providerMap = {
-    openai: { name: 'OpenAI', color: 'bg-green-100 text-green-800', icon: '🤖' },
-    anthropic: { name: 'Anthropic', color: 'bg-orange-100 text-orange-800', icon: '🧠' },
-    google: { name: 'Google', color: 'bg-blue-100 text-blue-800', icon: '🔍' },
-    azure: { name: 'Azure OpenAI', color: 'bg-purple-100 text-purple-800', icon: '☁️' },
-    local: { name: '本地模型', color: 'bg-gray-100 text-gray-800', icon: '🏠' },
-  };
-  return (
-    providerMap[provider as keyof typeof providerMap] || {
-      name: provider,
-      color: 'bg-gray-100 text-gray-800',
-      icon: '❓',
-    }
-  );
 };
 
 export const getModelDisplayName = (model: AIModelConfig): string => {

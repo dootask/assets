@@ -72,6 +72,7 @@ export function CommandSelect({
                 <CommandItem
                   key={option.value}
                   value={option.value}
+                  keywords={[option.value, option.label, option.description ?? '']}
                   onSelect={currentValue => {
                     onValueChange?.(currentValue === safeValue ? '' : currentValue);
                     setOpen(false);

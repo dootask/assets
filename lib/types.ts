@@ -216,7 +216,7 @@ export interface SystemSettings {
 export interface AIModelConfig {
   id: number;
   name: string;
-  provider: 'openai' | 'anthropic' | 'google' | 'azure' | 'local';
+  provider: string;
   model_name: string;
   api_key?: string | null;
   base_url: string;
@@ -251,7 +251,7 @@ export interface CreateAIModelRequest {
 
 export interface UpdateAIModelRequest {
   name?: string;
-  provider?: 'openai' | 'anthropic' | 'google' | 'azure' | 'local';
+  provider?: string;
   model_name?: string;
   api_key?: string | null;
   base_url?: string;

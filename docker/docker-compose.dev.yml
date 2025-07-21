@@ -10,9 +10,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - dootask-ai
+      - ./dev-data/postgres:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
@@ -20,63 +18,4 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
-    networks:
-      - dootask-ai
-
-  # go-service:
-  #   build:
-  #     context: ../backend/go-service
-  #     dockerfile: Dockerfile.dev
-  #   container_name: dootask-ai-go-service
-  #   ports:
-  #     - "8080:8080"
-  #   environment:
-  #     - DB_HOST=postgres
-  #     - DB_PORT=5432
-  #     - DB_NAME=dootask_ai
-  #     - DB_USER=dootask
-  #     - DB_PASSWORD=dootask123
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #     - PYTHON_AI_URL=http://python-ai:8001
-  #     - JWT_SECRET=your-jwt-secret-key
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   volumes:
-  #     - ../backend/go-service:/app
-  #   networks:
-  #     - dootask-ai
-
-  # python-ai:
-  #   build:
-  #     context: ../backend/python-ai
-  #     dockerfile: Dockerfile.dev
-  #   container_name: dootask-ai-python-ai
-  #   ports:
-  #     - "8001:8001"
-  #   environment:
-  #     - OPENAI_API_KEY=your-openai-api-key
-  #     - DB_HOST=postgres
-  #     - DB_PORT=5432
-  #     - DB_NAME=dootask_ai
-  #     - DB_USER=dootask
-  #     - DB_PASSWORD=dootask123
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   volumes:
-  #     - ../backend/python-ai:/app
-  #   networks:
-  #     - dootask-ai
-
-volumes:
-  postgres_data:
-  redis_data:
-
-networks:
-  dootask-ai:
-    driver: bridge 
+      - ./dev-data/redis:/data

@@ -24,7 +24,6 @@ CREATE TABLE IF NOT EXISTS kb_documents (
     file_path VARCHAR(500),
     file_type VARCHAR(50),
     file_size BIGINT,
-    -- OpenAI embedding 维度
     embedding VECTOR(1536),
     metadata JSONB DEFAULT '{}',
     chunk_index INTEGER DEFAULT 0,

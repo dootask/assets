@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { embeddingModels } from '@/lib/ai';
 
 // 前端表单数据类型
 interface KnowledgeBaseFormData {
@@ -42,33 +43,8 @@ export default function CreateKnowledgeBasePage() {
     chunkOverlap: 200,
   });
 
-  // 可用的 Embedding 模型
-  const availableModels = [
-    {
-      value: 'text-embedding-ada-002',
-      label: 'OpenAI Ada-002',
-      description: '成本较低，适合大部分场景',
-      dimensions: 1536,
-      cost: '低',
-    },
-    {
-      value: 'text-embedding-3-small',
-      label: 'OpenAI Embedding v3 Small',
-      description: '平衡性能与成本',
-      dimensions: 1536,
-      cost: '中',
-    },
-    {
-      value: 'text-embedding-3-large',
-      label: 'OpenAI Embedding v3 Large',
-      description: '最佳性能，成本较高',
-      dimensions: 3072,
-      cost: '高',
-    },
-  ];
-
   // 转换为CommandSelect选项
-  const modelSelectOptions: CommandSelectOption[] = availableModels.map(model => ({
+  const modelSelectOptions: CommandSelectOption[] = embeddingModels.map(model => ({
     value: model.value,
     label: model.label,
     description: model.description,
@@ -96,7 +72,7 @@ export default function CreateKnowledgeBasePage() {
     }
   };
 
-  const selectedModel = availableModels.find(model => model.value === formData.embeddingModel);
+  const selectedModel = embeddingModels.find(model => model.value === formData.embeddingModel);
 
   return (
     <div className="space-y-6 p-6">

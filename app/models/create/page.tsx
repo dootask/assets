@@ -22,14 +22,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { providerOptions } from '@/lib/ai';
 
 export default function CreateModelPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<CreateAIModelRequest>({
     name: '',
-    provider: 'openai',
-    model_name: 'gpt-3.5-turbo',
+    provider: '',
+    model_name: '',
     api_key: '',
     base_url: '',
     max_tokens: 4000,
@@ -38,49 +39,10 @@ export default function CreateModelPage() {
     is_default: false,
   });
 
-  // AI提供商配置
-  const providerOptions = [
-    {
-      value: 'openai' as const,
-      label: 'OpenAI',
-      baseUrl: 'https://api.openai.com/v1',
-      models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o'],
-      description: '最流行的AI模型提供商',
-    },
-    {
-      value: 'anthropic' as const,
-      label: 'Anthropic',
-      baseUrl: 'https://api.anthropic.com',
-      models: ['claude-3-haiku-20240307', 'claude-3-sonnet-20240229', 'claude-3-opus-20240229'],
-      description: '高质量对话AI模型',
-    },
-    {
-      value: 'google' as const,
-      label: 'Google',
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-      models: ['gemini-pro', 'gemini-pro-vision', 'gemini-1.5-pro'],
-      description: 'Google最新AI模型',
-    },
-    {
-      value: 'azure' as const,
-      label: 'Azure OpenAI',
-      baseUrl: 'https://your-resource.openai.azure.com',
-      models: ['gpt-35-turbo', 'gpt-4', 'gpt-4-32k'],
-      description: '微软Azure AI服务',
-    },
-    {
-      value: 'local' as const,
-      label: '本地模型',
-      baseUrl: 'http://localhost:11434',
-      models: ['llama2', 'mistral', 'codellama', 'qwen'],
-      description: '本地部署开源模型',
-    },
-  ];
-
   // 转换为CommandSelect选项
   const providerSelectOptions: CommandSelectOption[] = providerOptions.map(option => ({
     value: option.value,
-    label: option.label,
+    label: option.name,
     description: option.description,
   }));
 
@@ -255,14 +217,16 @@ export default function CreateModelPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="temperature">温度参数: {formData.temperature}</Label>
-                    <Slider
-                      value={[formData.temperature]}
-                      onValueChange={([value]) => setFormData(prev => ({ ...prev, temperature: value }))}
-                      max={2}
-                      min={0}
-                      step={0.1}
-                      className="w-full"
-                    />
+                    <div className="flex h-9 items-center">
+                      <Slider
+                        value={[formData.temperature]}
+                        onValueChange={([value]) => setFormData(prev => ({ ...prev, temperature: value }))}
+                        max={2}
+                        min={0}
+                        step={0.1}
+                        className="w-full"
+                      />
+                    </div>
                     <p className="text-muted-foreground text-xs">控制输出的随机性，0为确定性，2为高随机性</p>
                   </div>
                 </div>
@@ -360,7 +324,7 @@ export default function CreateModelPage() {
           {selectedProvider && (
             <Card>
               <CardHeader>
-                <CardTitle>{selectedProvider.label}</CardTitle>
+                <CardTitle>{selectedProvider.name}</CardTitle>
                 <CardDescription>{selectedProvider.description}</CardDescription>
               </CardHeader>
               <CardContent>

@@ -4,11 +4,8 @@
 CREATE TABLE IF NOT EXISTS ai_models (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    -- 提供商: 'openai', 'anthropic', 'google', 'azure', 'local'
     provider VARCHAR(100) NOT NULL,
-    -- 模型名称: 'gpt-4', 'claude-3', 'gemini-pro'
     model_name VARCHAR(255) NOT NULL,
-    -- 加密存储，可为空(本地模型)
     api_key TEXT,
     base_url VARCHAR(500),
     max_tokens INTEGER DEFAULT 4000,

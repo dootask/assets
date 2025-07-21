@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS agents (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     prompt TEXT NOT NULL,
-    -- 关联到 ai_models 表
     ai_model_id BIGINT REFERENCES ai_models(id),
     temperature DECIMAL(3,2) DEFAULT 0.7,
     tools JSONB DEFAULT '[]',

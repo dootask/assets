@@ -18,8 +18,9 @@ import { formatKnowledgeBaseForUI, knowledgeBasesApi, parseKnowledgeBaseMetadata
 import { Database, Save, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { embeddingModels } from '@/lib/ai';
 
 // 前端表单数据类型
 interface KnowledgeBaseFormData {
@@ -40,48 +41,19 @@ export default function EditKnowledgeBasePage() {
   const [formData, setFormData] = useState<KnowledgeBaseFormData>({
     name: '',
     description: '',
-    embeddingModel: 'text-embedding-ada-002',
+    embeddingModel: '',
     chunkSize: 1000,
     chunkOverlap: 200,
   });
 
-  // 可用的 Embedding 模型
-  const availableModels = [
-    {
-      value: 'text-embedding-ada-002',
-      label: 'OpenAI Ada-002',
-      description: '成本较低，适合大部分场景',
-      dimensions: 1536,
-      cost: '低',
-    },
-    {
-      value: 'text-embedding-3-small',
-      label: 'OpenAI Embedding v3 Small',
-      description: '平衡性能与成本',
-      dimensions: 1536,
-      cost: '中',
-    },
-    {
-      value: 'text-embedding-3-large',
-      label: 'OpenAI Embedding v3 Large',
-      description: '最佳性能，成本较高',
-      dimensions: 3072,
-      cost: '高',
-    },
-  ];
-
   // 转换为CommandSelect选项
-  const modelSelectOptions: CommandSelectOption[] = availableModels.map(model => ({
+  const modelSelectOptions: CommandSelectOption[] = embeddingModels.map(model => ({
     value: model.value,
     label: model.label,
     description: model.description,
   }));
 
-  useEffect(() => {
-    loadData();
-  }, [params.id]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const kbId = parseInt(params.id as string);
@@ -92,7 +64,7 @@ export default function EditKnowledgeBasePage() {
       setFormData({
         name: formattedKB.name || '',
         description: formattedKB.description || '',
-        embeddingModel: formattedKB.embeddingModel || formattedKB.embedding_model || 'text-embedding-ada-002',
+        embeddingModel: formattedKB.embeddingModel || formattedKB.embedding_model,
         chunkSize: formattedKB.chunk_size || 1000,
         chunkOverlap: formattedKB.chunk_overlap || 200,
         isActive: formattedKB.isActive !== undefined ? formattedKB.isActive : formattedKB.is_active,
@@ -103,7 +75,7 @@ export default function EditKnowledgeBasePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +100,11 @@ export default function EditKnowledgeBasePage() {
     }
   };
 
-  const selectedModel = availableModels.find(model => model.value === formData.embeddingModel);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const selectedModel = embeddingModels.find(model => model.value === formData.embeddingModel);
 
   if (loading) {
     return (

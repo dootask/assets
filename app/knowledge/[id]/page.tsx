@@ -27,7 +27,7 @@ import { KnowledgeBase, KnowledgeBaseDocument } from '@/lib/types';
 import { Database, Edit, FileText, Plus, Search, Settings, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function KnowledgeBaseDetailPage() {
@@ -43,11 +43,7 @@ export default function KnowledgeBaseDetailPage() {
   // 可以根据URL hash或其他方式获取默认tab，这里暂时使用固定值
   const defaultTab = 'documents';
 
-  useEffect(() => {
-    loadData();
-  }, [params.id]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const kbId = parseInt(params.id as string);
@@ -70,7 +66,7 @@ export default function KnowledgeBaseDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id]);
 
   const handleDelete = async () => {
     if (
@@ -178,6 +174,10 @@ export default function KnowledgeBaseDetailPage() {
         return <FileText className={`${iconClass} text-muted-foreground`} />;
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return (

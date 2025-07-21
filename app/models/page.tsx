@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
-import { aiModelsApi, getModelDisplayName, getProviderInfo } from '@/lib/api/ai-models';
+import { aiModelsApi, getModelDisplayName } from '@/lib/api/ai-models';
+import { getProviderInfo } from '@/lib/ai';
 import { AIModelConfig } from '@/lib/types';
 import { Activity, CheckCircle, Cpu, Edit, Eye, Key, MoreHorizontal, Plus, Settings, Star, Trash2 } from 'lucide-react';
 import Link from 'next/link';
