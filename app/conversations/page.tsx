@@ -15,6 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+import { agentsApi } from '@/lib/api/agents';
+import {
+  ConversationListResponse,
+  ConversationQueryParams,
+  fetchConversationMessages,
+  fetchConversations,
+} from '@/lib/api/conversations';
 import { Agent, Conversation, Message } from '@/lib/types';
 import { Bot, Calendar, CheckCircle, Clock, Eye, Filter, MessageSquare, Search, TrendingUp, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -26,83 +33,85 @@ export default function ConversationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
+  const [statistics, setStatistics] = useState({
+    total: 0,
+    today: 0,
+    averageMessages: 0,
+    averageResponseTime: 0,
+  });
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock消息数据 - 为选定对话生成详细消息
-  const generateMockMessages = (conversation: Conversation): Message[] => {
-    return [
-      {
-        id: `msg-${conversation.id}-1`,
-        conversationId: conversation.id,
-        role: 'user',
-        content: `请帮我分析一下项目进度`,
-        createdAt: new Date(new Date(conversation.createdAt).getTime() + 1000).toISOString(),
-      },
-      {
-        id: `msg-${conversation.id}-2`,
-        conversationId: conversation.id,
-        role: 'assistant',
-        content: `好的，我来帮您分析项目进度。根据当前的任务完成情况，项目整体进展良好。
+  const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // 构建查询参数
+      const params: ConversationQueryParams = {
+        page: 1,
+        page_size: 50,
+      };
 
-主要完成项目：
-- ✅ 前端界面设计 (100%)
-- ✅ 用户认证模块 (100%)
-- 🔄 核心功能开发 (80%)
-- ⏳ API集成 (30%)
-- ⏳ 测试阶段 (10%)
+      if (selectedAgent !== 'all') {
+        params.agent_id = parseInt(selectedAgent);
+      }
 
-建议下一步重点关注API集成部分，预计还需要2周时间完成。`,
-        responseTime: conversation.lastMessage?.responseTime || 2.1,
-        createdAt: new Date(new Date(conversation.createdAt).getTime() + 3000).toISOString(),
-      },
-      {
-        id: `msg-${conversation.id}-3`,
-        conversationId: conversation.id,
-        role: 'user',
-        content: `有什么需要注意的风险点吗？`,
-        createdAt: new Date(new Date(conversation.createdAt).getTime() + 5000).toISOString(),
-      },
-      {
-        id: `msg-${conversation.id}-4`,
-        conversationId: conversation.id,
-        role: 'assistant',
-        content: `基于当前进展，我识别出以下几个风险点：
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
 
-🚨 **高风险**
-- API集成延期可能影响整体交付时间
-- 第三方服务依赖稳定性待确认
+      // 获取对话列表
+      const conversationResponse: ConversationListResponse = await fetchConversations(params);
 
-⚠️ **中风险**
-- 测试资源投入不足
-- 性能优化时间预留较少
+      // 直接使用API返回的数据，不需要转换
+      setConversations(conversationResponse.items);
 
-✅ **建议措施**
-- 提前与API提供方确认接口规范
-- 制定备用方案
-- 增加测试人员投入`,
-        responseTime: 1.8,
-        createdAt: new Date(new Date(conversation.createdAt).getTime() + 7000).toISOString(),
-      },
-    ];
+      // 设置统计信息
+      setStatistics({
+        total: conversationResponse.statistics.total,
+        today: conversationResponse.statistics.today,
+        averageMessages: Math.round(conversationResponse.statistics.average_messages),
+        averageResponseTime: conversationResponse.statistics.average_response_time,
+      });
+
+      // 获取智能体列表
+      const agentResponse = await agentsApi.list({ page: 1, page_size: 100 });
+      setAgents(agentResponse.items);
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      setError('加载对话数据失败，请检查后端服务是否正常运行');
+      // 如果API调用失败，显示空数据
+      setConversations([]);
+      setAgents([]);
+      setStatistics({ total: 0, today: 0, averageMessages: 0, averageResponseTime: 0 });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const loadData = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      // TODO: Replace with real API calls
-      const conversationList: Conversation[] = [];
-      const agentList: Agent[] = [];
+  // 加载对话消息
+  const loadConversationMessages = async (conversationId: string) => {
+    try {
+      const messagesResponse = await fetchConversationMessages(conversationId, {
+        page: 1,
+        page_size: 100,
+        order_by: 'created_at',
+        order_dir: 'asc',
+      });
 
-      setConversations(conversationList);
-      setAgents(agentList);
-      setIsLoading(false);
-    }, 300);
+      // 直接使用API返回的数据，不需要转换
+      setConversationMessages(messagesResponse.items);
+    } catch (error) {
+      console.error('加载消息失败:', error);
+      setConversationMessages([]);
+    }
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedAgent, searchQuery]);
 
-  // 过滤对话
+  // 过滤对话（前端过滤作为后端过滤的补充）
   const filteredConversations = conversations.filter(conv => {
     const matchesAgent = selectedAgent === 'all' || conv.agentId === selectedAgent;
     const matchesSearch =
@@ -111,24 +120,6 @@ export default function ConversationsPage() {
       conv.agentName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesAgent && matchesSearch;
   });
-
-  // 计算统计数据
-  const stats = {
-    total: filteredConversations.length,
-    today: filteredConversations.filter(conv => new Date(conv.createdAt).toDateString() === new Date().toDateString())
-      .length,
-    averageMessages:
-      filteredConversations.length > 0
-        ? Math.round(
-            filteredConversations.reduce((sum, conv) => sum + conv.messagesCount, 0) / filteredConversations.length
-          )
-        : 0,
-    averageResponseTime:
-      filteredConversations.length > 0
-        ? filteredConversations.reduce((sum, conv) => sum + (conv.lastMessage?.responseTime || 0), 0) /
-          filteredConversations.length
-        : 0,
-  };
 
   const getResponseTimeBadge = (responseTime?: number) => {
     if (!responseTime) return <Badge variant="outline">-</Badge>;
@@ -149,6 +140,11 @@ export default function ConversationsPage() {
         较慢
       </Badge>
     );
+  };
+
+  const handleViewConversation = async (conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    await loadConversationMessages(conversation.id);
   };
 
   if (isLoading) {
@@ -196,8 +192,8 @@ export default function ConversationsPage() {
             <MessageSquare className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-muted-foreground text-xs">今日新增 {stats.today}</p>
+            <div className="text-2xl font-bold">{statistics.total}</div>
+            <p className="text-muted-foreground text-xs">今日新增 {statistics.today}</p>
           </CardContent>
         </Card>
 
@@ -207,7 +203,7 @@ export default function ConversationsPage() {
             <TrendingUp className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.averageMessages}</div>
+            <div className="text-2xl font-bold">{statistics.averageMessages}</div>
             <p className="text-muted-foreground text-xs">每个对话</p>
           </CardContent>
         </Card>
@@ -218,7 +214,7 @@ export default function ConversationsPage() {
             <Clock className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.averageResponseTime.toFixed(1)}s</div>
+            <div className="text-2xl font-bold">{statistics.averageResponseTime.toFixed(1)}s</div>
             <p className="text-muted-foreground text-xs">AI 处理时间</p>
           </CardContent>
         </Card>
@@ -286,13 +282,24 @@ export default function ConversationsPage() {
           <CardDescription>显示 {filteredConversations.length} 条对话记录</CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredConversations.length === 0 ? (
+          {error && (
+            <div className="py-12 text-center">
+              <MessageSquare className="mx-auto mb-4 h-12 w-12 text-red-500" />
+              <h3 className="mb-2 text-lg font-medium text-red-600">加载失败</h3>
+              <p className="text-muted-foreground">{error}</p>
+              <Button onClick={loadData} variant="outline" className="mt-4">
+                重试
+              </Button>
+            </div>
+          )}
+          {!error && filteredConversations.length === 0 && (
             <div className="py-12 text-center">
               <MessageSquare className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
               <h3 className="mb-2 text-lg font-medium">暂无对话记录</h3>
               <p className="text-muted-foreground">尚未找到匹配的对话记录</p>
             </div>
-          ) : (
+          )}
+          {!error && filteredConversations.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -334,7 +341,7 @@ export default function ConversationsPage() {
                     <TableCell className="text-right">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedConversation(conversation)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleViewConversation(conversation)}>
                             <Eye className="mr-1 h-4 w-4" />
                             查看详情
                           </Button>
@@ -377,7 +384,7 @@ export default function ConversationsPage() {
                                 {/* 消息记录 */}
                                 <div className="space-y-3">
                                   <h4 className="font-medium">消息记录</h4>
-                                  {generateMockMessages(selectedConversation).map(message => (
+                                  {conversationMessages.map(message => (
                                     <div
                                       key={message.id}
                                       className={`rounded-lg p-3 ${

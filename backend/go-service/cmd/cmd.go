@@ -7,6 +7,8 @@ import (
 	"dootask-ai/go-service/pkg/utils"
 	"dootask-ai/go-service/routes/api/agents"
 	"dootask-ai/go-service/routes/api/aimodels"
+	"dootask-ai/go-service/routes/api/conversations"
+	"dootask-ai/go-service/routes/api/dashboard"
 	knowledgebases "dootask-ai/go-service/routes/api/knowledge-bases"
 	mcptools "dootask-ai/go-service/routes/api/mcp-tools"
 	"dootask-ai/go-service/routes/api/test"
@@ -106,6 +108,12 @@ func runServer(*cobra.Command, []string) {
 
 	// 导入MCP工具管理路由
 	mcptools.RegisterRoutes(api)
+
+	// 导入对话管理路由
+	conversations.RegisterRoutes(api)
+
+	// 导入仪表板路由
+	dashboard.RegisterRoutes(api)
 
 	// 获取端口
 	port := utils.GetEnvWithDefault("GO_SERVICE_PORT", "8000")
