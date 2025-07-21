@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
 import { Agent, KnowledgeBase, MCPTool } from '@/lib/types';
 import { Bot, Database, Edit, MessageSquare, Settings, Trash2, Wrench } from 'lucide-react';
@@ -28,6 +29,7 @@ interface AgentDetail extends Agent {
 export default function AgentDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { Confirm } = useAppContext();
   const [agent, setAgent] = useState<AgentDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,8 +54,8 @@ export default function AgentDetailPage() {
     setLoading(false);
   }, [params.id]);
 
-  const handleDelete = () => {
-    if (confirm('确定要删除这个智能体吗？此操作不可撤销。')) {
+  const handleDelete = async () => {
+    if (await Confirm('确定要删除这个智能体吗？此操作不可撤销。')) {
       MockDataManager.deleteAgent(params.id as string);
       toast.success('智能体删除成功');
       router.push('/agents');

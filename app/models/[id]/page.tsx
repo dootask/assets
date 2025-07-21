@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
 import { AIModelConfig } from '@/lib/types';
 import { Cpu, Edit, Key, Settings, Star, Trash2, Zap } from 'lucide-react';
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 export default function ModelDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { Confirm } = useAppContext();
   const [model, setModel] = useState<AIModelConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
@@ -39,8 +41,8 @@ export default function ModelDetailPage() {
     setLoading(false);
   }, [params.id]);
 
-  const handleDelete = () => {
-    if (confirm('确定要删除这个AI模型吗？此操作不可撤销。')) {
+  const handleDelete = async () => {
+    if (await Confirm('确定要删除这个AI模型吗？此操作不可撤销。')) {
       MockDataManager.deleteAIModel(params.id as string);
       toast.success('AI模型删除成功');
       router.push('/models');

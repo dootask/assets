@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
 import { KnowledgeBase, KnowledgeBaseDocument } from '@/lib/types';
 import { Database, Edit, FileText, Plus, Search, Settings, Trash2 } from 'lucide-react';
@@ -26,6 +27,7 @@ import { toast } from 'sonner';
 export default function KnowledgeBaseDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { Confirm } = useAppContext();
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(null);
   const [documents, setDocuments] = useState<KnowledgeBaseDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,8 +79,8 @@ export default function KnowledgeBaseDetailPage() {
     setLoading(false);
   }, [params.id]);
 
-  const handleDelete = () => {
-    if (confirm('确定要删除这个知识库吗？此操作不可撤销。')) {
+  const handleDelete = async () => {
+    if (await Confirm('确定要删除这个知识库吗？此操作不可撤销。')) {
       MockDataManager.deleteKnowledgeBase(params.id as string);
       toast.success('知识库删除成功');
       router.push('/knowledge');
@@ -122,8 +124,8 @@ export default function KnowledgeBaseDetailPage() {
     }, 1000);
   };
 
-  const handleDeleteDocument = (docId: string) => {
-    if (confirm('确定要删除这个文档吗？')) {
+  const handleDeleteDocument = async (docId: string) => {
+    if (await Confirm('确定要删除这个文档吗？')) {
       setDocuments(prev => prev.filter(doc => doc.id !== docId));
       toast.success('文档删除成功');
     }

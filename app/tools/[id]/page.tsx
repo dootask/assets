@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { useAppContext } from '@/contexts/app-context';
 import { MockDataManager } from '@/lib/mock-data';
 import { MCPTool } from '@/lib/types';
 import { Edit, ExternalLink, Key, Settings, Shield, Trash2, Wrench, Zap } from 'lucide-react';
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 export default function MCPToolDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { Confirm } = useAppContext();
   const [tool, setTool] = useState<MCPTool | null>(null);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
@@ -39,8 +41,8 @@ export default function MCPToolDetailPage() {
     setLoading(false);
   }, [params.id]);
 
-  const handleDelete = () => {
-    if (confirm('确定要删除这个MCP工具吗？此操作不可撤销。')) {
+  const handleDelete = async () => {
+    if (await Confirm('确定要删除这个MCP工具吗？此操作不可撤销。')) {
       // MockDataManager.deleteMCPTool(params.id as string);
       toast.success('MCP工具删除成功');
       router.push('/tools');
