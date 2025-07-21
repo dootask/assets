@@ -42,6 +42,13 @@ const translateErrorCode = (code: string): string => {
     WEBHOOK_001: 'Webhook配置错误',
     AI_001: 'AI服务暂不可用',
     AI_002: 'AI响应超时',
+    // AI模型管理相关错误码
+    AI_MODEL_001: '查询AI模型失败',
+    AI_MODEL_002: 'AI模型不存在',
+    AI_MODEL_003: 'AI模型名称已存在',
+    AI_MODEL_004: 'AI模型操作失败',
+    AI_MODEL_005: '删除AI模型失败',
+    AI_MODEL_006: '该AI模型正在被智能体使用，无法删除',
   };
   return errorMap[code] || '系统错误，请稍后重试';
 };

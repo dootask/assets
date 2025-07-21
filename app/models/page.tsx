@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
-import { MockDataManager } from '@/lib/mock-data';
+import { aiModelsApi, getModelDisplayName, getProviderInfo } from '@/lib/api/ai-models';
 import { AIModelConfig } from '@/lib/types';
 import { Activity, CheckCircle, Cpu, Edit, Eye, Key, MoreHorizontal, Plus, Settings, Star, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -23,39 +23,47 @@ export default function ModelsPage() {
   const [models, setModels] = useState<AIModelConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadModels = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      MockDataManager.initializeData();
-      const settings = MockDataManager.getSystemSettings();
-      setModels(settings.aiModels);
+  const loadModels = async () => {
+    try {
+      setIsLoading(true);
+      const data = await aiModelsApi.getAIModels({});
+      setModels(data.models);
+    } catch (error) {
+      console.error('加载AI模型列表失败:', error);
+      toast.error('加载AI模型列表失败');
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   };
 
   useEffect(() => {
     loadModels();
   }, []);
 
-  const handleToggleActive = (modelId: string, isActive: boolean) => {
-    const updatedModel = MockDataManager.updateAIModel(modelId, { isActive });
-    if (updatedModel) {
+  const handleToggleActive = async (modelId: number, isActive: boolean) => {
+    try {
+      const updatedModel = await aiModelsApi.updateAIModel(modelId, { is_enabled: isActive });
       setModels(prevModels => prevModels.map(model => (model.id === modelId ? updatedModel : model)));
       toast.success(isActive ? '模型已启用' : '模型已停用');
+    } catch (error) {
+      console.error('更新模型状态失败:', error);
+      toast.error('更新模型状态失败');
     }
   };
 
-  const handleSetDefault = (modelId: string) => {
-    const updatedModel = MockDataManager.updateAIModel(modelId, { isDefault: true });
-    if (updatedModel) {
+  const handleSetDefault = async (modelId: number) => {
+    try {
+      await aiModelsApi.updateAIModel(modelId, { is_default: true });
       // 重新加载所有模型以确保只有一个默认模型
-      const settings = MockDataManager.getSystemSettings();
-      setModels(settings.aiModels);
+      await loadModels();
       toast.success('已设为默认模型');
+    } catch (error) {
+      console.error('设置默认模型失败:', error);
+      toast.error('设置默认模型失败');
     }
   };
 
-  const handleDeleteModel = async (modelId: string) => {
+  const handleDeleteModel = async (modelId: number) => {
     if (
       await Confirm({
         title: '确认删除AI模型',
@@ -63,27 +71,15 @@ export default function ModelsPage() {
         variant: 'destructive',
       })
     ) {
-      const success = MockDataManager.removeAIModel(modelId);
-      if (success) {
+      try {
+        await aiModelsApi.deleteAIModel(modelId);
         setModels(prevModels => prevModels.filter(model => model.id !== modelId));
         toast.success('模型已删除');
+      } catch (error) {
+        console.error('删除模型失败:', error);
+        toast.error('删除模型失败');
       }
     }
-  };
-
-  const getProviderInfo = (provider: string) => {
-    const providerMap = {
-      openai: { name: 'ChatGPT (OpenAI)', color: 'bg-green-100 text-green-800' },
-      anthropic: { name: 'Claude (Anthropic)', color: 'bg-orange-100 text-orange-800' },
-      deepseek: { name: 'DeepSeek', color: 'bg-purple-100 text-purple-800' },
-      google: { name: 'Gemini (Google)', color: 'bg-blue-100 text-blue-800' },
-      xai: { name: 'Grok (xAI)', color: 'bg-gray-100 text-gray-800' },
-      ollama: { name: 'Ollama (本地)', color: 'bg-indigo-100 text-indigo-800' },
-      zhipuai: { name: '智谱清言', color: 'bg-cyan-100 text-cyan-800' },
-      qwen: { name: '通义千问', color: 'bg-red-100 text-red-800' },
-      wenxin: { name: '文心一言', color: 'bg-yellow-100 text-yellow-800' },
-    };
-    return providerMap[provider as keyof typeof providerMap] || { name: provider, color: 'bg-gray-100 text-gray-800' };
   };
 
   if (isLoading) {
@@ -149,7 +145,7 @@ export default function ModelsPage() {
             <Activity className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{models.filter(m => m.isActive).length}</div>
+            <div className="text-2xl font-bold">{models.filter(m => m.is_enabled).length}</div>
             <p className="text-muted-foreground text-xs">已启用模型</p>
           </CardContent>
         </Card>
@@ -160,7 +156,7 @@ export default function ModelsPage() {
             <Star className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{models.find(m => m.isDefault)?.displayName || '未设置'}</div>
+            <div className="text-2xl font-bold">{models.find(m => m.is_default)?.name || '未设置'}</div>
             <p className="text-muted-foreground text-xs">当前默认</p>
           </CardContent>
         </Card>
@@ -181,30 +177,33 @@ export default function ModelsPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {models.map(model => {
           const providerInfo = getProviderInfo(model.provider);
+          const displayName = getModelDisplayName(model);
 
           return (
             <Card
               key={model.id}
-              className={`transition-all ${model.isActive ? 'border-green-200 bg-green-50/30 dark:border-green-800 dark:bg-green-950/20' : 'opacity-75'}`}
+              className={`transition-all ${model.is_enabled ? 'border-green-200 bg-green-50/30 dark:border-green-800 dark:bg-green-950/20' : 'opacity-75'}`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`rounded-lg p-2 ${model.isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+                    <div
+                      className={`rounded-lg p-2 ${model.is_enabled ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
+                    >
                       <Cpu
-                        className={`h-5 w-5 ${model.isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+                        className={`h-5 w-5 ${model.is_enabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
                       />
                     </div>
                     <div>
                       <CardTitle className="flex items-center gap-2 text-lg">
-                        {model.displayName}
-                        {model.isDefault && <Star className="h-4 w-4 fill-current text-yellow-500" />}
+                        {displayName}
+                        {model.is_default && <Star className="h-4 w-4 fill-current text-yellow-500" />}
                       </CardTitle>
                       <div className="mt-1 flex gap-2">
                         <Badge variant="default" className={providerInfo.color}>
                           {providerInfo.name}
                         </Badge>
-                        {model.isActive ? (
+                        {model.is_enabled ? (
                           <Badge variant="default" className="bg-green-100 text-green-800">
                             启用
                           </Badge>
@@ -233,7 +232,7 @@ export default function ModelsPage() {
                           编辑配置
                         </Link>
                       </DropdownMenuItem>
-                      {!model.isDefault && (
+                      {!model.is_default && (
                         <DropdownMenuItem onClick={() => handleSetDefault(model.id)}>
                           <Star className="mr-2 h-4 w-4" />
                           设为默认
@@ -247,7 +246,7 @@ export default function ModelsPage() {
                   </DropdownMenu>
                 </div>
                 <CardDescription className="mt-2 text-sm">
-                  模型：{model.name} | 最大Token：{model.maxTokens}
+                  模型：{model.model_name} | 最大Token：{model.max_tokens}
                 </CardDescription>
               </CardHeader>
 
@@ -256,11 +255,11 @@ export default function ModelsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">状态</span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs ${model.isActive ? 'text-green-600' : 'text-gray-500'}`}>
-                      {model.isActive ? '运行中' : '已停用'}
+                    <span className={`text-xs ${model.is_enabled ? 'text-green-600' : 'text-gray-500'}`}>
+                      {model.is_enabled ? '运行中' : '已停用'}
                     </span>
                     <Switch
-                      checked={model.isActive}
+                      checked={model.is_enabled}
                       onCheckedChange={checked => handleToggleActive(model.id, checked)}
                     />
                   </div>
@@ -271,9 +270,9 @@ export default function ModelsPage() {
                   <p className="text-muted-foreground text-xs">API配置</p>
                   <div className="flex items-center gap-2 text-sm">
                     <Key className="text-muted-foreground h-3 w-3" />
-                    <span>密钥：{model.apiKey ? '已配置' : '未配置'}</span>
+                    <span>密钥：{model.api_key ? '已配置' : '未配置'}</span>
                   </div>
-                  {model.baseUrl && (
+                  {model.base_url && (
                     <div className="flex items-center gap-2 text-sm">
                       <Settings className="text-muted-foreground h-3 w-3" />
                       <span className="truncate">自定义API地址</span>

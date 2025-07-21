@@ -154,18 +154,20 @@ export interface SystemSettings {
 }
 
 export interface AIModelConfig {
-  id: string;
+  id: number;
   name: string;
-  displayName: string;
-  provider: 'openai' | 'anthropic' | 'deepseek' | 'google' | 'xai' | 'ollama' | 'zhipuai' | 'qwen' | 'wenxin';
-  apiKey: string;
-  baseUrl?: string;
-  maxTokens: number;
-  isDefault: boolean;
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  // 统计信息（用于详情页面显示）
+  provider: 'openai' | 'anthropic' | 'google' | 'azure' | 'local';
+  model_name: string;
+  api_key?: string | null;
+  base_url: string;
+  max_tokens: number;
+  temperature: number;
+  is_enabled: boolean;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+  // 前端扩展字段（用于显示）
+  displayName?: string;
   agentCount?: number;
   conversationCount?: number;
   tokenUsage?: number;
@@ -173,6 +175,46 @@ export interface AIModelConfig {
   avgResponseTime?: string;
   successRate?: string;
   errorCount?: number;
+}
+
+export interface CreateAIModelRequest {
+  name: string;
+  provider: string;
+  model_name: string;
+  api_key?: string | null;
+  base_url?: string;
+  max_tokens: number;
+  temperature: number;
+  is_enabled: boolean;
+  is_default: boolean;
+}
+
+export interface UpdateAIModelRequest {
+  name?: string;
+  provider?: 'openai' | 'anthropic' | 'google' | 'azure' | 'local';
+  model_name?: string;
+  api_key?: string | null;
+  base_url?: string;
+  max_tokens?: number;
+  temperature?: number;
+  is_enabled?: boolean;
+  is_default?: boolean;
+}
+
+export interface AIModelListResponse {
+  success: boolean;
+  data: {
+    models: AIModelConfig[];
+    total: number;
+    page: number;
+    size: number;
+    total_pages: number;
+  };
+}
+
+export interface AIModelResponse {
+  success: boolean;
+  data: AIModelConfig;
 }
 
 export interface DooTaskIntegrationConfig {

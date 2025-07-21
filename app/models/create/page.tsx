@@ -13,9 +13,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { MockDataManager } from '@/lib/mock-data';
-import { AIModelConfig } from '@/lib/types';
+import { aiModelsApi } from '@/lib/api/ai-models';
+import { CreateAIModelRequest } from '@/lib/types';
 import { Cpu, Key, Save, Settings, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,81 +26,54 @@ import { toast } from 'sonner';
 export default function CreateModelPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<Omit<AIModelConfig, 'id'>>({
+  const [formData, setFormData] = useState<CreateAIModelRequest>({
     name: '',
-    displayName: '',
     provider: 'openai',
-    apiKey: '',
-    baseUrl: '',
-    maxTokens: 4000,
-    isDefault: false,
-    isActive: true,
+    model_name: 'gpt-3.5-turbo',
+    api_key: '',
+    base_url: '',
+    max_tokens: 4000,
+    temperature: 0.7,
+    is_enabled: true,
+    is_default: false,
   });
 
   // AI提供商配置
   const providerOptions = [
     {
-      value: 'openai',
-      label: 'ChatGPT (OpenAI)',
+      value: 'openai' as const,
+      label: 'OpenAI',
       baseUrl: 'https://api.openai.com/v1',
       models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o'],
       description: '最流行的AI模型提供商',
     },
     {
-      value: 'anthropic',
-      label: 'Claude (Anthropic)',
+      value: 'anthropic' as const,
+      label: 'Anthropic',
       baseUrl: 'https://api.anthropic.com',
       models: ['claude-3-haiku-20240307', 'claude-3-sonnet-20240229', 'claude-3-opus-20240229'],
       description: '高质量对话AI模型',
     },
     {
-      value: 'deepseek',
-      label: 'DeepSeek',
-      baseUrl: 'https://api.deepseek.com/v1',
-      models: ['deepseek-chat', 'deepseek-coder'],
-      description: '国产优秀大模型',
-    },
-    {
-      value: 'google',
-      label: 'Gemini (Google)',
+      value: 'google' as const,
+      label: 'Google',
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
       models: ['gemini-pro', 'gemini-pro-vision', 'gemini-1.5-pro'],
       description: 'Google最新AI模型',
     },
     {
-      value: 'xai',
-      label: 'Grok (xAI)',
-      baseUrl: 'https://api.x.ai/v1',
-      models: ['grok-beta'],
-      description: '马斯克的xAI产品',
+      value: 'azure' as const,
+      label: 'Azure OpenAI',
+      baseUrl: 'https://your-resource.openai.azure.com',
+      models: ['gpt-35-turbo', 'gpt-4', 'gpt-4-32k'],
+      description: '微软Azure AI服务',
     },
     {
-      value: 'ollama',
-      label: 'Ollama (本地)',
+      value: 'local' as const,
+      label: '本地模型',
       baseUrl: 'http://localhost:11434',
       models: ['llama2', 'mistral', 'codellama', 'qwen'],
       description: '本地部署开源模型',
-    },
-    {
-      value: 'zhipuai',
-      label: '智谱清言',
-      baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-      models: ['glm-4', 'glm-3-turbo', 'chatglm3-6b'],
-      description: '清华智谱AI',
-    },
-    {
-      value: 'qwen',
-      label: '通义千问',
-      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      models: ['qwen-turbo', 'qwen-plus', 'qwen-max'],
-      description: '阿里云AI',
-    },
-    {
-      value: 'wenxin',
-      label: '文心一言',
-      baseUrl: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop',
-      models: ['ernie-bot', 'ernie-bot-turbo', 'ernie-bot-4'],
-      description: '百度AI',
     },
   ];
 
@@ -115,12 +89,17 @@ export default function CreateModelPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.displayName.trim()) {
-      toast.error('请填写所有必填字段');
+    if (!formData.name.trim()) {
+      toast.error('请填写模型名称');
       return;
     }
 
-    if (!formData.apiKey.trim()) {
+    if (!formData.model_name.trim()) {
+      toast.error('请填写模型标识');
+      return;
+    }
+
+    if (formData.provider !== 'local' && !formData.api_key?.trim()) {
       toast.error('请填写API密钥');
       return;
     }
@@ -128,39 +107,38 @@ export default function CreateModelPage() {
     setIsLoading(true);
 
     try {
-      // 模拟创建API调用
-      setTimeout(() => {
-        const newModel = MockDataManager.addAIModel(formData);
-        toast.success(`AI模型 "${newModel.displayName}" 添加成功！`);
-        router.push('/models');
-      }, 1000);
-    } catch {
-      toast.error('添加AI模型失败');
+      const newModel = await aiModelsApi.createAIModel(formData);
+      toast.success(`AI模型 "${newModel.name}" 创建成功！`);
+      router.push('/models');
+    } catch (error) {
+      console.error('创建AI模型失败:', error);
+      toast.error('创建AI模型失败');
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleProviderChange = (provider: AIModelConfig['provider']) => {
+  const handleProviderChange = (provider: CreateAIModelRequest['provider']) => {
     const providerConfig = providerOptions.find(p => p.value === provider);
     setFormData(prev => ({
       ...prev,
       provider,
-      baseUrl: providerConfig?.baseUrl || '',
-      name: (prev.provider === provider ? prev.name : null) || providerConfig?.models[0] || '',
+      base_url: providerConfig?.baseUrl || '',
+      model_name: providerConfig?.models[0] || '',
     }));
   };
 
   const handleProviderSelectChange = (value: string) => {
-    handleProviderChange(value as AIModelConfig['provider']);
+    handleProviderChange(value as CreateAIModelRequest['provider']);
   };
 
-  const testConnection = () => {
-    if (!formData.apiKey) {
+  const testConnection = async () => {
+    if (formData.provider !== 'local' && !formData.api_key) {
       toast.error('请先填写API密钥');
       return;
     }
 
-    // 模拟连接测试
+    // 这里可以调用后端的测试连接API
     toast.loading('测试连接中...');
     setTimeout(() => {
       toast.success('连接测试成功！');
@@ -198,12 +176,12 @@ export default function CreateModelPage() {
             {isLoading ? (
               <>
                 <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                添加中...
+                创建中...
               </>
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                添加模型
+                创建模型
               </>
             )}
           </Button>
@@ -226,24 +204,26 @@ export default function CreateModelPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="displayName">显示名称 *</Label>
-                    <Input
-                      id="displayName"
-                      placeholder="例如：GPT-4 Turbo"
-                      value={formData.displayName}
-                      onChange={e => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="name">模型名称 *</Label>
                     <Input
                       id="name"
-                      placeholder="例如：gpt-4-turbo"
+                      placeholder="例如：GPT-4 Turbo"
                       value={formData.name}
                       onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
                       required
                     />
+                    <p className="text-muted-foreground text-xs">用于在系统中显示的友好名称</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="model_name">模型标识 *</Label>
+                    <Input
+                      id="model_name"
+                      placeholder="例如：gpt-4-turbo"
+                      value={formData.model_name}
+                      onChange={e => setFormData(prev => ({ ...prev, model_name: e.target.value }))}
+                      required
+                    />
+                    <p className="text-muted-foreground text-xs">API调用时使用的模型标识</p>
                   </div>
                 </div>
 
@@ -259,16 +239,32 @@ export default function CreateModelPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="maxTokens">最大 Token 数</Label>
-                  <Input
-                    id="maxTokens"
-                    type="number"
-                    value={formData.maxTokens}
-                    onChange={e => setFormData(prev => ({ ...prev, maxTokens: parseInt(e.target.value) }))}
-                    placeholder="4000"
-                  />
-                  <p className="text-muted-foreground text-xs">控制模型单次输出的最大长度</p>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="max_tokens">最大 Token 数</Label>
+                    <Input
+                      id="max_tokens"
+                      type="number"
+                      min="1"
+                      max="100000"
+                      value={formData.max_tokens}
+                      onChange={e => setFormData(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 4000 }))}
+                      placeholder="4000"
+                    />
+                    <p className="text-muted-foreground text-xs">控制模型单次输出的最大长度</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="temperature">温度参数: {formData.temperature}</Label>
+                    <Slider
+                      value={[formData.temperature]}
+                      onValueChange={([value]) => setFormData(prev => ({ ...prev, temperature: value }))}
+                      max={2}
+                      min={0}
+                      step={0.1}
+                      className="w-full"
+                    />
+                    <p className="text-muted-foreground text-xs">控制输出的随机性，0为确定性，2为高随机性</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -283,35 +279,41 @@ export default function CreateModelPage() {
                 <CardDescription>配置模型的 API 连接参数</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Key className="h-4 w-4" />
-                    API 密钥 *
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="password"
-                      placeholder="sk-... 或其他API密钥"
-                      value={formData.apiKey}
-                      onChange={e => setFormData(prev => ({ ...prev, apiKey: e.target.value }))}
-                      required
-                    />
-                    <Button type="button" variant="outline" onClick={testConnection}>
-                      <Cpu className="mr-2 h-4 w-4" />
-                      测试
-                    </Button>
+                {formData.provider !== 'local' && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Key className="h-4 w-4" />
+                      API 密钥 *
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        placeholder="sk-... 或其他API密钥"
+                        value={formData.api_key || ''}
+                        onChange={e => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
+                        required={formData.provider !== 'local'}
+                      />
+                      <Button type="button" variant="outline" onClick={testConnection}>
+                        <Cpu className="mr-2 h-4 w-4" />
+                        测试
+                      </Button>
+                    </div>
+                    <p className="text-muted-foreground text-xs">请确保 API 密钥具有适当的权限</p>
                   </div>
-                  <p className="text-muted-foreground text-xs">请确保 API 密钥具有适当的权限</p>
-                </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>API 基础地址</Label>
                   <Input
                     placeholder="https://api.example.com/v1"
-                    value={formData.baseUrl}
-                    onChange={e => setFormData(prev => ({ ...prev, baseUrl: e.target.value }))}
+                    value={formData.base_url}
+                    onChange={e => setFormData(prev => ({ ...prev, base_url: e.target.value }))}
                   />
-                  <p className="text-muted-foreground text-xs">留空将使用默认地址：{selectedProvider?.baseUrl}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {formData.base_url || selectedProvider?.baseUrl
+                      ? `当前地址：${formData.base_url || selectedProvider?.baseUrl}`
+                      : '请填写API基础地址'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -332,8 +334,8 @@ export default function CreateModelPage() {
                     <p className="text-muted-foreground text-sm">是否立即启用此模型</p>
                   </div>
                   <Switch
-                    checked={formData.isActive}
-                    onCheckedChange={checked => setFormData(prev => ({ ...prev, isActive: checked }))}
+                    checked={formData.is_enabled}
+                    onCheckedChange={checked => setFormData(prev => ({ ...prev, is_enabled: checked }))}
                   />
                 </div>
 
@@ -343,8 +345,8 @@ export default function CreateModelPage() {
                     <p className="text-muted-foreground text-sm">新建智能体时默认选择此模型</p>
                   </div>
                   <Switch
-                    checked={formData.isDefault}
-                    onCheckedChange={checked => setFormData(prev => ({ ...prev, isDefault: checked }))}
+                    checked={formData.is_default}
+                    onCheckedChange={checked => setFormData(prev => ({ ...prev, is_default: checked }))}
                   />
                 </div>
               </CardContent>
@@ -376,7 +378,7 @@ export default function CreateModelPage() {
                           variant="outline"
                           size="sm"
                           className="h-6 text-xs"
-                          onClick={() => setFormData(prev => ({ ...prev, name: model }))}
+                          onClick={() => setFormData(prev => ({ ...prev, model_name: model }))}
                         >
                           {model}
                         </Button>
@@ -405,11 +407,11 @@ export default function CreateModelPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
-                  <span>模型名称：必须与提供商支持的模型一致</span>
+                  <span>模型标识：必须与提供商支持的模型一致</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
-                  <span>Token 限制：根据使用需求合理设置</span>
+                  <span>温度参数：数值越低输出越稳定</span>
                 </li>
               </ul>
             </CardContent>

@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
-import { MockDataManager } from '@/lib/mock-data';
+import { aiModelsApi, getModelDisplayName, getProviderInfo } from '@/lib/api/ai-models';
 import { AIModelConfig } from '@/lib/types';
 import { Cpu, Edit, Key, Settings, Star, Trash2, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -31,17 +31,29 @@ export default function ModelDetailPage() {
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
-    // 模拟获取模型详情
-    const modelId = params.id as string;
-    const modelData = MockDataManager.getAIModels().find(m => m.id === modelId);
+    const loadModel = async () => {
+      try {
+        setLoading(true);
+        const modelId = parseInt(params.id as string);
+        const modelData = await aiModelsApi.getAIModel(modelId);
+        setModel(modelData);
+      } catch (error) {
+        console.error('加载AI模型失败:', error);
+        toast.error('加载AI模型失败');
+        router.push('/models');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (modelData) {
-      setModel(modelData);
+    if (params.id) {
+      loadModel();
     }
-    setLoading(false);
-  }, [params.id]);
+  }, [params.id, router]);
 
   const handleDelete = async () => {
+    if (!model) return;
+
     if (
       await Confirm({
         title: '确定要删除这个AI模型吗？',
@@ -49,34 +61,43 @@ export default function ModelDetailPage() {
         variant: 'destructive',
       })
     ) {
-      MockDataManager.deleteAIModel(params.id as string);
-      toast.success('AI模型删除成功');
-      router.push('/models');
+      try {
+        await aiModelsApi.deleteAIModel(model.id);
+        toast.success('AI模型删除成功');
+        router.push('/models');
+      } catch (error) {
+        console.error('删除AI模型失败:', error);
+        toast.error('删除AI模型失败');
+      }
     }
   };
 
   const handleToggleStatus = async () => {
     if (!model) return;
 
-    const newStatus = !model.isActive;
-    setModel(prev => (prev ? { ...prev, isActive: newStatus } : null));
-
-    // 模拟API调用
-    setTimeout(() => {
+    try {
+      const newStatus = !model.is_enabled;
+      const updatedModel = await aiModelsApi.updateAIModel(model.id, { is_enabled: newStatus });
+      setModel(updatedModel);
       toast.success(`模型已${newStatus ? '启用' : '停用'}`);
-    }, 500);
+    } catch (error) {
+      console.error('更新模型状态失败:', error);
+      toast.error('更新模型状态失败');
+    }
   };
 
   const handleToggleDefault = async () => {
     if (!model) return;
 
-    const newDefault = !model.isDefault;
-    setModel(prev => (prev ? { ...prev, isDefault: newDefault } : null));
-
-    // 模拟API调用
-    setTimeout(() => {
+    try {
+      const newDefault = !model.is_default;
+      const updatedModel = await aiModelsApi.updateAIModel(model.id, { is_default: newDefault });
+      setModel(updatedModel);
       toast.success(`${newDefault ? '已设为默认模型' : '已取消默认模型'}`);
-    }, 500);
+    } catch (error) {
+      console.error('设置默认模型失败:', error);
+      toast.error('设置默认模型失败');
+    }
   };
 
   const testConnection = async () => {
@@ -111,23 +132,8 @@ export default function ModelDetailPage() {
     );
   }
 
-  // 提供商信息映射
-  const providerInfo = {
-    openai: { name: 'ChatGPT (OpenAI)', color: 'bg-green-500' },
-    anthropic: { name: 'Claude (Anthropic)', color: 'bg-orange-500' },
-    deepseek: { name: 'DeepSeek', color: 'bg-blue-500' },
-    google: { name: 'Gemini (Google)', color: 'bg-red-500' },
-    xai: { name: 'Grok (xAI)', color: 'bg-gray-700' },
-    ollama: { name: 'Ollama (本地)', color: 'bg-purple-500' },
-    zhipuai: { name: '智谱清言', color: 'bg-indigo-500' },
-    qwen: { name: '通义千问', color: 'bg-yellow-500' },
-    wenxin: { name: '文心一言', color: 'bg-cyan-500' },
-  };
-
-  const currentProvider = providerInfo[model.provider as keyof typeof providerInfo] || {
-    name: model.provider,
-    color: 'bg-gray-500',
-  };
+  const currentProvider = getProviderInfo(model.provider);
+  const displayName = getModelDisplayName(model);
 
   return (
     <div className="space-y-6 p-6">
@@ -141,7 +147,7 @@ export default function ModelDetailPage() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{model.displayName}</BreadcrumbPage>
+            <BreadcrumbPage>{model.name}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -153,32 +159,19 @@ export default function ModelDetailPage() {
             <div className={`h-8 w-8 rounded-full ${currentProvider.color} flex items-center justify-center`}>
               <Cpu className="h-4 w-4 text-white" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">{model.displayName}</h1>
-            <Badge variant={model.isActive ? 'default' : 'secondary'}>{model.isActive ? '活跃' : '停用'}</Badge>
-            {model.isDefault && (
+            <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
+            <Badge variant={model.is_enabled ? 'default' : 'secondary'}>{model.is_enabled ? '启用' : '停用'}</Badge>
+            {model.is_default && (
               <Badge variant="outline" className="border-yellow-500 text-yellow-700">
                 <Star className="mr-1 h-3 w-3" />
                 默认
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground">模型名称：{model.name}</p>
+          <p className="text-muted-foreground">模型标识：{model.model_name}</p>
           <p className="text-muted-foreground">提供商：{currentProvider.name}</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={testConnection} disabled={testing}>
-            {testing ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                测试中...
-              </>
-            ) : (
-              <>
-                <Zap className="mr-2 h-4 w-4" />
-                测试连接
-              </>
-            )}
-          </Button>
           <Button variant="outline" asChild>
             <Link href={`/models/${model.id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
@@ -192,184 +185,193 @@ export default function ModelDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 左侧主要信息 */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* 基本信息 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Cpu className="h-5 w-5" />
-                基本信息
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-muted-foreground text-sm font-medium">显示名称</h4>
-                  <p className="text-sm">{model.displayName}</p>
-                </div>
-                <div>
-                  <h4 className="text-muted-foreground text-sm font-medium">模型名称</h4>
-                  <p className="font-mono text-sm">{model.name}</p>
-                </div>
-                <div>
-                  <h4 className="text-muted-foreground text-sm font-medium">AI 提供商</h4>
-                  <div className="flex items-center gap-2">
-                    <div className={`h-3 w-3 rounded-full ${currentProvider.color}`}></div>
-                    <p className="text-sm">{currentProvider.name}</p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-muted-foreground text-sm font-medium">最大 Token 数</h4>
-                  <p className="text-sm">{model.maxTokens.toLocaleString()}</p>
-                </div>
-                <div>
-                  <h4 className="text-muted-foreground text-sm font-medium">创建时间</h4>
-                  <p className="text-sm">{model.createdAt ? new Date(model.createdAt).toLocaleString() : '未知'}</p>
-                </div>
-                <div>
-                  <h4 className="text-muted-foreground text-sm font-medium">更新时间</h4>
-                  <p className="text-sm">{model.updatedAt ? new Date(model.updatedAt).toLocaleString() : '未知'}</p>
-                </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* 基本信息 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              基本信息
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">模型ID</p>
+              <p className="text-muted-foreground text-sm">{model.id}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">显示名称</p>
+              <p className="text-muted-foreground text-sm">{model.name}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">模型标识</p>
+              <p className="text-muted-foreground text-sm">{model.model_name}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">AI提供商</p>
+              <div className="flex items-center gap-2">
+                <Badge className={currentProvider.color}>{currentProvider.name}</Badge>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* API 配置 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                API 配置
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <h4 className="text-muted-foreground text-sm font-medium">API 基础地址</h4>
-                  <p className="font-mono text-sm break-all">{model.baseUrl || '使用默认地址'}</p>
-                </div>
-                <div>
-                  <h4 className="text-muted-foreground mb-2 text-sm font-medium">API 密钥</h4>
-                  <div className="flex items-center gap-2">
-                    <Key className="text-muted-foreground h-4 w-4" />
-                    <p className="font-mono text-sm">
-                      {model.apiKey ? '••••••••••••' + model.apiKey.slice(-4) : '未配置'}
-                    </p>
-                  </div>
-                </div>
+        {/* 配置参数 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Cpu className="h-5 w-5" />
+              配置参数
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">最大Token数</p>
+              <p className="text-muted-foreground text-sm">{model.max_tokens.toLocaleString()}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">温度参数</p>
+              <p className="text-muted-foreground text-sm">{model.temperature}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">API密钥</p>
+              <div className="flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                <p className="text-muted-foreground text-sm">{model.api_key ? '已配置' : '未配置'}</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">API地址</p>
+              <p className="text-muted-foreground text-sm break-all">{model.base_url}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* 右侧状态和设置 */}
-        <div className="space-y-6">
-          {/* 状态控制 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>状态控制</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-medium">启用状态</h4>
-                  <p className="text-muted-foreground text-xs">控制模型是否可用</p>
-                </div>
-                <Switch checked={model.isActive} onCheckedChange={handleToggleStatus} />
+        {/* 状态和操作 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              状态和操作
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* 启用状态 */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">启用状态</p>
+                <p className="text-muted-foreground text-sm">控制模型是否可用</p>
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-sm font-medium">默认模型</h4>
-                  <p className="text-muted-foreground text-xs">新建智能体时默认选择</p>
-                </div>
-                <Switch checked={model.isDefault} onCheckedChange={handleToggleDefault} />
-              </div>
-            </CardContent>
-          </Card>
+              <Switch checked={model.is_enabled} onCheckedChange={handleToggleStatus} />
+            </div>
 
-          {/* 使用统计 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>使用统计</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">关联智能体</span>
-                <span className="text-sm font-medium">{model.agentCount || 0}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">总对话数</span>
-                <span className="text-sm font-medium">{model.conversationCount || 0}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">Token 使用量</span>
-                <span className="text-sm font-medium">{(model.tokenUsage || 0).toLocaleString()}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">最后使用</span>
-                <span className="text-sm font-medium">
-                  {model.lastUsedAt ? new Date(model.lastUsedAt).toLocaleDateString() : '从未使用'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+            <Separator />
 
-          {/* 性能指标 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>性能指标</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">平均响应时间</span>
-                <span className="text-sm font-medium">{model.avgResponseTime || '-'}</span>
+            {/* 默认模型 */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">默认模型</p>
+                <p className="text-muted-foreground text-sm">新建智能体时自动选择</p>
               </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">成功率</span>
-                <span className="text-sm font-medium">{model.successRate || '-'}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground text-sm">错误次数</span>
-                <span className="text-sm font-medium">{model.errorCount || 0}</span>
-              </div>
-            </CardContent>
-          </Card>
+              <Switch checked={model.is_default} onCheckedChange={handleToggleDefault} />
+            </div>
 
-          {/* 配置指南 */}
-          <Card className="border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="text-blue-900">配置提示</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm">
-              <ul className="space-y-2 text-blue-800">
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
-                  <span>定期检查 API 配额和使用情况</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
-                  <span>监控错误率和响应时间</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
-                  <span>适时更新 API 密钥</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
-                  <span>根据使用情况调整 Token 限制</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+            <Separator />
+
+            {/* 测试连接 */}
+            <div>
+              <p className="mb-2 font-medium">连接测试</p>
+              <Button onClick={testConnection} disabled={testing} className="w-full">
+                {testing ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    测试中...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    测试连接
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 时间信息 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>时间信息</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">创建时间</p>
+              <p className="text-muted-foreground text-sm">{new Date(model.created_at).toLocaleString()}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">最后更新</p>
+              <p className="text-muted-foreground text-sm">{new Date(model.updated_at).toLocaleString()}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 统计信息（扩展功能） */}
+        <Card>
+          <CardHeader>
+            <CardTitle>使用统计</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">关联智能体</p>
+              <p className="text-2xl font-bold">{model.agentCount || 0}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">对话次数</p>
+              <p className="text-2xl font-bold">{model.conversationCount || 0}</p>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Token使用</p>
+              <p className="text-2xl font-bold">{(model.tokenUsage || 0).toLocaleString()}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 快速操作 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>快速操作</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button variant="outline" className="w-full" asChild>
+              <Link href={`/models/${model.id}/edit`}>
+                <Edit className="mr-2 h-4 w-4" />
+                编辑配置
+              </Link>
+            </Button>
+            <Button
+              variant={model.is_enabled ? 'secondary' : 'default'}
+              className="w-full"
+              onClick={handleToggleStatus}
+            >
+              {model.is_enabled ? '停用模型' : '启用模型'}
+            </Button>
+            {!model.is_default && (
+              <Button variant="outline" className="w-full" onClick={handleToggleDefault}>
+                <Star className="mr-2 h-4 w-4" />
+                设为默认
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

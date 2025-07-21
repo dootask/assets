@@ -5,6 +5,7 @@ import (
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/middleware"
 	"dootask-ai/go-service/pkg/utils"
+	"dootask-ai/go-service/routes/api/aimodels"
 	"dootask-ai/go-service/routes/api/test"
 	"dootask-ai/go-service/routes/health"
 	"fmt"
@@ -90,6 +91,9 @@ func runServer(*cobra.Command, []string) {
 	// 注册API路由
 	api := r.Group("/api")
 	test.RegisterRoutes(api)
+
+	// 导入AI模型管理路由
+	aimodels.RegisterRoutes(api)
 
 	// 获取端口
 	port := utils.GetEnvWithDefault("GO_SERVICE_PORT", "8000")
