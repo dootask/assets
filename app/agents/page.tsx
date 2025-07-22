@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
 import { agentsApi, formatAgentForUI, parseAgentJSONBFields } from '@/lib/api/agents';
 import { Agent } from '@/lib/types';
-import { Activity, Bot, Edit, MessageSquare, MoreHorizontal, Plus, Trash2, TrendingUp } from 'lucide-react';
+import { Activity, Bot, Edit, Eye, MessageSquare, MoreHorizontal, Plus, Trash2, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -286,7 +286,7 @@ export default function AgentsPage() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
                         <Link href={`/agents/${agent.id}`} className="flex items-center">
-                          <MessageSquare className="mr-2 h-4 w-4" />
+                          <Eye className="mr-2 h-4 w-4" />
                           查看详情
                         </Link>
                       </DropdownMenuItem>
@@ -382,7 +382,7 @@ export default function AgentsPage() {
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" size="sm" asChild className="flex-1">
                     <Link href={`/agents/${agent.id}`}>
-                      <MessageSquare className="mr-1 h-3 w-3" />
+                      <Eye className="mr-1 h-3 w-3" />
                       查看
                     </Link>
                   </Button>

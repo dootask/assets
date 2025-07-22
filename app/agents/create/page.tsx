@@ -26,7 +26,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { toolCategories, toolTypes } from '../../../lib/ai';
+import { embeddingModels, toolCategories, toolTypes } from '@/lib/ai';
 
 interface FormData extends CreateAgentRequest {
   maxTokens: number;
@@ -406,7 +406,9 @@ export default function CreateAgentPage() {
                         </label>
                         <p className="text-muted-foreground mt-1 text-xs">{kb.description}</p>
                         <div className="text-muted-foreground mt-1 text-xs">
-                          文档数: {kb.documents_count || 0} | 模型: {kb.embedding_model}
+                          文档数: {kb.documents_count || 0} | 模型:{' '}
+                          {embeddingModels.find(model => model.value === kb.embedding_model)?.label ||
+                            kb.embedding_model}
                         </div>
                       </div>
                     </div>

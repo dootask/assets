@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { embeddingModels } from '@/lib/ai';
 
 export default function KnowledgeBaseDetailPage() {
   const params = useParams();
@@ -328,7 +329,10 @@ export default function KnowledgeBaseDetailPage() {
             <CardTitle className="text-base">向量化模型</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-semibold">{knowledgeBase.embedding_model}</div>
+            <div className="text-lg font-semibold">
+              {embeddingModels.find(model => model.value === knowledgeBase.embedding_model)?.label ||
+                knowledgeBase.embedding_model}
+            </div>
             <p className="text-muted-foreground text-sm">Embedding 模型</p>
           </CardContent>
         </Card>
@@ -359,7 +363,7 @@ export default function KnowledgeBaseDetailPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex flex-col gap-1">
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     文档管理
@@ -485,7 +489,10 @@ export default function KnowledgeBaseDetailPage() {
                   <div className="space-y-3">
                     <div>
                       <span className="text-muted-foreground text-sm">Embedding 模型</span>
-                      <p className="font-medium">{knowledgeBase.embedding_model}</p>
+                      <p className="font-medium">
+                        {embeddingModels.find(model => model.value === knowledgeBase.embedding_model)?.label ||
+                          knowledgeBase.embedding_model}
+                      </p>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-sm">分块大小</span>
@@ -506,10 +513,6 @@ export default function KnowledgeBaseDetailPage() {
                   <h3 className="text-sm font-medium">关联智能体</h3>
                   <p className="text-muted-foreground text-sm">正在使用此知识库的智能体列表</p>
                 </div>
-                <Button variant="outline" size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  添加智能体
-                </Button>
               </div>
               <div className="space-y-3">
                 {relatedAgents.length === 0 ? (
