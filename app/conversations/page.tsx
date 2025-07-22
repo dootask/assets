@@ -24,7 +24,7 @@ import {
 } from '@/lib/api/conversations';
 import { Agent, Conversation, Message } from '@/lib/types';
 import { Bot, Calendar, CheckCircle, Clock, Eye, Filter, MessageSquare, Search, TrendingUp, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function ConversationsPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -42,7 +42,7 @@ export default function ConversationsPage() {
   });
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -87,7 +87,7 @@ export default function ConversationsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedAgent, searchQuery]);
 
   // 加载对话消息
   const loadConversationMessages = async (conversationId: string) => {
@@ -109,7 +109,7 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     loadData();
-  }, [selectedAgent, searchQuery]);
+  }, [loadData]);
 
   // 过滤对话（前端过滤作为后端过滤的补充）
   const filteredConversations = conversations.filter(conv => {
@@ -151,7 +151,7 @@ export default function ConversationsPage() {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold tracking-tight">对话监控</h1>
             <p className="text-muted-foreground">查看和分析 AI 处理的对话记录</p>
           </div>
@@ -175,7 +175,7 @@ export default function ConversationsPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">对话监控</h1>
           <p className="text-muted-foreground">查看和分析 AI 处理的对话记录</p>
         </div>

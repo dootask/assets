@@ -205,8 +205,10 @@ export default function MCPToolDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <div className={`h-8 w-8 rounded-full ${currentCategory.color} flex items-center justify-center`}>
-              <Wrench className="h-4 w-4" />
+            <div className={`mt-1 rounded-lg p-2 ${tool.isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+              <Wrench
+                className={`h-5 w-5 ${tool.isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+              />
             </div>
             <h1 className="text-3xl font-bold tracking-tight">{tool.name}</h1>
             <Badge variant={tool.isActive ? 'default' : 'secondary'}>{tool.isActive ? '活跃' : '停用'}</Badge>

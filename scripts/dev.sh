@@ -51,7 +51,6 @@ echo ""
 echo "🎯 准备Go后端..."
 pushd backend/go-service
 go mod tidy > /dev/null 2>&1
-mkdir -p uploads/menus
 popd
 
 # 准备Python AI服务

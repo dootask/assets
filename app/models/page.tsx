@@ -121,15 +121,39 @@ export default function ModelsPage() {
     }
   };
 
+  // 统计数据
+  const stats = {
+    total: models.length,
+    active: models.filter(m => m.is_enabled).length,
+    defaultModel: models.find(m => m.is_default)?.name || '未设置',
+    providers: [...new Set(models.map(m => m.provider))].length,
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold tracking-tight">AI 模型管理</h1>
             <p className="text-muted-foreground">管理和配置 AI 模型</p>
           </div>
         </div>
+        {/* 统计概览骨架屏 */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="bg-muted h-4 w-20 animate-pulse rounded"></div>
+                <div className="bg-muted h-4 w-4 animate-pulse rounded"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-muted h-8 w-16 animate-pulse rounded"></div>
+                <div className="bg-muted mt-1 h-3 w-24 animate-pulse rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* 卡片骨架屏 */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
             <Card key={i}>
@@ -153,7 +177,7 @@ export default function ModelsPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">AI 模型管理</h1>
           <p className="text-muted-foreground">管理和配置 AI 模型</p>
         </div>
@@ -173,7 +197,7 @@ export default function ModelsPage() {
             <Cpu className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{models.length}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-muted-foreground text-xs">已配置模型</p>
           </CardContent>
         </Card>
@@ -184,7 +208,7 @@ export default function ModelsPage() {
             <Activity className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{models.filter(m => m.is_enabled).length}</div>
+            <div className="text-2xl font-bold">{stats.active}</div>
             <p className="text-muted-foreground text-xs">已启用模型</p>
           </CardContent>
         </Card>
@@ -195,152 +219,24 @@ export default function ModelsPage() {
             <Star className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{models.find(m => m.is_default)?.name || '未设置'}</div>
+            <div className="truncate text-2xl font-bold">{stats.defaultModel}</div>
             <p className="text-muted-foreground text-xs">当前默认</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">状态</CardTitle>
+            <CardTitle className="text-sm font-medium">服务商数量</CardTitle>
             <CheckCircle className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">正常</div>
-            <p className="text-muted-foreground text-xs">所有模型运行正常</p>
+            <div className="text-2xl font-bold">{stats.providers}</div>
+            <p className="text-muted-foreground text-xs">支持的服务商</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* 模型列表 */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {models.map(model => {
-          const providerInfo = getProviderInfo(model.provider);
-          const displayName = getModelDisplayName(model);
-
-          return (
-            <Card
-              key={model.id}
-              className={`transition-all ${model.is_enabled ? 'border-green-200 bg-green-50/30 dark:border-green-800 dark:bg-green-950/20' : 'opacity-75'}`}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`rounded-lg p-2 ${model.is_enabled ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
-                    >
-                      <Cpu
-                        className={`h-5 w-5 ${model.is_enabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
-                      />
-                    </div>
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        {displayName}
-                        {model.is_default && <Star className="h-4 w-4 fill-current text-yellow-500" />}
-                      </CardTitle>
-                      <div className="mt-1 flex gap-2">
-                        <Badge variant="default" className={providerInfo.color}>
-                          {providerInfo.name}
-                        </Badge>
-                        {model.is_enabled ? (
-                          <Badge variant="default" className="bg-green-100 text-green-800">
-                            启用
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">禁用</Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/models/${model.id}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          查看详情
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/models/${model.id}/edit`}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          编辑配置
-                        </Link>
-                      </DropdownMenuItem>
-                      {!model.is_default && (
-                        <DropdownMenuItem onClick={() => handleSetDefault(model.id)}>
-                          <Star className="mr-2 h-4 w-4" />
-                          设为默认
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => handleDeleteModel(model.id)} className="text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        删除
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <CardDescription className="mt-2 text-sm">
-                  模型：{model.model_name} | 最大Token：{model.max_tokens}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4 pt-0">
-                {/* 启用/禁用开关 */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">状态</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${model.is_enabled ? 'text-green-600' : 'text-gray-500'}`}>
-                      {model.is_enabled ? '运行中' : '已停用'}
-                    </span>
-                    <Switch
-                      checked={model.is_enabled}
-                      onCheckedChange={checked => handleToggleActive(model.id, checked)}
-                    />
-                  </div>
-                </div>
-
-                {/* API配置信息 */}
-                <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs">API配置</p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Key className="text-muted-foreground h-3 w-3" />
-                    <span>密钥：{model.api_key ? '已配置' : '未配置'}</span>
-                  </div>
-                  {model.base_url && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Settings className="text-muted-foreground h-3 w-3" />
-                      <span className="truncate">自定义API地址</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 操作按钮 */}
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" asChild className="flex-1">
-                    <Link href={`/models/${model.id}`}>
-                      <Eye className="mr-1 h-3 w-3" />
-                      查看
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild className="flex-1">
-                    <Link href={`/models/${model.id}/edit`}>
-                      <Edit className="mr-1 h-3 w-3" />
-                      编辑
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {models.length === 0 && (
+      {models.length === 0 ? (
         <Card className="p-12 text-center">
           <Cpu className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="mb-2 text-lg font-medium">还没有AI模型</h3>
@@ -352,6 +248,136 @@ export default function ModelsPage() {
             </Link>
           </Button>
         </Card>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {models.map(model => {
+            const providerInfo = getProviderInfo(model.provider);
+            const displayName = getModelDisplayName(model);
+
+            return (
+              <Card key={model.id} className="group transition-all duration-200 hover:shadow-lg">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`mt-1 rounded-lg p-2 ${model.is_enabled ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
+                      >
+                        <Cpu
+                          className={`h-5 w-5 ${
+                            model.is_enabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <CardTitle className="flex items-center gap-2 text-lg">{displayName}</CardTitle>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {model.is_default && (
+                            <div className="flex items-center">
+                              <Star className="h-4 w-4 shrink-0 fill-current text-yellow-500" />
+                            </div>
+                          )}
+                          <Badge variant="default" className={providerInfo.color}>
+                            {providerInfo.name}
+                          </Badge>
+                          {model.is_enabled ? (
+                            <Badge variant="default" className="bg-green-100 text-xs text-green-800">
+                              启用
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              禁用
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/models/${model.id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            查看详情
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/models/${model.id}/edit`}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            编辑配置
+                          </Link>
+                        </DropdownMenuItem>
+                        {!model.is_default && (
+                          <DropdownMenuItem onClick={() => handleSetDefault(model.id)}>
+                            <Star className="mr-2 h-4 w-4" />
+                            设为默认
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => handleDeleteModel(model.id)} className="text-destructive">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          删除
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <CardDescription className="mt-2 text-sm">
+                    模型：{model.model_name} | 最大Token：{model.max_tokens}
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="flex flex-1 flex-col justify-end space-y-4 pt-0">
+                  {/* 启用/禁用开关 */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">状态</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs ${model.is_enabled ? 'text-green-600' : 'text-gray-500'}`}>
+                        {model.is_enabled ? '运行中' : '已停用'}
+                      </span>
+                      <Switch
+                        checked={model.is_enabled}
+                        onCheckedChange={checked => handleToggleActive(model.id, checked)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* API配置信息 */}
+                  <div className="bg-muted/50 space-y-2 rounded-lg p-3">
+                    <p className="text-muted-foreground text-xs">API配置</p>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Key className="text-muted-foreground h-3 w-3" />
+                      <span>密钥：{model.api_key ? '已配置' : '未配置'}</span>
+                    </div>
+                    {model.base_url && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Settings className="text-muted-foreground h-3 w-3" />
+                        <span className="truncate">自定义API地址</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 操作按钮 */}
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" asChild className="flex-1">
+                      <Link href={`/models/${model.id}`}>
+                        <Eye className="mr-1 h-3 w-3" />
+                        查看
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild className="flex-1">
+                      <Link href={`/models/${model.id}/edit`}>
+                        <Edit className="mr-1 h-3 w-3" />
+                        编辑
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );

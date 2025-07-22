@@ -28,12 +28,13 @@ import { Agent, KnowledgeBase, KnowledgeBaseDocument } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
 import { Bot, Database, Edit, Eye, FileText, Plus, Search, Settings, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function KnowledgeBaseDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { Confirm } = useAppContext();
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(null);
@@ -44,7 +45,7 @@ export default function KnowledgeBaseDetailPage() {
   const [uploading, setUploading] = useState(false);
 
   // 可以根据URL hash或其他方式获取默认tab，这里暂时使用固定值
-  const defaultTab = 'documents';
+  const defaultTab = searchParams.get('tab') || 'documents';
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -278,17 +279,23 @@ export default function KnowledgeBaseDetailPage() {
 
       {/* 页面标题和操作 */}
       <div className="flex items-start justify-between">
-        <div className="space-y-1">
+        <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-blue-100 p-2">
-              <Database className="h-6 w-6 text-blue-600" />
+            <div
+              className={`mt-1 rounded-lg p-2 ${knowledgeBase.is_active ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
+            >
+              <Database
+                className={`h-5 w-5 ${knowledgeBase.is_active ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+              />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">{knowledgeBase.name}</h1>
-              <p className="text-muted-foreground">{knowledgeBase.description}</p>
-            </div>
+            <h1 className="text-3xl font-bold tracking-tight">{knowledgeBase.name}</h1>
+            <Badge variant={knowledgeBase.is_active ? 'default' : 'secondary'}>
+              {knowledgeBase.is_active ? '启用' : '停用'}
+            </Badge>
           </div>
+          <p className="text-muted-foreground max-w-2xl">{knowledgeBase.description || '暂无描述'}</p>
         </div>
+
         <div className="flex gap-2">
           <Button variant="outline" asChild>
             <Link href={`/knowledge/${knowledgeBase.id}/edit`}>
@@ -547,19 +554,6 @@ export default function KnowledgeBaseDetailPage() {
                     ))}
                   </div>
                 )}
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-medium">危险操作</h3>
-                  <p className="text-muted-foreground text-sm">这些操作无法撤销，请谨慎使用</p>
-                </div>
-                <Button variant="destructive" onClick={handleDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  删除知识库
-                </Button>
               </div>
             </CardContent>
           </Card>

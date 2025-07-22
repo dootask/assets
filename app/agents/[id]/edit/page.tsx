@@ -225,7 +225,7 @@ export default function EditAgentPage() {
 
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">编辑智能体</h1>
           <p className="text-muted-foreground">修改智能体的配置和设置</p>
         </div>
@@ -389,12 +389,14 @@ export default function EditAgentPage() {
                 <div className="max-h-64 space-y-3 overflow-y-auto">
                   {availableTools.map(tool => (
                     <div key={tool.id} className="flex items-start space-x-3 rounded-lg border p-3">
-                      <Checkbox
-                        id={`tool-${tool.id}`}
-                        checked={formData.selectedToolIds.includes(tool.id)}
-                        onCheckedChange={checked => handleToolToggle(tool.id, Boolean(checked))}
-                        className="mt-1"
-                      />
+                      <div className="relative mt-1 h-4 w-4">
+                        <Checkbox
+                          id={`tool-${tool.id}`}
+                          checked={formData.selectedToolIds.includes(tool.id)}
+                          onCheckedChange={checked => handleToolToggle(tool.id, Boolean(checked))}
+                          className="absolute top-0 left-0"
+                        />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <label htmlFor={`tool-${tool.id}`} className="cursor-pointer text-sm font-medium">
                           {tool.name}
@@ -449,12 +451,14 @@ export default function EditAgentPage() {
                 <div className="max-h-64 space-y-3 overflow-y-auto">
                   {availableKnowledgeBases.map(kb => (
                     <div key={kb.id} className="flex items-start space-x-3 rounded-lg border p-3">
-                      <Checkbox
-                        id={`kb-${kb.id}`}
-                        checked={formData.selectedKnowledgeBaseIds.includes(kb.id)}
-                        onCheckedChange={checked => handleKnowledgeBaseToggle(kb.id, Boolean(checked))}
-                        className="mt-1"
-                      />
+                      <div className="relative mt-1 h-4 w-4">
+                        <Checkbox
+                          id={`kb-${kb.id}`}
+                          checked={formData.selectedKnowledgeBaseIds.includes(kb.id)}
+                          onCheckedChange={checked => handleKnowledgeBaseToggle(kb.id, Boolean(checked))}
+                          className="absolute top-0 left-0"
+                        />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <label htmlFor={`kb-${kb.id}`} className="cursor-pointer text-sm font-medium">
                           {kb.name}

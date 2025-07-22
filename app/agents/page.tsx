@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
 import { agentsApi, formatAgentForUI, parseAgentJSONBFields } from '@/lib/api/agents';
 import { Agent } from '@/lib/types';
-import { Bot, Edit, MessageSquare, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { Activity, Bot, Edit, MessageSquare, MoreHorizontal, Plus, Trash2, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -113,15 +113,42 @@ export default function AgentsPage() {
     return [];
   };
 
+  // 统计数据
+  const stats = {
+    total: agents.length,
+    active: agents.filter(agent => agent.is_active).length,
+    totalMessages: agents.reduce((sum, agent) => sum + (agent.statistics?.totalMessages || 0), 0),
+    averageResponseTime:
+      agents.length > 0
+        ? agents.reduce((sum, agent) => sum + (agent.statistics?.averageResponseTime || 1200), 0) / agents.length
+        : 0,
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold tracking-tight">智能体管理</h1>
             <p className="text-muted-foreground">管理和配置 AI 智能体</p>
           </div>
         </div>
+        {/* 统计概览骨架屏 */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="bg-muted h-4 w-20 animate-pulse rounded"></div>
+                <div className="bg-muted h-4 w-4 animate-pulse rounded"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-muted h-8 w-16 animate-pulse rounded"></div>
+                <div className="bg-muted mt-1 h-3 w-24 animate-pulse rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* 卡片骨架屏 */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map(i => (
             <Card key={i}>
@@ -145,7 +172,7 @@ export default function AgentsPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">智能体管理</h1>
           <p className="text-muted-foreground">管理和配置 AI 智能体</p>
         </div>
@@ -155,6 +182,53 @@ export default function AgentsPage() {
             创建智能体
           </Link>
         </Button>
+      </div>
+
+      {/* 统计概览 */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">智能体总数</CardTitle>
+            <Bot className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-muted-foreground text-xs">已创建智能体</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">活跃智能体</CardTitle>
+            <Activity className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.active}</div>
+            <p className="text-muted-foreground text-xs">已启用智能体</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">总对话数</CardTitle>
+            <MessageSquare className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalMessages.toLocaleString()}</div>
+            <p className="text-muted-foreground text-xs">历史消息总数</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">平均响应时间</CardTitle>
+            <TrendingUp className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{(stats.averageResponseTime / 1000).toFixed(1)}s</div>
+            <p className="text-muted-foreground text-xs">智能体响应时间</p>
+          </CardContent>
+        </Card>
       </div>
 
       {agents.length === 0 ? (
@@ -172,25 +246,35 @@ export default function AgentsPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {agents.map(agent => (
-            <Card
-              key={agent.id}
-              className={`transition-all ${agent.is_active ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/30' : ''}`}
-            >
+            <Card key={agent.id} className="group transition-all duration-200 hover:shadow-lg">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <div
-                      className={`rounded-lg p-2 ${agent.is_active ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
+                      className={`mt-1 rounded-lg p-2 ${agent.is_active ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
                     >
                       <Bot
-                        className={`h-5 w-5 ${agent.is_active ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+                        className={`h-5 w-5 ${
+                          agent.is_active ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                        }`}
                       />
                     </div>
                     <div>
                       <CardTitle className="text-lg">{agent.name}</CardTitle>
-                      <Badge variant={getModelBadgeVariant(agent.ai_model?.name || undefined)} className="mt-1 text-xs">
-                        {agent.ai_model?.name || 'unknown'}
-                      </Badge>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        <Badge variant={getModelBadgeVariant(agent.ai_model?.name)} className="text-xs">
+                          {agent.ai_model?.name || 'unknown'}
+                        </Badge>
+                        {agent.is_active ? (
+                          <Badge variant="default" className="bg-green-100 text-xs text-green-800">
+                            运行中
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            已停用
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -222,9 +306,9 @@ export default function AgentsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <CardDescription className="text-sm">{agent.description}</CardDescription>
+                <CardDescription className="mt-2 text-sm">{agent.description}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4 pt-0">
+              <CardContent className="flex flex-1 flex-col justify-end space-y-4 pt-0">
                 {/* 启用/禁用开关 */}
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">状态</span>
@@ -239,29 +323,9 @@ export default function AgentsPage() {
                   </div>
                 </div>
 
-                {/* 统计信息 - 暂时隐藏，等有真实数据再显示 */}
-                {/* {agent.statistics && (
-                  <div className="grid grid-cols-2 gap-4 border-t pt-2">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <MessageSquare className="h-4 w-4 text-blue-500" />
-                        <span className="text-xs text-muted-foreground">今日对话</span>
-                      </div>
-                      <p className="text-lg font-semibold">{agent.statistics.todayMessages}</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <Clock className="h-4 w-4 text-green-500" />
-                        <span className="text-xs text-muted-foreground">响应时间</span>
-                      </div>
-                      <p className="text-lg font-semibold">{agent.statistics.averageResponseTime}ms</p>
-                    </div>
-                  </div>
-                )} */}
-
-                {/* 工具和知识库 */}
-                <div className="space-y-2">
-                  {getToolsArray(agent.tools).length > 0 && (
+                {/* 工具和知识库信息 */}
+                <div className="bg-muted/50 space-y-2 rounded-lg p-3">
+                  {getToolsArray(agent.tools).length > 0 ? (
                     <div>
                       <p className="text-muted-foreground mb-1 text-xs">
                         MCP工具 ({getToolsArray(agent.tools).length})
@@ -281,9 +345,13 @@ export default function AgentsPage() {
                         )}
                       </div>
                     </div>
+                  ) : (
+                    <div>
+                      <p className="text-muted-foreground mb-1 text-xs">MCP工具 (0)</p>
+                    </div>
                   )}
 
-                  {getKnowledgeBasesArray(agent.knowledge_bases).length > 0 && (
+                  {getKnowledgeBasesArray(agent.knowledge_bases).length > 0 ? (
                     <div>
                       <p className="text-muted-foreground mb-1 text-xs">
                         知识库 ({getKnowledgeBasesArray(agent.knowledge_bases).length})
@@ -303,7 +371,27 @@ export default function AgentsPage() {
                         )}
                       </div>
                     </div>
+                  ) : (
+                    <div>
+                      <p className="text-muted-foreground mb-1 text-xs">知识库 (0)</p>
+                    </div>
                   )}
+                </div>
+
+                {/* 操作按钮 */}
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" size="sm" asChild className="flex-1">
+                    <Link href={`/agents/${agent.id}`}>
+                      <MessageSquare className="mr-1 h-3 w-3" />
+                      查看
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild className="flex-1">
+                    <Link href={`/agents/${agent.id}/edit`}>
+                      <Edit className="mr-1 h-3 w-3" />
+                      编辑
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>

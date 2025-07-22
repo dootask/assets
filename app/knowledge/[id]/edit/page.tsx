@@ -170,7 +170,7 @@ export default function EditKnowledgeBasePage() {
 
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">编辑知识库</h1>
           <p className="text-muted-foreground">修改知识库的配置和设置</p>
         </div>

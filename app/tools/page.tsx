@@ -4,14 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,21 +14,20 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/app-context';
+import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
 import { mcpToolsApi, type MCPToolQueryParams } from '@/lib/api/mcp-tools';
 import { MCPTool } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
-import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
 import {
   Activity,
-  BarChart3,
   CheckCircle,
   Clock,
   Edit,
+  Eye,
   Filter,
   MoreHorizontal,
   Plus,
   Search,
-  Settings,
   Trash2,
   TrendingUp,
   Wrench,
@@ -98,11 +89,22 @@ export default function ToolsPage() {
 
   const handleToggleActive = async (toolId: string, isActive: boolean) => {
     try {
+      // 乐观更新：先更新UI状态
+      setTools(prevTools => prevTools.map(tool => (tool.id === toolId ? { ...tool, isActive } : tool)));
+
+      // 后端更新
       const updatedTool = await mcpToolsApi.toggle(toolId, isActive);
+
+      // 确认更新：用服务器返回的数据更新状态
       setTools(prevTools => prevTools.map(tool => (tool.id === toolId ? updatedTool : tool)));
+
       toast.success(isActive ? '工具已启用' : '工具已停用');
     } catch (error) {
       console.error('Failed to toggle tool status:', error);
+
+      // 错误回滚：恢复原始状态
+      setTools(prevTools => prevTools.map(tool => (tool.id === toolId ? { ...tool, isActive: !isActive } : tool)));
+
       toast.error('更新工具状态失败');
     }
   };
@@ -166,54 +168,50 @@ export default function ToolsPage() {
     const categoryOption = toolCategories.find(item => item.value === category);
     if (categoryOption) {
       return (
-        <Badge variant="default" className={categoryOption.color}>
+        <Badge variant="default" className={`${categoryOption.color} text-xs`}>
           {categoryOption.label}
         </Badge>
       );
     }
-    return <Badge variant="outline">{category}</Badge>;
-  };
-
-  const getCategoryText = (category: string) => {
-    const categoryOption = toolCategories.find(item => item.value === category);
-    if (categoryOption) {
-      return categoryOption.label;
-    }
-    return category;
-  };
-
-  const getTypeText = (type: string) => {
-    const typeOption = toolTypes.find(item => item.value === type);
-    if (typeOption) {
-      return typeOption.label;
-    }
-    return type;
+    return (
+      <Badge variant="outline" className="text-xs">
+        {category}
+      </Badge>
+    );
   };
 
   const getTypeBadge = (type: string) => {
     const typeOption = toolTypes.find(item => item.value === type);
     if (typeOption) {
-      return <Badge variant={typeOption.variant}>{typeOption.shortLabel}</Badge>;
+      return (
+        <Badge variant={typeOption.variant} className="text-xs">
+          {typeOption.shortLabel}
+        </Badge>
+      );
     }
-    return <Badge variant="outline">{type}</Badge>;
+    return (
+      <Badge variant="outline" className="text-xs">
+        {type}
+      </Badge>
+    );
   };
 
   const getSuccessRateBadge = (successRate: number) => {
     if (successRate >= 0.95) {
       return (
-        <Badge variant="default" className="bg-green-100 text-green-800">
+        <Badge variant="default" className="bg-green-100 text-xs text-green-800">
           优秀
         </Badge>
       );
     } else if (successRate >= 0.8) {
       return (
-        <Badge variant="default" className="bg-yellow-100 text-yellow-800">
+        <Badge variant="default" className="bg-yellow-100 text-xs text-yellow-800">
           良好
         </Badge>
       );
     } else {
       return (
-        <Badge variant="default" className="bg-red-100 text-red-800">
+        <Badge variant="default" className="bg-red-100 text-xs text-red-800">
           需优化
         </Badge>
       );
@@ -236,19 +234,48 @@ export default function ToolsPage() {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold tracking-tight">MCP 工具管理</h1>
             <p className="text-muted-foreground">管理智能体可使用的 MCP 工具</p>
           </div>
         </div>
+        {/* 统计概览骨架屏 */}
         <div className="grid gap-4 md:grid-cols-4">
           {[1, 2, 3, 4].map(i => (
             <Card key={i}>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="bg-muted h-4 w-20 animate-pulse rounded"></div>
+                <div className="bg-muted h-4 w-4 animate-pulse rounded"></div>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted h-8 w-16 animate-pulse rounded"></div>
+                <div className="bg-muted mt-1 h-3 w-24 animate-pulse rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* 筛选区域骨架屏 */}
+        <Card>
+          <CardHeader>
+            <div className="bg-muted h-5 w-24 animate-pulse rounded"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-muted h-10 w-full animate-pulse rounded"></div>
+          </CardContent>
+        </Card>
+        {/* 卡片骨架屏 */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map(i => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="bg-muted h-5 w-32 animate-pulse rounded"></div>
+                <div className="bg-muted h-4 w-48 animate-pulse rounded"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="bg-muted h-4 w-24 animate-pulse rounded"></div>
+                  <div className="bg-muted h-3 w-36 animate-pulse rounded"></div>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -260,7 +287,7 @@ export default function ToolsPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">MCP 工具管理</h1>
           <p className="text-muted-foreground">管理智能体可使用的 MCP 工具</p>
         </div>
@@ -360,224 +387,152 @@ export default function ToolsPage() {
         </CardContent>
       </Card>
 
-      {/* 工具列表 */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredTools.map(tool => (
-          <Card
-            key={tool.id}
-            className={`transition-all ${tool.isActive ? 'border-green-200 bg-green-50/30 dark:border-green-800 dark:bg-green-950/20' : 'opacity-75'}`}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`rounded-lg p-2 ${tool.isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
-                    <Wrench
-                      className={`h-5 w-5 ${tool.isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
-                    />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{tool.name}</CardTitle>
-                    <div className="mt-1 flex gap-2">
-                      {getCategoryBadge(tool.category)}
-                      {getTypeBadge(tool.type)}
-                    </div>
-                  </div>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link href={`/tools/${tool.id}`}>
-                        <Settings className="mr-2 h-4 w-4" />
-                        配置
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/tools/${tool.id}`}>
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        查看统计
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/tools/${tool.id}/edit`}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        修改
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600"
-                      onClick={() => handleDeleteTool(tool.id)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      删除
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <CardDescription className="mt-2 text-sm">{tool.description}</CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-4 pt-0">
-              {/* 启用/禁用开关 */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">状态</span>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs ${tool.isActive ? 'text-green-600' : 'text-gray-500'}`}>
-                    {tool.isActive ? '运行中' : '已停用'}
-                  </span>
-                  <Switch
-                    checked={tool.isActive}
-                    onCheckedChange={(checked: boolean) => handleToggleActive(tool.id, checked)}
-                  />
-                </div>
-              </div>
-
-              {/* 统计信息 */}
-              {tool.statistics && tool.isActive && (
-                <div className="grid grid-cols-2 gap-4 border-t pt-2">
-                  <div className="text-center">
-                    <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                      <Activity className="h-3 w-3" />
-                      <span className="text-xs">今日调用</span>
-                    </div>
-                    <p className="text-lg font-semibold">{tool.statistics.todayCalls}</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span className="text-xs">响应时间</span>
-                    </div>
-                    <p className="text-lg font-semibold">{tool.statistics.averageResponseTime}s</p>
-                  </div>
-                  <div className="col-span-2 text-center">
-                    <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1">
-                      <TrendingUp className="h-3 w-3" />
-                      <span className="text-xs">成功率</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-2">
-                      <p className="text-lg font-semibold">{(tool.statistics.successRate * 100).toFixed(0)}%</p>
-                      {getSuccessRateBadge(tool.statistics.successRate)}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 权限信息 */}
-              <div className="space-y-2">
-                <p className="text-muted-foreground text-xs">权限等级</p>
-                <div className="flex flex-wrap gap-1">
-                  {tool.permissions.map(permission => (
-                    <Badge key={permission} variant="outline" className="text-xs">
-                      {toolPermissions.find(item => item.value === permission)?.label || permission}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* 详细信息对话框 */}
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <BarChart3 className="mr-2 h-3 w-3" />
-                    查看详情
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[90vh] sm:max-w-4xl">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Wrench className="h-5 w-5" />
-                      {tool.name}
-                    </DialogTitle>
-                    <DialogDescription>MCP 工具详细信息和使用统计</DialogDescription>
-                  </DialogHeader>
-
-                  <div className="max-h-[70vh] overflow-y-auto pr-2">
-                    <div className="space-y-4">
-                      {/* 基本信息 */}
-                      <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg p-4">
-                        <div>
-                          <p className="text-sm font-medium">工具类别</p>
-                          <p className="text-muted-foreground text-sm">{getCategoryText(tool.category)}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">工具类型</p>
-                          <p className="text-muted-foreground text-sm">{getTypeText(tool.type)}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">创建时间</p>
-                          <p className="text-muted-foreground text-sm">
-                            {new Date(tool.createdAt).toLocaleString('zh-CN')}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">更新时间</p>
-                          <p className="text-muted-foreground text-sm">
-                            {new Date(tool.updatedAt).toLocaleString('zh-CN')}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* 统计信息 */}
-                      {tool.statistics && (
-                        <div>
-                          <h4 className="mb-3 font-medium">使用统计</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <Card>
-                              <CardContent className="p-4 text-center">
-                                <p className="text-2xl font-bold">{tool.statistics.totalCalls}</p>
-                                <p className="text-muted-foreground text-xs">总调用次数</p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardContent className="p-4 text-center">
-                                <p className="text-2xl font-bold">{tool.statistics.todayCalls}</p>
-                                <p className="text-muted-foreground text-xs">今日调用</p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardContent className="p-4 text-center">
-                                <p className="text-2xl font-bold">{tool.statistics.averageResponseTime}s</p>
-                                <p className="text-muted-foreground text-xs">平均响应时间</p>
-                              </CardContent>
-                            </Card>
-                            <Card>
-                              <CardContent className="p-4 text-center">
-                                <p className="text-2xl font-bold">{(tool.statistics.successRate * 100).toFixed(1)}%</p>
-                                <p className="text-muted-foreground text-xs">成功率</p>
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 配置信息 */}
-                      <div>
-                        <h4 className="mb-3 font-medium">配置信息</h4>
-                        <div className="bg-muted/50 rounded-lg p-4">
-                          <pre className="text-muted-foreground overflow-x-auto text-sm">
-                            {JSON.stringify(tool.config, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredTools.length === 0 && (
+      {filteredTools.length === 0 && !isLoading ? (
         <Card className="p-12 text-center">
           <Wrench className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="mb-2 text-lg font-medium">没有找到工具</h3>
           <p className="text-muted-foreground">请尝试调整筛选条件或搜索关键词</p>
         </Card>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredTools.map(tool => (
+            <Card key={tool.id} className="group transition-all duration-200 hover:shadow-lg">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`rounded-lg p-2 ${tool.isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+                      <Wrench
+                        className={`h-5 w-5 ${
+                          tool.isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{tool.name}</CardTitle>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {getCategoryBadge(tool.category)}
+                        {getTypeBadge(tool.type)}
+                        {tool.isActive ? (
+                          <Badge variant="default" className="bg-green-100 text-xs text-green-800">
+                            运行中
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            已停用
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link href={`/tools/${tool.id}`}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          查看详情
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/tools/${tool.id}/edit`}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          修改
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-red-600 focus:text-red-600"
+                        onClick={() => handleDeleteTool(tool.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        删除
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <CardDescription className="mt-2 text-sm">{tool.description}</CardDescription>
+              </CardHeader>
+
+              <CardContent className="flex flex-1 flex-col justify-end space-y-4 pt-0">
+                {/* 启用/禁用开关 */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">状态</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs ${tool.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                      {tool.isActive ? '运行中' : '已停用'}
+                    </span>
+                    <Switch
+                      checked={tool.isActive}
+                      onCheckedChange={(checked: boolean) => handleToggleActive(tool.id, checked)}
+                    />
+                  </div>
+                </div>
+
+                {/* 统计信息和权限 */}
+                <div className="bg-muted/50 space-y-3 rounded-lg p-3">
+                  {/* 统计信息 */}
+                  {tool.statistics && tool.isActive && (
+                    <div className="border-muted-foreground/10 grid grid-cols-2 gap-3 border-b pb-2">
+                      <div className="text-center">
+                        <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1">
+                          <Activity className="h-3 w-3" />
+                          <span className="text-xs">今日调用</span>
+                        </div>
+                        <p className="text-sm font-semibold">{tool.statistics.todayCalls}</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-muted-foreground mb-1 flex items-center justify-center gap-1">
+                          <TrendingUp className="h-3 w-3" />
+                          <span className="text-xs">成功率</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-1">
+                          <p className="text-sm font-semibold">{(tool.statistics.successRate * 100).toFixed(0)}%</p>
+                          {getSuccessRateBadge(tool.statistics.successRate)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 权限信息 */}
+                  <div className="space-y-2">
+                    <p className="text-muted-foreground text-xs">权限等级</p>
+                    <div className="flex flex-wrap gap-1">
+                      {tool.permissions.slice(0, 2).map(permission => (
+                        <Badge key={permission} variant="outline" className="text-xs">
+                          {toolPermissions.find(item => item.value === permission)?.label || permission}
+                        </Badge>
+                      ))}
+                      {tool.permissions.length > 2 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{tool.permissions.length - 2}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" size="sm" asChild className="flex-1">
+                    <Link href={`/tools/${tool.id}`}>
+                      <Eye className="mr-1 h-3 w-3" />
+                      详情
+                    </Link>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild className="flex-1">
+                    <Link href={`/tools/${tool.id}/edit`}>
+                      <Edit className="mr-1 h-3 w-3" />
+                      编辑
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );

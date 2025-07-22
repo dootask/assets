@@ -172,7 +172,11 @@ export default function AgentDetailPage() {
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <Bot className="text-primary h-8 w-8" />
+            <div className={`mt-1 rounded-lg p-2 ${agent.is_active ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}>
+              <Bot
+                className={`h-5 w-5 ${agent.is_active ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+              />
+            </div>
             <h1 className="text-3xl font-bold tracking-tight">{agent.name}</h1>
             <Badge variant={agent.is_active ? 'default' : 'secondary'}>{agent.is_active ? '活跃' : '停用'}</Badge>
           </div>

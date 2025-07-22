@@ -172,7 +172,7 @@ export default function EditModelPage() {
 
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">编辑 AI 模型</h1>
           <p className="text-muted-foreground">修改 {model.name} 的配置</p>
         </div>

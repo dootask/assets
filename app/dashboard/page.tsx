@@ -54,7 +54,7 @@ export default function Dashboard() {
   }, []);
 
   // 转换最近智能体数据格式以兼容现有UI
-  const recentAgents =
+  const recentAgents = (
     recentActivity?.recent_agents?.map(agent => ({
       id: agent.id,
       name: agent.name,
@@ -65,10 +65,11 @@ export default function Dashboard() {
         averageResponseTime: 2.1,
         successRate: 98.5,
       },
-    })) || [];
+    })) || []
+  ).slice(0, 4);
 
   // 转换最近对话数据格式以兼容现有UI
-  const recentConversations =
+  const recentConversations = (
     recentActivity?.recent_conversations?.map(conv => ({
       id: conv.id.toString(),
       userName: conv.user_name,
@@ -81,13 +82,14 @@ export default function Dashboard() {
       context: {},
       createdAt: conv.last_activity,
       updatedAt: conv.last_activity,
-    })) || [];
+    })) || []
+  ).slice(0, 4);
 
   if (isLoading || !stats) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold tracking-tight">仪表板</h1>
             <p className="text-muted-foreground">DooTask AI 智能体管理系统概览</p>
           </div>
@@ -112,7 +114,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">仪表板</h1>
           <p className="text-muted-foreground">DooTask AI 智能体管理系统概览</p>
         </div>
@@ -191,7 +193,7 @@ export default function Dashboard() {
           </div>
 
           {/* 系统状态和最近活动 */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -202,7 +204,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-3">
-                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3">
+                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3.5">
                     <div className="flex items-center gap-3">
                       <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/30">
                         <Cpu className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -221,7 +223,7 @@ export default function Dashboard() {
                     </Badge>
                   </div>
 
-                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3">
+                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3.5">
                     <div className="flex items-center gap-3">
                       <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900/30">
                         <Brain className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -240,7 +242,7 @@ export default function Dashboard() {
                     </Badge>
                   </div>
 
-                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3">
+                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3.5">
                     <div className="flex items-center gap-3">
                       <div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/30">
                         <Link className="h-4 w-4 text-orange-600 dark:text-orange-400" />
@@ -259,7 +261,7 @@ export default function Dashboard() {
                     </Badge>
                   </div>
 
-                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3">
+                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3.5">
                     <div className="flex items-center gap-3">
                       <div className="rounded-full bg-cyan-100 p-2 dark:bg-cyan-900/30">
                         <Database className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
@@ -286,7 +288,7 @@ export default function Dashboard() {
                 <CardTitle>最近活动</CardTitle>
                 <CardDescription>智能体和对话活动记录</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="flex-1 space-y-3">
                 <div className="space-y-2">
                   {recentAgents.map(agent => (
                     <div key={agent.id} className="bg-muted/50 flex items-start gap-3 rounded-lg p-3">
@@ -319,9 +321,37 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {recentAgents.length === 0 && recentConversations.length === 0 && (
-                  <div className="py-4 text-center">
+                {recentAgents.length === 0 && (
+                  <div className="flex h-full items-center justify-center pb-8">
                     <p className="text-muted-foreground text-sm">暂无最近活动</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>最近对话</CardTitle>
+                <CardDescription>最近对话记录</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-3">
+                <div className="space-y-2">
+                  {recentConversations.map(conv => (
+                    <div key={conv.id} className="hover:bg-muted/50 flex items-start gap-3 rounded-lg p-2">
+                      <MessageSquare className="mt-1 h-3 w-3 text-blue-500" />
+                      <div className="flex-1 space-y-1">
+                        <p className="text-xs">
+                          {conv.userName} 与 {conv.agentName}
+                        </p>
+                        <p className="text-muted-foreground text-xs">{conv.messagesCount} 条消息</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {recentConversations.length === 0 && (
+                  <div className="flex h-full items-center justify-center pb-8">
+                    <p className="text-muted-foreground text-sm">暂无最近对话</p>
                   </div>
                 )}
               </CardContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import { CommandSelect, CommandSelectOption } from '@/components/command-select';
+import { CommandSelect } from '@/components/command-select';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -152,7 +152,7 @@ export default function EditMCPToolPage() {
 
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">编辑 MCP 工具</h1>
           <p className="text-muted-foreground">修改 MCP 工具的配置和设置</p>
         </div>

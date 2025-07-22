@@ -17,7 +17,7 @@ import { useAppContext } from '@/contexts/app-context';
 import { aiModelsApi, getModelDisplayName } from '@/lib/api/ai-models';
 import { getProviderInfo } from '@/lib/ai';
 import { AIModelConfig } from '@/lib/types';
-import { Cpu, Edit, Key, Settings, Star, Trash2, Zap } from 'lucide-react';
+import { Cpu, Edit, Key, Power, Settings, Star, Trash2, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -157,8 +157,14 @@ export default function ModelDetailPage() {
       <div className="flex items-start justify-between">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <div className={`h-8 w-8 rounded-full ${currentProvider.color} flex items-center justify-center`}>
-              <Cpu className="h-4 w-4 text-white" />
+            <div
+              className={`h-8 w-8 rounded-lg ${model.is_enabled ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'} flex items-center justify-center`}
+            >
+              <Cpu
+                className={`h-5 w-5 ${
+                  model.is_enabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                }`}
+              />
             </div>
             <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
             <Badge variant={model.is_enabled ? 'default' : 'secondary'}>{model.is_enabled ? '启用' : '停用'}</Badge>
@@ -369,6 +375,7 @@ export default function ModelDetailPage() {
               className="w-full"
               onClick={handleToggleStatus}
             >
+              <Power className="mr-2 h-4 w-4" />
               {model.is_enabled ? '停用模型' : '启用模型'}
             </Button>
           </CardContent>
