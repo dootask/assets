@@ -17,25 +17,24 @@ import { AIModelConfig, PaginationBase } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
 import { Activity, CheckCircle, Cpu, Edit, Eye, Key, MoreHorizontal, Plus, Settings, Star, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Pagination } from '@/components/pagination';
+import { defaultPagination, Pagination } from '@/components/pagination';
 
 export default function ModelsPage() {
   const { Confirm } = useAppContext();
   const [models, setModels] = useState<AIModelConfig[]>([]);
-  const [pagination, setPagination] = useState<PaginationBase>({
-    current_page: 1,
-    page_size: 12,
-    total_items: 0,
-    total_pages: 0,
-  });
+  const [defaultModel, setDefaultModel] = useState<AIModelConfig | null>(null);
+  const [pagination, setPagination] = useState<PaginationBase>(defaultPagination);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadModels = async () => {
+  const loadModels = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await aiModelsApi.getAIModels({});
+      const data = await aiModelsApi.getAIModels({
+        page: pagination.current_page,
+        page_size: pagination.page_size,
+      });
       setModels(data.data.items);
       setPagination(data);
     } catch (error) {
@@ -44,11 +43,42 @@ export default function ModelsPage() {
     } finally {
       setIsLoading(false);
     }
+  }, [pagination.current_page, pagination.page_size]);
+
+  const loadDefaultModel = useCallback(async () => {
+    try {
+      const response = await aiModelsApi.getAIModels({
+        page: 1,
+        page_size: 1,
+        sorts: [
+          {
+            key: 'is_default',
+            desc: true,
+          },
+        ],
+      });
+      setDefaultModel(response.data.items[0] || null);
+    } catch {
+      setDefaultModel(null);
+    }
+  }, []);
+
+  // 分页切换
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, current_page: page }));
+  };
+  // 每页数量切换
+  const handlePageSizeChange = (size: number) => {
+    setPagination(prev => ({ ...prev, page_size: size, current_page: 1 }));
   };
 
   useEffect(() => {
     loadModels();
-  }, []);
+  }, [loadModels]);
+
+  useEffect(() => {
+    loadDefaultModel();
+  }, [loadDefaultModel]);
 
   const handleToggleActive = async (modelId: number, isActive: boolean) => {
     try {
@@ -75,13 +105,25 @@ export default function ModelsPage() {
   };
 
   const handleSetDefault = async (modelId: number) => {
+    const backupDefaultModel = defaultModel;
+
     try {
+      // 乐观更新：先更新UI状态
+      setDefaultModel(models.find(model => model.id === modelId) || null);
+
+      // 后端更新
       await aiModelsApi.updateAIModel(modelId, { is_default: true });
+
       // 重新加载所有模型以确保只有一个默认模型
-      await loadModels();
+      setModels(prevModels => prevModels.map(model => ({ ...model, is_default: model.id === modelId })));
+
       toast.success('已设为默认模型');
     } catch (error) {
       console.error('设置默认模型失败:', error);
+
+      // 错误回滚：恢复原始状态
+      setDefaultModel(backupDefaultModel);
+
       toast.error('设置默认模型失败');
     }
   };
@@ -133,7 +175,7 @@ export default function ModelsPage() {
   const stats = {
     total: models.length,
     active: models.filter(m => m.is_enabled).length,
-    defaultModel: models.find(m => m.is_default)?.name || '未设置',
+    defaultModel: defaultModel?.name || '未设置',
     providers: [...new Set(models.map(m => m.provider))].length,
   };
 
@@ -177,6 +219,10 @@ export default function ModelsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+        {/* 分页骨架屏 */}
+        <div className="mt-6 flex justify-center">
+          <div className="bg-muted h-10 w-48 animate-pulse rounded"></div>
         </div>
       </div>
     );
@@ -392,8 +438,8 @@ export default function ModelsPage() {
             totalPages={pagination.total_pages}
             pageSize={pagination.page_size}
             totalItems={pagination.total_items}
-            onPageChange={() => {}}
-            onPageSizeChange={() => {}}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
           />
         </>
       )}

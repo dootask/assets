@@ -15,7 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/app-context';
 import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
 import { mcpToolsApi } from '@/lib/api/mcp-tools';
-import { MCPTool } from '@/lib/types';
+import { MCPTool, PaginationBase } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
 import {
   Activity,
@@ -34,51 +34,62 @@ import {
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useDebounceCallback } from '@/hooks/use-debounce';
+import { defaultPagination, Pagination } from '@/components/pagination';
 
 export default function ToolsPage() {
   const [tools, setTools] = useState<MCPTool[]>([]);
-  const [filteredTools, setFilteredTools] = useState<MCPTool[]>([]);
+  const [pagination, setPagination] = useState<PaginationBase>(defaultPagination);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   const { Confirm } = useAppContext();
 
-  const loadTools = async () => {
+  // 加载MCP工具列表
+  const loadTools = useDebounceCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await mcpToolsApi.list();
+      // 构建查询参数
+      const filters: Record<string, unknown> = {};
+
+      if (selectedCategory !== 'all') {
+        filters.category = selectedCategory;
+      }
+
+      if (searchQuery) {
+        filters.search = searchQuery;
+      }
+
+      // 获取工具列表
+      const response = await mcpToolsApi.list({
+        page: pagination.current_page,
+        page_size: pagination.page_size,
+        filters,
+      });
+
       setTools(response.data.items);
-      setFilteredTools(response.data.items);
+      setPagination(response);
     } catch (error) {
       console.error('Failed to load tools:', error);
       toast.error('加载工具列表失败');
     } finally {
       setIsLoading(false);
     }
+  }, [selectedCategory, searchQuery, pagination.current_page, pagination.page_size]);
+
+  // 分页切换
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, current_page: page }));
+  };
+  // 每页数量切换
+  const handlePageSizeChange = (size: number) => {
+    setPagination(prev => ({ ...prev, page_size: size, current_page: 1 }));
   };
 
   useEffect(() => {
     loadTools();
-  }, []);
-
-  useEffect(() => {
-    let filtered = tools;
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(tool => tool.category === selectedCategory);
-    }
-
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(
-        tool =>
-          tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          tool.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    setFilteredTools(filtered);
-  }, [tools, selectedCategory, searchQuery]);
+  }, [loadTools]);
 
   const handleToggleActive = async (toolId: string, isActive: boolean) => {
     try {
@@ -213,13 +224,12 @@ export default function ToolsPage() {
 
   // 统计数据
   const stats = {
-    total: filteredTools.length,
-    active: filteredTools.filter(tool => tool.isActive).length,
-    totalCalls: filteredTools.reduce((sum, tool) => sum + (tool.statistics?.totalCalls || 0), 0),
+    total: tools.length,
+    active: tools.filter(tool => tool.isActive).length,
+    totalCalls: tools.reduce((sum, tool) => sum + (tool.statistics?.totalCalls || 0), 0),
     avgResponseTime:
-      filteredTools.length > 0
-        ? filteredTools.reduce((sum, tool) => sum + (tool.statistics?.averageResponseTime || 0), 0) /
-          filteredTools.length
+      tools.length > 0
+        ? tools.reduce((sum, tool) => sum + (tool.statistics?.averageResponseTime || 0), 0) / tools.length
         : 0,
   };
 
@@ -272,6 +282,10 @@ export default function ToolsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+        {/* 分页骨架屏 */}
+        <div className="mt-6 flex justify-center">
+          <div className="bg-muted h-10 w-48 animate-pulse rounded"></div>
         </div>
       </div>
     );
@@ -349,7 +363,15 @@ export default function ToolsPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap justify-between gap-4">
-            <Tabs className="lg:flex-1" value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Tabs
+              className="lg:flex-1"
+              value={selectedCategory}
+              onValueChange={value => {
+                setSearchQuery('');
+                setSelectedCategory(value);
+                setPagination(prev => ({ ...prev, current_page: 1 }));
+              }}
+            >
               <TabsList className="gap-2">
                 <TabsTrigger value="all">全部</TabsTrigger>
                 {toolCategories.map(category => (
@@ -374,7 +396,7 @@ export default function ToolsPage() {
         </CardContent>
       </Card>
 
-      {filteredTools.length === 0 && !isLoading ? (
+      {tools.length === 0 && !isLoading ? (
         <Card className="p-12 text-center">
           <Wrench className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="mb-2 text-lg font-medium">没有找到工具</h3>
@@ -383,7 +405,7 @@ export default function ToolsPage() {
       ) : (
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredTools.map(tool => (
+            {tools.map(tool => (
               <Card key={tool.id} className="group transition-all duration-200 hover:shadow-lg">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -518,6 +540,14 @@ export default function ToolsPage() {
               </Card>
             ))}
           </div>
+          <Pagination
+            currentPage={pagination.current_page}
+            totalPages={pagination.total_pages}
+            pageSize={pagination.page_size}
+            totalItems={pagination.total_items}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         </>
       )}
     </div>

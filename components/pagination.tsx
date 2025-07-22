@@ -6,6 +6,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 
+// 默认分页数据
+export const defaultPagination = {
+  current_page: 1,
+  page_size: 12,
+  total_items: 0,
+  total_pages: 0,
+};
+
+// 默认每页条数选项
+export const defaultPageSizeOptions = [12, 30, 60, 120];
+
 export interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -27,7 +38,7 @@ export function Pagination({
   totalItems,
   onPageChange,
   onPageSizeChange,
-  pageSizeOptions = [12, 30, 60, 120],
+  pageSizeOptions = defaultPageSizeOptions,
   showQuickJumper = true,
   showSizeChanger = true,
   showTotal = true,

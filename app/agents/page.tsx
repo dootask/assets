@@ -12,37 +12,44 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
 import { agentsApi, formatAgentForUI, parseAgentJSONBFields } from '@/lib/api/agents';
-import { Agent } from '@/lib/types';
+import { Agent, PaginationBase } from '@/lib/types';
 import { Activity, Bot, Edit, Eye, MessageSquare, MoreHorizontal, Plus, Trash2, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { defaultPagination, Pagination } from '@/components/pagination';
 
 export default function AgentsPage() {
   const { Confirm } = useAppContext();
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [pagination, setPagination] = useState<PaginationBase>(defaultPagination);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadAgents = async () => {
+  // 加载智能体列表
+  const loadAgents = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await agentsApi.list();
+      const response = await agentsApi.list({
+        page: pagination.current_page,
+        page_size: pagination.page_size,
+      });
       const formattedAgents = response.data.items.map((agent: Agent) => {
         const parsedAgent = parseAgentJSONBFields(agent);
         return formatAgentForUI(parsedAgent);
       });
       setAgents(formattedAgents);
+      setPagination(response);
     } catch (error) {
       console.error('加载智能体列表失败:', error);
       setAgents([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pagination.current_page, pagination.page_size]);
 
   useEffect(() => {
     loadAgents();
-  }, []);
+  }, [loadAgents]);
 
   const handleToggleActive = async (agentId: number, isActive: boolean) => {
     try {
@@ -124,6 +131,15 @@ export default function AgentsPage() {
         : 0,
   };
 
+  // 分页切换
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, current_page: page }));
+  };
+  // 每页数量切换
+  const handlePageSizeChange = (size: number) => {
+    setPagination(prev => ({ ...prev, page_size: size, current_page: 1 }));
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 p-6">
@@ -164,6 +180,10 @@ export default function AgentsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+        {/* 分页骨架屏 */}
+        <div className="mt-6 flex justify-center">
+          <div className="bg-muted h-10 w-48 animate-pulse rounded"></div>
         </div>
       </div>
     );
@@ -400,6 +420,14 @@ export default function AgentsPage() {
           </div>
         </>
       )}
+      <Pagination
+        currentPage={pagination.current_page}
+        totalPages={pagination.total_pages}
+        pageSize={pagination.page_size}
+        totalItems={pagination.total_items}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
     </div>
   );
 }

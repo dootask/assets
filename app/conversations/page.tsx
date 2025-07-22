@@ -17,13 +17,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 import { agentsApi } from '@/lib/api/agents';
 import { fetchConversations, fetchMessages } from '@/lib/api/conversations';
-import { Agent, Conversation, Message } from '@/lib/types';
+import { Agent, Conversation, Message, PaginationBase } from '@/lib/types';
 import { Bot, Calendar, CheckCircle, Clock, Eye, Filter, MessageSquare, Search, TrendingUp, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { defaultPagination, Pagination } from '../../components/pagination';
+import { useDebounceCallback } from '@/hooks/use-debounce';
 
 export default function ConversationsPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [pagination, setPagination] = useState<PaginationBase>(defaultPagination);
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +40,8 @@ export default function ConversationsPage() {
   });
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  // 加载对话列表
+  const loadData = useDebounceCallback(async () => {
     setIsLoading(true);
     setError('');
 
@@ -55,8 +59,8 @@ export default function ConversationsPage() {
 
       // 获取对话列表
       const conversationResponse = await fetchConversations({
-        page: 1,
-        page_size: 50,
+        page: pagination.current_page,
+        page_size: pagination.page_size,
         filters,
       });
 
@@ -70,21 +74,28 @@ export default function ConversationsPage() {
         averageMessages: Math.round(conversationResponse.data.statistics.average_messages),
         averageResponseTime: conversationResponse.data.statistics.average_response_time,
       });
-
-      // 获取智能体列表
-      const agentResponse = await agentsApi.list({ page: 1, page_size: 100 });
-      setAgents(agentResponse.data.items);
     } catch (error) {
       console.error('加载数据失败:', error);
       setError('加载对话数据失败，请检查后端服务是否正常运行');
       // 如果API调用失败，显示空数据
       setConversations([]);
-      setAgents([]);
       setStatistics({ total: 0, today: 0, averageMessages: 0, averageResponseTime: 0 });
     } finally {
       setIsLoading(false);
     }
-  }, [selectedAgent, searchQuery]);
+  }, [selectedAgent, searchQuery, pagination.current_page, pagination.page_size]);
+
+  // 加载智能体列表
+  const loadAgents = useCallback(async () => {
+    try {
+      const agentResponse = await agentsApi.list({ page: 1, page_size: 100 });
+      setAgents(agentResponse.data.items);
+    } catch (error) {
+      console.error('加载智能体列表失败:', error);
+      // 如果API调用失败，显示空数据
+      setAgents([]);
+    }
+  }, []);
 
   // 加载对话消息
   const loadConversationMessages = async (conversationId: string) => {
@@ -103,19 +114,22 @@ export default function ConversationsPage() {
     }
   };
 
+  // 分页切换
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, current_page: page }));
+  };
+  // 每页数量切换
+  const handlePageSizeChange = (size: number) => {
+    setPagination(prev => ({ ...prev, page_size: size, current_page: 1 }));
+  };
+
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // 过滤对话（前端过滤作为后端过滤的补充）
-  const filteredConversations = conversations.filter(conv => {
-    const matchesAgent = selectedAgent === 'all' || conv.agentId === selectedAgent;
-    const matchesSearch =
-      searchQuery === '' ||
-      conv.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.agentName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesAgent && matchesSearch;
-  });
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
 
   const getResponseTimeBadge = (responseTime?: number) => {
     if (!responseTime) return <Badge variant="outline">-</Badge>;
@@ -238,7 +252,14 @@ export default function ConversationsPage() {
         <CardContent>
           <div className="flex flex-wrap gap-4">
             <div className="min-w-0 flex-1 sm:min-w-[200px]">
-              <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+              <Select
+                value={selectedAgent}
+                onValueChange={value => {
+                  setSearchQuery('');
+                  setSelectedAgent(value);
+                  setPagination(prev => ({ ...prev, current_page: 1 }));
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="选择智能体" />
                 </SelectTrigger>
@@ -275,7 +296,7 @@ export default function ConversationsPage() {
       <Card>
         <CardHeader>
           <CardTitle>对话记录</CardTitle>
-          <CardDescription>显示 {filteredConversations.length} 条对话记录</CardDescription>
+          <CardDescription>显示 {conversations.length} 条对话记录</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -288,14 +309,14 @@ export default function ConversationsPage() {
               </Button>
             </div>
           )}
-          {!error && filteredConversations.length === 0 && (
+          {!error && conversations.length === 0 && (
             <div className="py-12 text-center">
               <MessageSquare className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
               <h3 className="mb-2 text-lg font-medium">暂无对话记录</h3>
               <p className="text-muted-foreground">尚未找到匹配的对话记录</p>
             </div>
           )}
-          {!error && filteredConversations.length > 0 && (
+          {!error && conversations.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -308,7 +329,7 @@ export default function ConversationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredConversations.map(conversation => (
+                {conversations.map(conversation => (
                   <TableRow key={conversation.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -427,6 +448,14 @@ export default function ConversationsPage() {
           )}
         </CardContent>
       </Card>
+      <Pagination
+        currentPage={pagination.current_page}
+        totalPages={pagination.total_pages}
+        pageSize={pagination.page_size}
+        totalItems={pagination.total_items}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { defaultPagination, Pagination } from '@/components/pagination';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +13,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
 import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
-import { KnowledgeBase } from '@/lib/types';
+import { KnowledgeBase, PaginationBase } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
 import {
   Activity,
@@ -28,31 +29,45 @@ import {
   Upload,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function KnowledgeBasePage() {
   const { Confirm } = useAppContext();
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [pagination, setPagination] = useState<PaginationBase>(defaultPagination);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadKnowledgeBases = async () => {
+  const loadKnowledgeBases = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await knowledgeBasesApi.list();
+      const response = await knowledgeBasesApi.list({
+        page: pagination.current_page,
+        page_size: pagination.page_size,
+      });
       const formattedKBs = response.data.items.map((kb: KnowledgeBase) => kb);
       setKnowledgeBases(formattedKBs);
+      setPagination(response);
     } catch (error) {
       console.error('加载知识库列表失败:', error);
       toast.error('加载知识库列表失败');
     } finally {
       setIsLoading(false);
     }
+  }, [pagination.current_page, pagination.page_size]);
+
+  // 分页切换
+  const handlePageChange = (page: number) => {
+    setPagination(prev => ({ ...prev, current_page: page }));
+  };
+  // 每页数量切换
+  const handlePageSizeChange = (size: number) => {
+    setPagination(prev => ({ ...prev, page_size: size, current_page: 1 }));
   };
 
   useEffect(() => {
     loadKnowledgeBases();
-  }, []);
+  }, [loadKnowledgeBases]);
 
   const handleToggleActive = async (kbId: number, isActive: boolean) => {
     try {
@@ -210,6 +225,10 @@ export default function KnowledgeBasePage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+        {/* 分页骨架屏 */}
+        <div className="mt-6 flex justify-center">
+          <div className="bg-muted h-10 w-48 animate-pulse rounded"></div>
         </div>
       </div>
     );
@@ -422,6 +441,14 @@ export default function KnowledgeBasePage() {
           </div>
         </>
       )}
+      <Pagination
+        currentPage={pagination.current_page}
+        totalPages={pagination.total_pages}
+        pageSize={pagination.page_size}
+        totalItems={pagination.total_items}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
     </div>
   );
 }
