@@ -355,33 +355,27 @@ export default function ToolsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4">
-            <div className="min-w-0 flex-1 sm:min-w-[200px]">
-              <Label htmlFor="category">工具类别</Label>
-              <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mt-2">
-                <TabsList className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <TabsTrigger value="all">全部</TabsTrigger>
-                  {toolCategories.map(category => (
-                    <TabsTrigger key={category.value} value={category.value}>
-                      {category.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </div>
+          <div className="flex flex-wrap justify-between gap-4">
+            <Tabs className="lg:flex-1" value={selectedCategory} onValueChange={setSelectedCategory}>
+              <TabsList className="gap-2">
+                <TabsTrigger value="all">全部</TabsTrigger>
+                {toolCategories.map(category => (
+                  <TabsTrigger key={category.value} value={category.value}>
+                    {category.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
-            <div className="min-w-0 flex-1 sm:min-w-[200px]">
-              <Label htmlFor="search">搜索工具</Label>
-              <div className="relative mt-2">
-                <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
-                <Input
-                  id="search"
-                  placeholder="搜索工具名称或描述..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
+            <div className="relative lg:flex-1">
+              <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
+              <Input
+                id="search"
+                placeholder="搜索工具名称或描述..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
             </div>
           </div>
         </CardContent>

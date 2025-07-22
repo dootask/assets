@@ -126,7 +126,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="dootask" className="space-y-4">
-        <TabsList className="grid grid-cols-3 gap-2">
+        <TabsList className="gap-2">
           <TabsTrigger value="dootask">DooTask 集成</TabsTrigger>
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
           <TabsTrigger value="general">通用设置</TabsTrigger>
