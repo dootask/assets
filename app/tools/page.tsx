@@ -10,12 +10,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/app-context';
 import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
-import { mcpToolsApi, type MCPToolQueryParams } from '@/lib/api/mcp-tools';
+import { mcpToolsApi } from '@/lib/api/mcp-tools';
 import { MCPTool } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
 import {
@@ -48,12 +47,6 @@ export default function ToolsPage() {
   const loadTools = async () => {
     setIsLoading(true);
     try {
-      const params: MCPToolQueryParams = {
-        page: 1,
-        page_size: 100, // 加载所有工具用于前端筛选
-        order_by: 'created_at',
-        order_dir: 'desc',
-      };
       const response = await mcpToolsApi.list();
       setTools(response.data.items);
       setFilteredTools(response.data.items);

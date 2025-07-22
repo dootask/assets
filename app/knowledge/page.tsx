@@ -61,17 +61,6 @@ export default function KnowledgeBasePage() {
 
       // 后端更新
       const updatedKB = await knowledgeBasesApi.update(kbId, { is_active: isActive });
-      const formattedKB = {
-        id: updatedKB.id,
-        name: updatedKB.name,
-        description: updatedKB.description,
-        embeddingModel: updatedKB.embedding_model,
-        is_active: updatedKB.is_active,
-        isActive: updatedKB.is_active,
-        documentsCount: updatedKB.documents_count,
-        createdAt: updatedKB.created_at,
-        updatedAt: updatedKB.updated_at,
-      };
 
       // 确认更新：用服务器返回的数据更新状态
       setKnowledgeBases(prevKBs => prevKBs.map(kb => (kb.id === kbId ? updatedKB : kb)));
