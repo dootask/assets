@@ -27,6 +27,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { embeddingModels, toolCategories, toolTypes } from '@/lib/ai';
+import { Badge } from '@/components/ui/badge';
 
 interface FormData extends CreateAgentRequest {
   maxTokens: number;
@@ -363,9 +364,9 @@ export default function EditAgentPage() {
                 <Wrench className="h-5 w-5" />
                 MCP 工具
                 {formData.selectedToolIds.length > 0 && (
-                  <span className="bg-primary text-primary-foreground rounded-full px-2 py-1 text-xs">
+                  <Badge className="h-5 min-w-5 rounded-full px-1 font-mono tabular-nums">
                     {formData.selectedToolIds.length}
-                  </span>
+                  </Badge>
                 )}
               </CardTitle>
               <CardDescription>选择智能体可以使用的工具</CardDescription>
@@ -425,9 +426,9 @@ export default function EditAgentPage() {
                 <Database className="h-5 w-5" />
                 知识库
                 {formData.selectedKnowledgeBaseIds.length > 0 && (
-                  <span className="bg-primary text-primary-foreground rounded-full px-2 py-1 text-xs">
+                  <Badge className="h-5 min-w-5 rounded-full px-1 font-mono tabular-nums">
                     {formData.selectedKnowledgeBaseIds.length}
-                  </span>
+                  </Badge>
                 )}
               </CardTitle>
               <CardDescription>选择智能体可以访问的知识库</CardDescription>
