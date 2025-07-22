@@ -1,5 +1,7 @@
 package utils
 
+import "strings"
+
 // SortField 排序字段
 type SortField struct {
 	Key  string `json:"key" form:"key" validate:"required"` // 排序字段名
@@ -59,7 +61,7 @@ func (p *PaginationRequest) GetOrderBy() string {
 		orderParts[i] = sort.Key + " " + direction
 	}
 
-	return orderParts[0] // 暂时只支持第一个排序字段，可根据需要扩展
+	return strings.Join(orderParts, ", ")
 }
 
 // ValidateSortField 验证排序字段是否在允许的字段列表中
@@ -77,6 +79,15 @@ func (p *PaginationRequest) SetDefaultSort(key string, desc bool) {
 	if len(p.Sorts) == 0 {
 		p.Sorts = []SortField{
 			{Key: key, Desc: desc},
+		}
+	}
+}
+
+// SetDefaultSorts 设置多个默认排序（如果没有提供排序条件）
+func (p *PaginationRequest) SetDefaultSorts(m map[string]bool) {
+	if len(p.Sorts) == 0 {
+		for key, desc := range m {
+			p.Sorts = append(p.Sorts, SortField{Key: key, Desc: desc})
 		}
 	}
 }

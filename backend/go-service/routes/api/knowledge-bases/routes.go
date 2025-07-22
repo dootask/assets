@@ -47,7 +47,10 @@ func ListKnowledgeBases(c *gin.Context) {
 	}
 
 	// 设置默认排序
-	req.SetDefaultSort("created_at", true)
+	req.SetDefaultSorts(map[string]bool{
+		"created_at": true,
+		"id":         true,
+	})
 
 	// 验证参数
 	validate := validator.New()
@@ -557,7 +560,10 @@ func ListDocuments(c *gin.Context) {
 	}
 
 	// 设置默认排序
-	req.SetDefaultSort("created_at", true)
+	req.SetDefaultSorts(map[string]bool{
+		"created_at": true,
+		"id":         true,
+	})
 
 	// 验证参数
 	validate := validator.New()

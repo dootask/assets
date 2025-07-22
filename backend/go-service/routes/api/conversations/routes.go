@@ -99,7 +99,10 @@ func ListConversations(c *gin.Context) {
 	}
 
 	// 设置默认排序
-	req.SetDefaultSort("created_at", true)
+	req.SetDefaultSorts(map[string]bool{
+		"created_at": true,
+		"id":         true,
+	})
 
 	// 验证参数
 	validate := validator.New()
@@ -372,8 +375,11 @@ func GetMessages(c *gin.Context) {
 		return
 	}
 
-	// 设置默认排序
-	req.SetDefaultSort("created_at", false) // 消息默认升序排列
+	// 设置默认排序（消息默认升序排列）
+	req.SetDefaultSorts(map[string]bool{
+		"created_at": false,
+		"id":         false,
+	})
 
 	// 验证参数
 	validate := validator.New()
