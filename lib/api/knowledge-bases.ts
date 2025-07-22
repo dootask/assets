@@ -91,14 +91,14 @@ export const knowledgeBasesApi = {
   create: async (data: KnowledgeBaseFormData): Promise<KnowledgeBase> => {
     const requestData = formatCreateRequestForAPI(data);
     const response = await axiosInstance.post<KnowledgeBase>('/admin/knowledge-bases', requestData);
-    return formatKnowledgeBaseForUI(response.data);
+    return response.data;
   },
 
   // 更新知识库
   update: async (id: number, data: Partial<KnowledgeBaseFormData>): Promise<KnowledgeBase> => {
     const requestData = formatUpdateRequestForAPI(data);
     const response = await axiosInstance.put<KnowledgeBase>(`/admin/knowledge-bases/${id}`, requestData);
-    return formatKnowledgeBaseForUI(response.data);
+    return response.data;
   },
 
   // 删除知识库
@@ -135,7 +135,7 @@ export const knowledgeBasesApi = {
       `/admin/knowledge-bases/${id}/documents`,
       requestData
     );
-    return formatDocumentForUI(response.data);
+    return response.data;
   },
 
   // 删除文档
@@ -175,26 +175,6 @@ const formatDocumentRequestForAPI = (data: DocumentFormData): UploadDocumentRequ
   file_size: data.file_size,
   file_path: data.file_path || null,
   metadata: data.metadata ? JSON.stringify(data.metadata) : undefined,
-});
-
-// 格式化知识库数据为前端格式
-const formatKnowledgeBaseForUI = (kb: KnowledgeBase): KnowledgeBase => ({
-  ...kb,
-  embeddingModel: kb.embedding_model,
-  documentsCount: kb.documents_count,
-  createdAt: kb.created_at,
-  updatedAt: kb.updated_at,
-  isActive: kb.is_active,
-});
-
-// 格式化文档数据为前端格式
-const formatDocumentForUI = (doc: KnowledgeBaseDocument): KnowledgeBaseDocument => ({
-  ...doc,
-  name: doc.title,
-  size: doc.file_size.toString(),
-  uploadedAt: doc.created_at,
-  chunks: doc.chunks_count,
-  type: doc.file_type,
 });
 
 // 创建分页请求参数的辅助函数

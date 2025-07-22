@@ -353,10 +353,10 @@ export default function AgentDetailPage() {
                           <p className="text-muted-foreground text-xs">{kb.description}</p>
                           <div className="mt-1 flex items-center gap-2">
                             <Badge variant="secondary" className="text-xs">
-                              文档: {kb.documentsCount || kb.documents_count || 0}
+                              文档: {kb.documents_count || 0}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
-                              {kb.embeddingModel || kb.embedding_model}
+                              {kb.embedding_model}
                             </Badge>
                           </div>
                         </div>

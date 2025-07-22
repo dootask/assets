@@ -189,9 +189,7 @@ export default function KnowledgeBaseDetailPage() {
     }
   };
 
-  const filteredDocuments = documents.filter(doc =>
-    (doc.name || doc.title)?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDocuments = documents.filter(doc => doc.title?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -310,9 +308,7 @@ export default function KnowledgeBaseDetailPage() {
             <CardTitle className="text-base">文档统计</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {knowledgeBase.documentsCount || knowledgeBase.documents_count || 0}
-            </div>
+            <div className="text-2xl font-bold">{knowledgeBase.documents_count || 0}</div>
             <p className="text-muted-foreground text-sm">已上传文档</p>
           </CardContent>
         </Card>
@@ -332,7 +328,7 @@ export default function KnowledgeBaseDetailPage() {
             <CardTitle className="text-base">向量化模型</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-semibold">{knowledgeBase.embeddingModel || knowledgeBase.embedding_model}</div>
+            <div className="text-lg font-semibold">{knowledgeBase.embedding_model}</div>
             <p className="text-muted-foreground text-sm">Embedding 模型</p>
           </CardContent>
         </Card>
@@ -343,7 +339,7 @@ export default function KnowledgeBaseDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-semibold">
-              {new Date(knowledgeBase.createdAt || knowledgeBase.created_at).toLocaleDateString('zh-CN')}
+              {new Date(knowledgeBase.created_at).toLocaleDateString('zh-CN')}
             </div>
             <p className="text-muted-foreground text-sm">知识库创建日期</p>
           </CardContent>
@@ -431,15 +427,15 @@ export default function KnowledgeBaseDetailPage() {
                       <TableRow key={doc.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            {getTypeIcon(doc.type || doc.file_type)}
-                            {doc.name || doc.title}
+                            {getTypeIcon(doc.file_type)}
+                            {doc.title}
                           </div>
                         </TableCell>
-                        <TableCell>{doc.type || doc.file_type}</TableCell>
-                        <TableCell>{doc.size}</TableCell>
+                        <TableCell>{doc.file_type}</TableCell>
+                        <TableCell>{doc.file_size}</TableCell>
                         <TableCell>{getStatusBadge(doc.status)}</TableCell>
-                        <TableCell>{doc.chunks || doc.chunks_count || 0}</TableCell>
-                        <TableCell>{new Date(doc.uploadedAt || doc.created_at).toLocaleDateString('zh-CN')}</TableCell>
+                        <TableCell>{doc.chunks_count || 0}</TableCell>
+                        <TableCell>{new Date(doc.created_at).toLocaleDateString('zh-CN')}</TableCell>
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
@@ -489,7 +485,7 @@ export default function KnowledgeBaseDetailPage() {
                   <div className="space-y-3">
                     <div>
                       <span className="text-muted-foreground text-sm">Embedding 模型</span>
-                      <p className="font-medium">{knowledgeBase.embeddingModel || knowledgeBase.embedding_model}</p>
+                      <p className="font-medium">{knowledgeBase.embedding_model}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-sm">分块大小</span>

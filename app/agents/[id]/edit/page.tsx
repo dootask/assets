@@ -465,8 +465,7 @@ export default function EditAgentPage() {
                         </label>
                         <p className="text-muted-foreground mt-1 text-xs">{kb.description}</p>
                         <div className="text-muted-foreground mt-1 text-xs">
-                          文档数: {kb.documentsCount || kb.documents_count || 0} | 模型:{' '}
-                          {kb.embeddingModel || kb.embedding_model}
+                          文档数: {kb.documents_count || 0} | 模型: {kb.embedding_model}
                         </div>
                       </div>
                     </div>

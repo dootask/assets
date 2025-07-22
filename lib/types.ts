@@ -129,12 +129,8 @@ export interface Agent {
   // 关联的AI模型对象
   ai_model?: AIModelConfig | null;
 
-  // 前端扩展字段（兼容现有UI）
-  model?: string; // 从ai_model.name映射
-  maxTokens?: number;
-  isActive?: boolean; // 从is_active映射
-  avatar?: string;
-  statistics?: AgentStatistics;
+  // 统计信息
+  statistics?: AgentStatistics | null;
 }
 
 export interface AgentStatistics {
@@ -233,14 +229,6 @@ export interface KnowledgeBase {
   created_at: string; // 后端字段名
   updated_at: string; // 后端字段名
   documents_count?: number; // 后端字段名
-
-  // 前端兼容字段
-  embeddingModel?: string; // 从embedding_model映射
-  documentsCount?: number; // 从documents_count映射
-  createdAt?: string; // 从created_at映射
-  updatedAt?: string; // 从updated_at映射
-  isActive?: boolean; // 从is_active映射
-  documents?: Document[];
 }
 
 export interface Document {
@@ -504,11 +492,4 @@ export interface KnowledgeBaseDocument {
   created_at: string; // 后端字段名
   updated_at: string; // 后端字段名
   chunks_count?: number; // 后端字段名
-
-  // 前端兼容字段
-  name?: string; // 从title映射
-  size?: string; // 从file_size映射
-  uploadedAt?: string; // 从created_at映射
-  chunks?: number; // 从chunks_count映射
-  type?: string; // 从file_type映射
 }

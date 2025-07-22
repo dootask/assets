@@ -165,9 +165,9 @@ export default function KnowledgeBasePage() {
   // 统计数据
   const stats = {
     total: knowledgeBases.length,
-    active: knowledgeBases.filter(kb => kb.is_active || kb.isActive).length,
-    totalDocuments: knowledgeBases.reduce((sum, kb) => sum + (kb.documentsCount || 0), 0),
-    embeddingModels: [...new Set(knowledgeBases.map(kb => kb.embeddingModel))].length,
+    active: knowledgeBases.filter(kb => kb.is_active).length,
+    totalDocuments: knowledgeBases.reduce((sum, kb) => sum + (kb.documents_count || 0), 0),
+    embeddingModels: [...new Set(knowledgeBases.map(kb => kb.embedding_model))].length,
   };
 
   if (isLoading) {
@@ -292,7 +292,7 @@ export default function KnowledgeBasePage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {knowledgeBases.map(kb => {
-            const isActive = kb.is_active || kb.isActive || false;
+            const isActive = kb.is_active || false;
 
             return (
               <Card key={kb.id} className="group transition-all duration-200 hover:shadow-lg">
@@ -311,7 +311,7 @@ export default function KnowledgeBasePage() {
                       <div>
                         <CardTitle className="text-lg">{kb.name}</CardTitle>
                         <div className="mt-1 flex flex-wrap gap-2">
-                          {getEmbeddingModelBadge(kb.embeddingModel || '')}
+                          {getEmbeddingModelBadge(kb.embedding_model || '')}
                           {isActive ? (
                             <Badge variant="default" className="bg-green-100 text-xs text-green-800">
                               运行中
@@ -381,7 +381,7 @@ export default function KnowledgeBasePage() {
                         <FileText className="text-muted-foreground h-4 w-4" />
                         <span className="text-sm font-medium">文档数量</span>
                       </div>
-                      <Badge variant="secondary">{kb.documentsCount || 0}</Badge>
+                      <Badge variant="secondary">{kb.documents_count || 0}</Badge>
                     </div>
 
                     {/* 时间信息 */}
