@@ -290,135 +290,137 @@ export default function KnowledgeBasePage() {
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {knowledgeBases.map(kb => {
-            const isActive = kb.is_active || false;
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {knowledgeBases.map(kb => {
+              const isActive = kb.is_active || false;
 
-            return (
-              <Card key={kb.id} className="group transition-all duration-200 hover:shadow-lg">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`mt-1 rounded-lg p-2 ${isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
-                      >
-                        <Database
-                          className={`h-5 w-5 ${
-                            isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-                          }`}
+              return (
+                <Card key={kb.id} className="group transition-all duration-200 hover:shadow-lg">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`mt-1 rounded-lg p-2 ${isActive ? 'bg-green-100 dark:bg-green-900' : 'bg-muted'}`}
+                        >
+                          <Database
+                            className={`h-5 w-5 ${
+                              isActive ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{kb.name}</CardTitle>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {getEmbeddingModelBadge(kb.embedding_model || '')}
+                            {isActive ? (
+                              <Badge variant="default" className="bg-green-100 text-xs text-green-800">
+                                运行中
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">
+                                已停用
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/knowledge/${kb.id}`}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              查看详情
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/knowledge/${kb.id}?tab=documents`}>
+                              <Upload className="mr-2 h-4 w-4" />
+                              上传文档
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/knowledge/${kb.id}/edit`}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              编辑
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteKB(kb.id)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            删除
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <CardDescription className="mt-2 text-sm">{kb.description}</CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="flex flex-1 flex-col justify-end space-y-4 pt-0">
+                    {/* 启用/禁用开关 */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">状态</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs ${isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                          {isActive ? '运行中' : '已停用'}
+                        </span>
+                        <Switch
+                          checked={isActive}
+                          onCheckedChange={(checked: boolean) => handleToggleActive(kb.id, checked)}
                         />
                       </div>
-                      <div>
-                        <CardTitle className="text-lg">{kb.name}</CardTitle>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          {getEmbeddingModelBadge(kb.embedding_model || '')}
-                          {isActive ? (
-                            <Badge variant="default" className="bg-green-100 text-xs text-green-800">
-                              运行中
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              已停用
-                            </Badge>
-                          )}
+                    </div>
+
+                    {/* 统计信息 */}
+                    <div className="bg-muted/50 space-y-2 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="text-muted-foreground h-4 w-4" />
+                          <span className="text-sm font-medium">文档数量</span>
                         </div>
+                        <Badge variant="secondary">{kb.documents_count || 0}</Badge>
                       </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/knowledge/${kb.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            查看详情
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/knowledge/${kb.id}?tab=documents`}>
-                            <Upload className="mr-2 h-4 w-4" />
-                            上传文档
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/knowledge/${kb.id}/edit`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            编辑
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteKB(kb.id)} className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          删除
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <CardDescription className="mt-2 text-sm">{kb.description}</CardDescription>
-                </CardHeader>
 
-                <CardContent className="flex flex-1 flex-col justify-end space-y-4 pt-0">
-                  {/* 启用/禁用开关 */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">状态</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs ${isActive ? 'text-green-600' : 'text-gray-500'}`}>
-                        {isActive ? '运行中' : '已停用'}
-                      </span>
-                      <Switch
-                        checked={isActive}
-                        onCheckedChange={(checked: boolean) => handleToggleActive(kb.id, checked)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 统计信息 */}
-                  <div className="bg-muted/50 space-y-2 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileText className="text-muted-foreground h-4 w-4" />
-                        <span className="text-sm font-medium">文档数量</span>
-                      </div>
-                      <Badge variant="secondary">{kb.documents_count || 0}</Badge>
-                    </div>
-
-                    {/* 时间信息 */}
-                    <div className="text-muted-foreground space-y-1 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3" />
-                        <span>创建：{new Date(kb.created_at).toLocaleDateString('zh-CN')}</span>
-                      </div>
-                      {kb.updated_at && kb.updated_at !== kb.created_at && (
+                      {/* 时间信息 */}
+                      <div className="text-muted-foreground space-y-1 text-sm">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-3 w-3" />
-                          <span>更新：{new Date(kb.updated_at).toLocaleDateString('zh-CN')}</span>
+                          <span>创建：{new Date(kb.created_at).toLocaleDateString('zh-CN')}</span>
                         </div>
-                      )}
+                        {kb.updated_at && kb.updated_at !== kb.created_at && (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3 w-3" />
+                            <span>更新：{new Date(kb.updated_at).toLocaleDateString('zh-CN')}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* 操作按钮 */}
-                  <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" asChild className="flex-1">
-                      <Link href={`/knowledge/${kb.id}`}>
-                        <Eye className="mr-1 h-3 w-3" />
-                        查看
-                      </Link>
-                    </Button>
-                    <Button variant="outline" size="sm" asChild className="flex-1">
-                      <Link href={`/knowledge/${kb.id}/edit`}>
-                        <Edit className="mr-1 h-3 w-3" />
-                        编辑
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    {/* 操作按钮 */}
+                    <div className="flex gap-2 pt-2">
+                      <Button variant="outline" size="sm" asChild className="flex-1">
+                        <Link href={`/knowledge/${kb.id}`}>
+                          <Eye className="mr-1 h-3 w-3" />
+                          查看
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild className="flex-1">
+                        <Link href={`/knowledge/${kb.id}/edit`}>
+                          <Edit className="mr-1 h-3 w-3" />
+                          编辑
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
