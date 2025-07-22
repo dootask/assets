@@ -1,6 +1,6 @@
 'use client';
 
-import { CommandSelect, CommandSelectOption } from '@/components/command-select';
+import { CommandSelect } from '@/components/command-select';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
 
 interface FormData {
   name: string;
@@ -46,27 +47,6 @@ export default function CreateMCPToolPage() {
     apiKey: '',
     baseUrl: '',
   });
-
-  // 工具类别选项
-  const categoryOptions: CommandSelectOption[] = [
-    { value: 'dootask', label: 'DooTask', description: 'DooTask 内部功能' },
-    { value: 'external', label: '外部工具', description: '第三方服务和 API' },
-    { value: 'custom', label: '自定义', description: '用户自定义工具' },
-  ];
-
-  // 类型选项
-  const typeOptions: CommandSelectOption[] = [
-    { value: 'internal', label: '内部', description: '系统内部工具' },
-    { value: 'external', label: '外部', description: '外部 API 服务' },
-  ];
-
-  // 权限选项
-  const permissionOptions = [
-    { value: 'read', label: '读取', description: '只能读取数据' },
-    { value: 'write', label: '写入', description: '可以修改和创建数据' },
-    { value: 'execute', label: '执行', description: '可以执行操作' },
-    { value: 'admin', label: '管理员', description: '完全访问权限' },
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,7 +165,11 @@ export default function CreateMCPToolPage() {
                   <div className="space-y-2">
                     <Label htmlFor="category">工具类别 *</Label>
                     <CommandSelect
-                      options={categoryOptions}
+                      options={toolCategories.map(category => ({
+                        value: category.value,
+                        label: category.label,
+                        description: category.description,
+                      }))}
                       value={formData.category}
                       onValueChange={value =>
                         setFormData(prev => ({ ...prev, category: value as 'dootask' | 'external' | 'custom' }))
@@ -201,7 +185,11 @@ export default function CreateMCPToolPage() {
                   <div className="space-y-2">
                     <Label htmlFor="type">工具类型 *</Label>
                     <CommandSelect
-                      options={typeOptions}
+                      options={toolTypes.map(type => ({
+                        value: type.value,
+                        label: type.label,
+                        description: type.description,
+                      }))}
                       value={formData.type}
                       onValueChange={value =>
                         setFormData(prev => ({ ...prev, type: value as 'internal' | 'external' }))
@@ -297,7 +285,7 @@ export default function CreateMCPToolPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {permissionOptions.map(permission => (
+                {toolPermissions.map(permission => (
                   <div key={permission.value} className="flex items-start space-x-3 rounded-lg border p-3">
                     <Checkbox
                       id={`permission-${permission.value}`}

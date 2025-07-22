@@ -358,19 +358,19 @@ export default function ModelDetailPage() {
                 编辑配置
               </Link>
             </Button>
-            <Button
-              variant={model.is_enabled ? 'secondary' : 'default'}
-              className="w-full"
-              onClick={handleToggleStatus}
-            >
-              {model.is_enabled ? '停用模型' : '启用模型'}
-            </Button>
             {!model.is_default && (
               <Button variant="outline" className="w-full" onClick={handleToggleDefault}>
                 <Star className="mr-2 h-4 w-4" />
                 设为默认
               </Button>
             )}
+            <Button
+              variant={model.is_enabled ? 'destructive' : 'default'}
+              className="w-full"
+              onClick={handleToggleStatus}
+            >
+              {model.is_enabled ? '停用模型' : '启用模型'}
+            </Button>
           </CardContent>
         </Card>
       </div>

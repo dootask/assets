@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { toolCategories, toolTypes } from '../../../lib/ai';
 
 interface FormData extends CreateAgentRequest {
   maxTokens: number;
@@ -277,15 +278,17 @@ export default function CreateAgentPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="temperature">Temperature: {formData.temperature}</Label>
-                <Slider
-                  id="temperature"
-                  min={0}
-                  max={2}
-                  step={0.1}
-                  value={[formData.temperature]}
-                  onValueChange={([value]) => setFormData(prev => ({ ...prev, temperature: value }))}
-                  className="w-full"
-                />
+                <div className="flex h-9 items-center">
+                  <Slider
+                    id="temperature"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={[formData.temperature]}
+                    onValueChange={([value]) => setFormData(prev => ({ ...prev, temperature: value }))}
+                    className="w-full"
+                  />
+                </div>
                 <p className="text-muted-foreground text-xs">控制输出的随机性，值越高输出越有创意</p>
               </div>
             </CardContent>
@@ -324,15 +327,17 @@ export default function CreateAgentPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="max-h-64 space-y-3 overflow-y-auto">
+                <div className="-mx-6 max-h-64 space-y-3 overflow-y-auto px-6">
                   {availableTools.map(tool => (
                     <div key={tool.id} className="flex items-start space-x-3 rounded-lg border p-3">
-                      <Checkbox
-                        id={`tool-${tool.id}`}
-                        checked={formData.selectedToolIds.includes(tool.id)}
-                        onCheckedChange={checked => handleToolToggle(tool.id, Boolean(checked))}
-                        className="mt-1"
-                      />
+                      <div className="relative mt-1 h-4 w-4">
+                        <Checkbox
+                          id={`tool-${tool.id}`}
+                          checked={formData.selectedToolIds.includes(tool.id)}
+                          onCheckedChange={checked => handleToolToggle(tool.id, Boolean(checked))}
+                          className="absolute top-0 left-0"
+                        />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <label htmlFor={`tool-${tool.id}`} className="cursor-pointer text-sm font-medium">
                           {tool.name}
@@ -340,10 +345,10 @@ export default function CreateAgentPage() {
                         <p className="text-muted-foreground mt-1 text-xs">{tool.description}</p>
                         <div className="mt-1 flex gap-1">
                           <span className="bg-secondary text-secondary-foreground rounded px-2 py-0.5 text-xs">
-                            {tool.category}
+                            {toolCategories.find(category => category.value === tool.category)?.label || tool.category}
                           </span>
                           <span className="bg-secondary text-secondary-foreground rounded px-2 py-0.5 text-xs">
-                            {tool.type}
+                            {toolTypes.find(type => type.value === tool.type)?.label || tool.type}
                           </span>
                         </div>
                       </div>
@@ -384,15 +389,17 @@ export default function CreateAgentPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="max-h-64 space-y-3 overflow-y-auto">
+                <div className="-mx-6 max-h-64 space-y-3 overflow-y-auto px-6">
                   {availableKnowledgeBases.map(kb => (
                     <div key={kb.id} className="flex items-start space-x-3 rounded-lg border p-3">
-                      <Checkbox
-                        id={`kb-${kb.id}`}
-                        checked={formData.selectedKnowledgeBaseIds.includes(kb.id)}
-                        onCheckedChange={checked => handleKnowledgeBaseToggle(kb.id, Boolean(checked))}
-                        className="mt-1"
-                      />
+                      <div className="relative mt-1 h-4 w-4">
+                        <Checkbox
+                          id={`kb-${kb.id}`}
+                          checked={formData.selectedKnowledgeBaseIds.includes(kb.id)}
+                          onCheckedChange={checked => handleKnowledgeBaseToggle(kb.id, Boolean(checked))}
+                          className="absolute top-0 left-0"
+                        />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <label htmlFor={`kb-${kb.id}`} className="cursor-pointer text-sm font-medium">
                           {kb.name}

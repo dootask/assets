@@ -25,6 +25,7 @@ import { useAppContext } from '@/contexts/app-context';
 import { mcpToolsApi, type MCPToolQueryParams } from '@/lib/api/mcp-tools';
 import { MCPTool } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
+import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
 import {
   Activity,
   BarChart3,
@@ -162,56 +163,39 @@ export default function ToolsPage() {
   };
 
   const getCategoryBadge = (category: string) => {
-    switch (category) {
-      case 'dootask':
-        return (
-          <Badge variant="default" className="bg-blue-100 text-blue-800">
-            DooTask
-          </Badge>
-        );
-      case 'external':
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800">
-            外部工具
-          </Badge>
-        );
-      case 'custom':
-        return (
-          <Badge variant="default" className="bg-purple-100 text-purple-800">
-            自定义
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{category}</Badge>;
+    const categoryOption = toolCategories.find(item => item.value === category);
+    if (categoryOption) {
+      return (
+        <Badge variant="default" className={categoryOption.color}>
+          {categoryOption.label}
+        </Badge>
+      );
     }
+    return <Badge variant="outline">{category}</Badge>;
   };
 
   const getCategoryText = (category: string) => {
-    switch (category) {
-      case 'dootask':
-        return 'DooTask';
-      case 'external':
-        return '外部工具';
-      case 'custom':
-        return '自定义';
-      default:
-        return category;
+    const categoryOption = toolCategories.find(item => item.value === category);
+    if (categoryOption) {
+      return categoryOption.label;
     }
+    return category;
   };
 
   const getTypeText = (type: string) => {
-    switch (type) {
-      case 'internal':
-        return '内部工具';
-      case 'external':
-        return '外部工具';
-      default:
-        return type;
+    const typeOption = toolTypes.find(item => item.value === type);
+    if (typeOption) {
+      return typeOption.label;
     }
+    return type;
   };
 
   const getTypeBadge = (type: string) => {
-    return type === 'internal' ? <Badge variant="outline">内部</Badge> : <Badge variant="secondary">外部</Badge>;
+    const typeOption = toolTypes.find(item => item.value === type);
+    if (typeOption) {
+      return <Badge variant={typeOption.variant}>{typeOption.shortLabel}</Badge>;
+    }
+    return <Badge variant="outline">{type}</Badge>;
   };
 
   const getSuccessRateBadge = (successRate: number) => {
@@ -350,9 +334,11 @@ export default function ToolsPage() {
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mt-2">
                 <TabsList className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <TabsTrigger value="all">全部</TabsTrigger>
-                  <TabsTrigger value="dootask">DooTask</TabsTrigger>
-                  <TabsTrigger value="external">外部工具</TabsTrigger>
-                  <TabsTrigger value="custom">自定义</TabsTrigger>
+                  {toolCategories.map(category => (
+                    <TabsTrigger key={category.value} value={category.value}>
+                      {category.label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
               </Tabs>
             </div>
@@ -486,15 +472,7 @@ export default function ToolsPage() {
                 <div className="flex flex-wrap gap-1">
                   {tool.permissions.map(permission => (
                     <Badge key={permission} variant="outline" className="text-xs">
-                      {permission === 'read'
-                        ? '只读'
-                        : permission === 'write'
-                          ? '读写'
-                          : permission === 'execute'
-                            ? '执行'
-                            : permission === 'admin'
-                              ? '管理员'
-                              : permission}
+                      {toolPermissions.find(item => item.value === permission)?.label || permission}
                     </Badge>
                   ))}
                 </div>

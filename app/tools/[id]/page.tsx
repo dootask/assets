@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
 
 export default function MCPToolDetailPage() {
   const params = useParams();
@@ -178,16 +179,9 @@ export default function MCPToolDetailPage() {
     );
   }
 
-  // 类别信息映射
-  const categoryInfo = {
-    dootask: { name: 'DooTask', color: 'bg-blue-500' },
-    external: { name: '外部工具', color: 'bg-green-500' },
-    custom: { name: '自定义', color: 'bg-purple-500' },
-  };
-
-  const currentCategory = categoryInfo[tool.category as keyof typeof categoryInfo] || {
-    name: tool.category,
-    color: 'bg-gray-500',
+  const currentCategory = toolCategories.find(category => category.value === tool.category) || {
+    label: tool.category,
+    color: 'bg-gray-500 text-white',
   };
 
   return (
@@ -208,20 +202,20 @@ export default function MCPToolDetailPage() {
       </Breadcrumb>
 
       {/* 页面标题和操作 */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <div className={`h-8 w-8 rounded-full ${currentCategory.color} flex items-center justify-center`}>
-              <Wrench className="h-4 w-4 text-white" />
+              <Wrench className="h-4 w-4" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight">{tool.name}</h1>
             <Badge variant={tool.isActive ? 'default' : 'secondary'}>{tool.isActive ? '活跃' : '停用'}</Badge>
             <Badge variant="outline" className="text-xs">
-              {currentCategory.name}
+              {currentCategory.label}
             </Badge>
           </div>
           <p className="text-muted-foreground max-w-2xl">{tool.description}</p>
-          <p className="text-muted-foreground">类型：{tool.type === 'internal' ? '内部工具' : '外部工具'}</p>
+          <p className="text-muted-foreground">类型：{toolTypes.find(type => type.value === tool.type)?.label}</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={testTool} disabled={testing}>
@@ -271,12 +265,12 @@ export default function MCPToolDetailPage() {
                   <h4 className="text-muted-foreground text-sm font-medium">工具类别</h4>
                   <div className="flex items-center gap-2">
                     <div className={`h-3 w-3 rounded-full ${currentCategory.color}`}></div>
-                    <p className="text-sm">{currentCategory.name}</p>
+                    <p className="text-sm">{currentCategory.label}</p>
                   </div>
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">工具类型</h4>
-                  <p className="text-sm">{tool.type === 'internal' ? '内部工具' : '外部工具'}</p>
+                  <p className="text-sm">{toolTypes.find(type => type.value === tool.type)?.label}</p>
                 </div>
                 <div>
                   <h4 className="text-muted-foreground text-sm font-medium">状态</h4>
@@ -347,15 +341,7 @@ export default function MCPToolDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {tool.permissions.map(permission => (
                   <Badge key={permission} variant="outline">
-                    {permission === 'read'
-                      ? '读取'
-                      : permission === 'write'
-                        ? '写入'
-                        : permission === 'execute'
-                          ? '执行'
-                          : permission === 'admin'
-                            ? '管理员'
-                            : permission}
+                    {toolPermissions.find(item => item.value === permission)?.label || permission}
                   </Badge>
                 ))}
               </div>

@@ -1,4 +1,4 @@
-// 2025年最新 Embedding 模型配置
+// Embedding 模型配置
 export const embeddingModels = [
   // OpenAI 最新 Embedding 模型
   {
@@ -180,7 +180,7 @@ export const embeddingModels = [
   },
 ];
 
-// 2025年最新AI提供商配置
+// AI提供商配置
 export const providerOptions = [
   {
     value: 'openai' as const,
@@ -375,3 +375,67 @@ export const getProviderDefaults = (provider: string) => {
     baseUrl: '',
   };
 };
+
+// 工具分类
+export const toolCategories = [
+  {
+    value: 'dootask',
+    label: 'DooTask',
+    description: 'DooTask 内部工具',
+    color: 'bg-blue-100 text-blue-800',
+  },
+  {
+    value: 'external',
+    label: '外部工具',
+    description: '第三方服务和 API',
+    color: 'bg-green-100 text-green-800',
+  },
+  {
+    value: 'custom',
+    label: '自定义',
+    description: '用户自定义工具',
+    color: 'bg-purple-100 text-purple-800',
+  },
+];
+
+// 工具类型
+export const toolTypes = [
+  {
+    value: 'internal',
+    label: '内部工具',
+    shortLabel: '内部',
+    description: '系统内部工具',
+    variant: 'outline' as const,
+  },
+  {
+    value: 'external',
+    label: '外部工具',
+    shortLabel: '外部',
+    description: '外部 API 服务',
+    variant: 'secondary' as const,
+  },
+];
+
+// 工具权限
+export const toolPermissions = [
+  {
+    value: 'read',
+    label: '读取',
+    description: '只能读取数据',
+  },
+  {
+    value: 'write',
+    label: '写入',
+    description: '可以修改和创建数据',
+  },
+  {
+    value: 'execute',
+    label: '执行',
+    description: '可以执行操作',
+  },
+  {
+    value: 'admin',
+    label: '管理员',
+    description: '完全访问权限',
+  },
+];

@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { toolCategories, toolTypes } from '../../../../lib/ai';
 
 interface FormData extends CreateAgentRequest {
   maxTokens: number;
@@ -336,15 +337,17 @@ export default function EditAgentPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="temperature">Temperature: {formData.temperature}</Label>
-                <Slider
-                  id="temperature"
-                  min={0}
-                  max={2}
-                  step={0.1}
-                  value={[formData.temperature]}
-                  onValueChange={([value]) => setFormData(prev => ({ ...prev, temperature: value }))}
-                  className="w-full"
-                />
+                <div className="flex h-9 items-center">
+                  <Slider
+                    id="temperature"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={[formData.temperature]}
+                    onValueChange={([value]) => setFormData(prev => ({ ...prev, temperature: value }))}
+                    className="w-full"
+                  />
+                </div>
                 <p className="text-muted-foreground text-xs">控制输出的随机性，值越高输出越有创意</p>
               </div>
             </CardContent>
@@ -399,10 +402,10 @@ export default function EditAgentPage() {
                         <p className="text-muted-foreground mt-1 text-xs">{tool.description}</p>
                         <div className="mt-1 flex gap-1">
                           <span className="bg-secondary text-secondary-foreground rounded px-2 py-0.5 text-xs">
-                            {tool.category}
+                            {toolCategories.find(category => category.value === tool.category)?.label || tool.category}
                           </span>
                           <span className="bg-secondary text-secondary-foreground rounded px-2 py-0.5 text-xs">
-                            {tool.type}
+                            {toolTypes.find(type => type.value === tool.type)?.label || tool.type}
                           </span>
                         </div>
                       </div>
