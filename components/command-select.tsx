@@ -26,6 +26,7 @@ interface CommandSelectProps {
   contentClassName?: string;
   size?: 'sm' | 'default';
   disabled?: boolean;
+  allowClear?: boolean;
 }
 
 export function CommandSelect({
@@ -40,6 +41,7 @@ export function CommandSelect({
   contentClassName,
   size = 'default',
   disabled = false,
+  allowClear = false,
 }: CommandSelectProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -74,7 +76,7 @@ export function CommandSelect({
                   value={option.value}
                   keywords={[option.value, option.label, option.description ?? '']}
                   onSelect={currentValue => {
-                    onValueChange?.(currentValue === safeValue ? '' : currentValue);
+                    onValueChange?.(currentValue === safeValue && allowClear ? '' : currentValue);
                     setOpen(false);
                   }}
                   className="cursor-pointer"
