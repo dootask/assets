@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -79,10 +79,11 @@ export function CommandSelect({
                   }}
                   className="cursor-pointer"
                 >
-                  <div className="flex flex-col">
+                  <div className="flex flex-1 flex-col">
                     <p className="text-sm font-medium">{option.label}</p>
                     {option.description && <p className="text-muted-foreground text-xs">{option.description}</p>}
                   </div>
+                  {selectedOption?.value === option.value && <Check className="ml-auto h-4 w-4" />}
                 </CommandItem>
               ))}
             </CommandGroup>
