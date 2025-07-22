@@ -487,16 +487,11 @@ export default function ToolsPage() {
                   <div className="space-y-2">
                     <p className="text-muted-foreground text-xs">权限等级</p>
                     <div className="flex flex-wrap gap-1">
-                      {tool.permissions.slice(0, 2).map(permission => (
+                      {tool.permissions.map(permission => (
                         <Badge key={permission} variant="outline" className="text-xs">
                           {toolPermissions.find(item => item.value === permission)?.label || permission}
                         </Badge>
                       ))}
-                      {tool.permissions.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{tool.permissions.length - 2}
-                        </Badge>
-                      )}
                     </div>
                   </div>
                 </div>
