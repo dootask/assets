@@ -3,11 +3,12 @@ package aimodels
 import (
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/middleware"
-	"math"
+	"dootask-ai/go-service/pkg/utils"
+	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
 
@@ -35,36 +36,76 @@ func RegisterRoutes(r *gin.RouterGroup) {
 
 // GetAIModels 获取AI模型列表
 func (h *Handler) GetAIModels(c *gin.Context) {
-	// 解析查询参数
-	page := 1
-	size := 10
+	var req utils.PaginationRequest
 
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
+	// 绑定查询参数
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Success: false,
+			Error:   "查询参数格式错误",
+			Code:    "VALIDATION_001",
+		})
+		return
+	}
+
+	// 设置默认排序
+	req.SetDefaultSort("created_at", true)
+
+	// 验证参数
+	validate := validator.New()
+	if err := validate.Struct(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Success: false,
+			Error:   "查询参数验证失败",
+			Code:    "VALIDATION_001",
+		})
+		return
+	}
+
+	// 解析筛选条件
+	var filters AIModelFilters
+	if req.Filters != nil {
+		filtersBytes, err := json.Marshal(req.Filters)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Success: false,
+				Error:   "筛选条件格式错误",
+				Code:    "VALIDATION_001",
+			})
+			return
+		}
+		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Success: false,
+				Error:   "筛选条件解析失败",
+				Code:    "VALIDATION_001",
+			})
+			return
 		}
 	}
 
-	if s := c.Query("size"); s != "" {
-		if parsed, err := strconv.Atoi(s); err == nil && parsed > 0 && parsed <= 100 {
-			size = parsed
+	// 验证排序字段
+	allowedFields := GetAllowedSortFields()
+	for _, sort := range req.Sorts {
+		if !utils.ValidateSortField(sort.Key, allowedFields) {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Success: false,
+				Error:   "无效的排序字段: " + sort.Key,
+				Code:    "VALIDATION_001",
+			})
+			return
 		}
 	}
 
 	// 构建查询
 	db := global.DB.Model(&AIModel{})
 
-	// 可选的过滤参数
-	if provider := c.Query("provider"); provider != "" {
-		db = db.Where("provider = ?", provider)
+	// 应用筛选条件
+	if filters.Provider != "" {
+		db = db.Where("provider = ?", filters.Provider)
 	}
-	if enabled := c.Query("enabled"); enabled != "" {
-		switch enabled {
-		case "true":
-			db = db.Where("is_enabled = true")
-		case "false":
-			db = db.Where("is_enabled = false")
-		}
+	if filters.IsEnabled != nil {
+		db = db.Where("is_enabled = ?", *filters.IsEnabled)
 	}
 
 	// 获取总数
@@ -80,8 +121,8 @@ func (h *Handler) GetAIModels(c *gin.Context) {
 
 	// 获取数据
 	var models []AIModel
-	offset := (page - 1) * size
-	if err := db.Offset(offset).Limit(size).Order("created_at DESC, id DESC").Find(&models).Error; err != nil {
+	orderBy := req.GetOrderBy()
+	if err := db.Offset(req.GetOffset()).Limit(req.PageSize).Order(orderBy).Find(&models).Error; err != nil {
 		c.JSON(http.StatusUnprocessableEntity, ErrorResponse{
 			Success: false,
 			Error:   "查询AI模型列表失败",
@@ -98,19 +139,14 @@ func (h *Handler) GetAIModels(c *gin.Context) {
 		}
 	}
 
-	// 计算总页数
-	totalPages := int(math.Ceil(float64(total) / float64(size)))
+	// 构造响应数据
+	data := AIModelListData{
+		Items: models,
+	}
 
-	c.JSON(http.StatusOK, AIModelListResponse{
-		Success: true,
-		Data: AIModelList{
-			Models:     models,
-			Total:      total,
-			Page:       page,
-			Size:       size,
-			TotalPages: totalPages,
-		},
-	})
+	// 使用统一分页响应格式
+	response := utils.NewPaginationResponse(req.Page, req.PageSize, total, data)
+	c.JSON(http.StatusOK, response)
 }
 
 // GetAIModel 获取单个AI模型

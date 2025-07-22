@@ -78,13 +78,28 @@ type UploadDocumentRequest struct {
 
 // 响应类型
 
-// KnowledgeBaseListResponse 知识库列表响应
-type KnowledgeBaseListResponse struct {
-	Items      []KnowledgeBase `json:"items"`
-	Total      int64           `json:"total"`
-	Page       int             `json:"page"`
-	PageSize   int             `json:"page_size"`
-	TotalPages int             `json:"total_pages"`
+// KnowledgeBaseFilters 知识库筛选条件
+type KnowledgeBaseFilters struct {
+	Search         string `json:"search" form:"search"`                   // 搜索关键词
+	EmbeddingModel string `json:"embedding_model" form:"embedding_model"` // 嵌入模型过滤
+	IsActive       *bool  `json:"is_active" form:"is_active"`             // 状态过滤
+}
+
+// DocumentFilters 文档筛选条件
+type DocumentFilters struct {
+	Search   string `json:"search" form:"search"`       // 搜索关键词
+	FileType string `json:"file_type" form:"file_type"` // 文件类型过滤
+	Status   string `json:"status" form:"status"`       // 状态过滤
+}
+
+// KnowledgeBaseListData 知识库列表数据结构
+type KnowledgeBaseListData struct {
+	Items []KnowledgeBase `json:"items"`
+}
+
+// DocumentListData 文档列表数据结构
+type DocumentListData struct {
+	Items []KBDocument `json:"items"`
 }
 
 // KnowledgeBaseResponse 知识库详情响应（包含统计信息）
@@ -96,68 +111,14 @@ type KnowledgeBaseResponse struct {
 	LastDocumentUpload *time.Time `json:"last_document_upload,omitempty"`
 }
 
-// DocumentListResponse 文档列表响应
-type DocumentListResponse struct {
-	Items      []KBDocument `json:"items"`
-	Total      int64        `json:"total"`
-	Page       int          `json:"page"`
-	PageSize   int          `json:"page_size"`
-	TotalPages int          `json:"total_pages"`
-}
-
-// 查询参数类型
-
-// KnowledgeBaseQueryParams 知识库查询参数
-type KnowledgeBaseQueryParams struct {
-	Page           int    `form:"page,default=1" validate:"min=1"`
-	PageSize       int    `form:"page_size,default=20" validate:"min=1,max=100"`
-	Search         string `form:"search"`
-	EmbeddingModel string `form:"embedding_model"`
-	IsActive       *bool  `form:"is_active"`
-	OrderBy        string `form:"order_by,default=created_at"`
-	OrderDir       string `form:"order_dir,default=desc" validate:"oneof=asc desc"`
-}
-
-// DocumentQueryParams 文档查询参数
-type DocumentQueryParams struct {
-	Page     int    `form:"page,default=1" validate:"min=1"`
-	PageSize int    `form:"page_size,default=20" validate:"min=1,max=100"`
-	Search   string `form:"search"`
-	FileType string `form:"file_type"`
-	Status   string `form:"status"`
-	OrderBy  string `form:"order_by,default=created_at"`
-	OrderDir string `form:"order_dir,default=desc" validate:"oneof=asc desc"`
-}
-
 // 辅助方法
 
-// GetOrderBy 获取排序字段
-func (p *KnowledgeBaseQueryParams) GetOrderBy() string {
-	validOrderBy := map[string]string{
-		"name":            "name",
-		"created_at":      "created_at",
-		"updated_at":      "updated_at",
-		"documents_count": "documents_count",
-	}
-
-	if orderBy, ok := validOrderBy[p.OrderBy]; ok {
-		return orderBy
-	}
-	return "created_at"
+// GetAllowedKnowledgeBaseSortFields 获取知识库允许的排序字段
+func GetAllowedKnowledgeBaseSortFields() []string {
+	return []string{"id", "name", "created_at", "updated_at", "documents_count"}
 }
 
-// GetOrderBy 获取排序字段
-func (p *DocumentQueryParams) GetOrderBy() string {
-	validOrderBy := map[string]string{
-		"title":      "title",
-		"file_type":  "file_type",
-		"file_size":  "file_size",
-		"created_at": "created_at",
-		"updated_at": "updated_at",
-	}
-
-	if orderBy, ok := validOrderBy[p.OrderBy]; ok {
-		return orderBy
-	}
-	return "created_at"
+// GetAllowedDocumentSortFields 获取文档允许的排序字段
+func GetAllowedDocumentSortFields() []string {
+	return []string{"id", "title", "file_type", "file_size", "created_at", "updated_at"}
 }

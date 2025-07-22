@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
-import { formatKnowledgeBaseForUI, knowledgeBasesApi, parseKnowledgeBaseMetadata } from '@/lib/api/knowledge-bases';
+import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
 import { KnowledgeBase } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
 import {
@@ -40,10 +40,7 @@ export default function KnowledgeBasePage() {
     setIsLoading(true);
     try {
       const response = await knowledgeBasesApi.list();
-      const formattedKBs = response.items.map(kb => {
-        const parsedKB = parseKnowledgeBaseMetadata(kb);
-        return formatKnowledgeBaseForUI(parsedKB);
-      });
+      const formattedKBs = response.data.items.map((kb: KnowledgeBase) => kb);
       setKnowledgeBases(formattedKBs);
     } catch (error) {
       console.error('加载知识库列表失败:', error);
@@ -63,11 +60,21 @@ export default function KnowledgeBasePage() {
       setKnowledgeBases(prevKBs => prevKBs.map(kb => (kb.id === kbId ? { ...kb, is_active: isActive, isActive } : kb)));
 
       // 后端更新
-      const updatedKB = await knowledgeBasesApi.update(kbId, { isActive });
-      const formattedKB = formatKnowledgeBaseForUI(parseKnowledgeBaseMetadata(updatedKB));
+      const updatedKB = await knowledgeBasesApi.update(kbId, { is_active: isActive });
+      const formattedKB = {
+        id: updatedKB.id,
+        name: updatedKB.name,
+        description: updatedKB.description,
+        embeddingModel: updatedKB.embedding_model,
+        is_active: updatedKB.is_active,
+        isActive: updatedKB.is_active,
+        documentsCount: updatedKB.documents_count,
+        createdAt: updatedKB.created_at,
+        updatedAt: updatedKB.updated_at,
+      };
 
       // 确认更新：用服务器返回的数据更新状态
-      setKnowledgeBases(prevKBs => prevKBs.map(kb => (kb.id === kbId ? formattedKB : kb)));
+      setKnowledgeBases(prevKBs => prevKBs.map(kb => (kb.id === kbId ? updatedKB : kb)));
 
       toast.success(isActive ? '知识库已启用' : '知识库已停用');
     } catch (error) {
@@ -170,8 +177,8 @@ export default function KnowledgeBasePage() {
   const stats = {
     total: knowledgeBases.length,
     active: knowledgeBases.filter(kb => kb.is_active || kb.isActive).length,
-    totalDocuments: knowledgeBases.reduce((sum, kb) => sum + (kb.documentsCount || kb.documents_count || 0), 0),
-    embeddingModels: [...new Set(knowledgeBases.map(kb => kb.embeddingModel || kb.embedding_model))].length,
+    totalDocuments: knowledgeBases.reduce((sum, kb) => sum + (kb.documentsCount || 0), 0),
+    embeddingModels: [...new Set(knowledgeBases.map(kb => kb.embeddingModel))].length,
   };
 
   if (isLoading) {
@@ -315,7 +322,7 @@ export default function KnowledgeBasePage() {
                       <div>
                         <CardTitle className="text-lg">{kb.name}</CardTitle>
                         <div className="mt-1 flex flex-wrap gap-2">
-                          {getEmbeddingModelBadge(kb.embeddingModel || kb.embedding_model)}
+                          {getEmbeddingModelBadge(kb.embeddingModel || '')}
                           {isActive ? (
                             <Badge variant="default" className="bg-green-100 text-xs text-green-800">
                               运行中
@@ -385,19 +392,19 @@ export default function KnowledgeBasePage() {
                         <FileText className="text-muted-foreground h-4 w-4" />
                         <span className="text-sm font-medium">文档数量</span>
                       </div>
-                      <Badge variant="secondary">{kb.documentsCount || kb.documents_count || 0}</Badge>
+                      <Badge variant="secondary">{kb.documentsCount || 0}</Badge>
                     </div>
 
                     {/* 时间信息 */}
                     <div className="text-muted-foreground space-y-1 text-sm">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3 w-3" />
-                        <span>创建：{new Date(kb.createdAt || kb.created_at).toLocaleDateString('zh-CN')}</span>
+                        <span>创建：{new Date(kb.created_at).toLocaleDateString('zh-CN')}</span>
                       </div>
-                      {(kb.updatedAt || kb.updated_at) !== (kb.createdAt || kb.created_at) && (
+                      {kb.updated_at && kb.updated_at !== kb.created_at && (
                         <div className="flex items-center gap-2">
                           <Calendar className="h-3 w-3" />
-                          <span>更新：{new Date(kb.updatedAt || kb.updated_at).toLocaleDateString('zh-CN')}</span>
+                          <span>更新：{new Date(kb.updated_at).toLocaleDateString('zh-CN')}</span>
                         </div>
                       )}
                     </div>

@@ -61,13 +61,16 @@ type UpdateAgentRequest struct {
 	IsActive       *bool           `json:"is_active"`
 }
 
-// AgentListResponse 智能体列表响应
-type AgentListResponse struct {
-	Items      []Agent `json:"items"`
-	Total      int64   `json:"total"`
-	Page       int     `json:"page"`
-	PageSize   int     `json:"page_size"`
-	TotalPages int     `json:"total_pages"`
+// AgentFilters 智能体筛选条件
+type AgentFilters struct {
+	Search    string `json:"search" form:"search"`           // 搜索关键词
+	AIModelID *int64 `json:"ai_model_id" form:"ai_model_id"` // AI模型ID过滤
+	IsActive  *bool  `json:"is_active" form:"is_active"`     // 状态过滤
+}
+
+// AgentListData 智能体列表数据结构
+type AgentListData struct {
+	Items []Agent `json:"items"`
 }
 
 // AgentResponse 智能体详情响应
@@ -79,28 +82,7 @@ type AgentResponse struct {
 	TokenUsage        int64 `json:"token_usage"`
 }
 
-// AgentQueryParams 智能体查询参数
-type AgentQueryParams struct {
-	Page      int    `form:"page,default=1" validate:"min=1"`
-	PageSize  int    `form:"page_size,default=20" validate:"min=1,max=100"`
-	Search    string `form:"search"`
-	AIModelID *int64 `form:"ai_model_id"`
-	IsActive  *bool  `form:"is_active"`
-	OrderBy   string `form:"order_by,default=created_at"`
-	OrderDir  string `form:"order_dir,default=desc" validate:"oneof=asc desc"`
-}
-
-// GetOrderBy 获取排序字段
-func (p *AgentQueryParams) GetOrderBy() string {
-	allowedFields := map[string]bool{
-		"id":         true,
-		"name":       true,
-		"created_at": true,
-		"updated_at": true,
-	}
-
-	if allowedFields[p.OrderBy] {
-		return p.OrderBy
-	}
-	return "created_at"
+// GetAllowedSortFields 获取允许的排序字段
+func GetAllowedSortFields() []string {
+	return []string{"id", "name", "created_at", "updated_at"}
 }

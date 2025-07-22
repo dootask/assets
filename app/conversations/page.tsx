@@ -16,12 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import { agentsApi } from '@/lib/api/agents';
-import {
-  ConversationListResponse,
-  ConversationQueryParams,
-  fetchConversationMessages,
-  fetchConversations,
-} from '@/lib/api/conversations';
+import { fetchConversations, fetchMessages } from '@/lib/api/conversations';
 import { Agent, Conversation, Message } from '@/lib/types';
 import { Bot, Calendar, CheckCircle, Clock, Eye, Filter, MessageSquare, Search, TrendingUp, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -44,39 +39,41 @@ export default function ConversationsPage() {
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    setError('');
+
     try {
       // 构建查询参数
-      const params: ConversationQueryParams = {
-        page: 1,
-        page_size: 50,
-      };
+      const filters: Record<string, unknown> = {};
 
       if (selectedAgent !== 'all') {
-        params.agent_id = parseInt(selectedAgent);
+        filters.agent_id = parseInt(selectedAgent);
       }
 
       if (searchQuery) {
-        params.search = searchQuery;
+        filters.search = searchQuery;
       }
 
       // 获取对话列表
-      const conversationResponse: ConversationListResponse = await fetchConversations(params);
+      const conversationResponse = await fetchConversations({
+        page: 1,
+        page_size: 50,
+        filters,
+      });
 
-      // 直接使用API返回的数据，不需要转换
-      setConversations(conversationResponse.items);
+      // 使用新的响应数据结构
+      setConversations(conversationResponse.data.items);
 
       // 设置统计信息
       setStatistics({
-        total: conversationResponse.statistics.total,
-        today: conversationResponse.statistics.today,
-        averageMessages: Math.round(conversationResponse.statistics.average_messages),
-        averageResponseTime: conversationResponse.statistics.average_response_time,
+        total: conversationResponse.data.statistics.total,
+        today: conversationResponse.data.statistics.today,
+        averageMessages: Math.round(conversationResponse.data.statistics.average_messages),
+        averageResponseTime: conversationResponse.data.statistics.average_response_time,
       });
 
       // 获取智能体列表
       const agentResponse = await agentsApi.list({ page: 1, page_size: 100 });
-      setAgents(agentResponse.items);
+      setAgents(agentResponse.data.items);
     } catch (error) {
       console.error('加载数据失败:', error);
       setError('加载对话数据失败，请检查后端服务是否正常运行');
@@ -92,15 +89,14 @@ export default function ConversationsPage() {
   // 加载对话消息
   const loadConversationMessages = async (conversationId: string) => {
     try {
-      const messagesResponse = await fetchConversationMessages(conversationId, {
+      const messagesResponse = await fetchMessages(conversationId, {
         page: 1,
         page_size: 100,
-        order_by: 'created_at',
-        order_dir: 'asc',
+        sorts: [{ key: 'created_at', desc: false }],
       });
 
-      // 直接使用API返回的数据，不需要转换
-      setConversationMessages(messagesResponse.items);
+      // 使用新的响应数据结构
+      setConversationMessages(messagesResponse.data.items);
     } catch (error) {
       console.error('加载消息失败:', error);
       setConversationMessages([]);

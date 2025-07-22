@@ -31,14 +31,14 @@ export async function getAllAgents(maxRecords: number = 1000): Promise<Agent[]> 
         page_size: pageSize,
       });
 
-      if (response.items.length === 0) {
+      if (response.data.items.length === 0) {
         break; // 没有更多数据
       }
 
-      allAgents.push(...response.items);
+      allAgents.push(...response.data.items);
 
       // 如果返回的数据少于页面大小，说明已经是最后一页
-      if (response.items.length < pageSize) {
+      if (response.data.items.length < pageSize) {
         break;
       }
 

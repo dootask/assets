@@ -57,46 +57,30 @@ func (Message) TableName() string {
 	return "messages"
 }
 
-// ConversationQueryParams 对话查询参数
-type ConversationQueryParams struct {
-	Page      int     `form:"page,default=1" validate:"min=1"`
-	PageSize  int     `form:"page_size,default=20" validate:"min=1,max=100"`
-	Search    string  `form:"search"`
-	AgentID   *int64  `form:"agent_id"`
-	IsActive  *bool   `form:"is_active"`
-	UserID    string  `form:"user_id"`
-	OrderBy   string  `form:"order_by,default=created_at"`
-	OrderDir  string  `form:"order_dir,default=desc" validate:"oneof=asc desc"`
-	StartDate *string `form:"start_date"`
-	EndDate   *string `form:"end_date"`
+// ConversationFilters 对话筛选条件
+type ConversationFilters struct {
+	Search    string  `json:"search" form:"search"`         // 搜索关键词
+	AgentID   *int64  `json:"agent_id" form:"agent_id"`     // 智能体ID过滤
+	IsActive  *bool   `json:"is_active" form:"is_active"`   // 状态过滤
+	UserID    string  `json:"user_id" form:"user_id"`       // 用户ID过滤
+	StartDate *string `json:"start_date" form:"start_date"` // 开始日期
+	EndDate   *string `json:"end_date" form:"end_date"`     // 结束日期
 }
 
-// MessageQueryParams 消息查询参数
-type MessageQueryParams struct {
-	Page     int    `form:"page,default=1" validate:"min=1"`
-	PageSize int    `form:"page_size,default=50" validate:"min=1,max=200"`
-	Role     string `form:"role" validate:"omitempty,oneof=user assistant system"`
-	OrderBy  string `form:"order_by,default=created_at"`
-	OrderDir string `form:"order_dir,default=asc" validate:"oneof=asc desc"`
+// MessageFilters 消息筛选条件
+type MessageFilters struct {
+	Role string `json:"role" form:"role" validate:"omitempty,oneof=user assistant system"` // 角色过滤
 }
 
-// ConversationListResponse 对话列表响应
-type ConversationListResponse struct {
+// ConversationListData 对话列表数据结构
+type ConversationListData struct {
 	Items      []Conversation         `json:"items"`
-	Total      int64                  `json:"total"`
-	Page       int                    `json:"page"`
-	PageSize   int                    `json:"page_size"`
-	TotalPages int                    `json:"total_pages"`
 	Statistics ConversationStatistics `json:"statistics"`
 }
 
-// MessageListResponse 消息列表响应
-type MessageListResponse struct {
-	Items      []Message `json:"items"`
-	Total      int64     `json:"total"`
-	Page       int       `json:"page"`
-	PageSize   int       `json:"page_size"`
-	TotalPages int       `json:"total_pages"`
+// MessageListData 消息列表数据结构
+type MessageListData struct {
+	Items []Message `json:"items"`
 }
 
 // ConversationDetailResponse 对话详情响应
@@ -118,31 +102,12 @@ type ConversationStatistics struct {
 	SuccessRate         float64 `json:"success_rate"`
 }
 
-// GetOrderBy 获取排序字段
-func (p *ConversationQueryParams) GetOrderBy() string {
-	allowedFields := map[string]bool{
-		"id":         true,
-		"agent_id":   true,
-		"created_at": true,
-		"updated_at": true,
-	}
-
-	if allowedFields[p.OrderBy] {
-		return p.OrderBy
-	}
-	return "created_at"
+// GetAllowedConversationSortFields 获取对话允许的排序字段
+func GetAllowedConversationSortFields() []string {
+	return []string{"id", "agent_id", "created_at", "updated_at"}
 }
 
-// GetOrderBy 获取消息排序字段
-func (p *MessageQueryParams) GetOrderBy() string {
-	allowedFields := map[string]bool{
-		"id":         true,
-		"created_at": true,
-		"role":       true,
-	}
-
-	if allowedFields[p.OrderBy] {
-		return p.OrderBy
-	}
-	return "created_at"
+// GetAllowedMessageSortFields 获取消息允许的排序字段
+func GetAllowedMessageSortFields() []string {
+	return []string{"id", "created_at", "updated_at"}
 }

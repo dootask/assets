@@ -1,89 +1,55 @@
 import axios from '@/lib/axios';
-import { Conversation, Message } from '@/lib/types';
+import { ConversationFilters, ConversationListData, Message, PaginationRequest, PaginationResponse } from '@/lib/types';
 
-// 对话查询参数接口
-export interface ConversationQueryParams {
-  page?: number;
-  page_size?: number;
-  search?: string;
-  agent_id?: number;
-  is_active?: boolean;
-  user_id?: string;
-  order_by?: string;
-  order_dir?: 'asc' | 'desc';
-  start_date?: string;
-  end_date?: string;
-}
-
-// 消息查询参数接口
-export interface MessageQueryParams {
-  page?: number;
-  page_size?: number;
+// 消息筛选条件
+export interface MessageFilters {
   role?: 'user' | 'assistant' | 'system';
-  order_by?: string;
-  order_dir?: 'asc' | 'desc';
 }
 
-// 对话列表响应接口
-export interface ConversationListResponse {
-  items: Conversation[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-  statistics: ConversationStatistics;
-}
-
-// 消息列表响应接口
-export interface MessageListResponse {
+// 消息列表数据
+export interface MessageListData {
   items: Message[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
 }
 
-// 对话详情响应接口
-export interface ConversationDetailResponse extends Conversation {
-  total_messages: number;
-  average_response_time: number;
-  total_tokens_used: number;
-  last_activity: string;
-}
-
-// 对话统计信息接口
-export interface ConversationStatistics {
-  total: number;
-  today: number;
-  active: number;
-  average_messages: number;
-  average_response_time: number;
-  success_rate: number;
+// 对话详情响应
+export interface ConversationDetailResponse {
+  id: string;
+  agentId: string;
+  agentName: string;
+  dootaskChatId: string;
+  dootaskUserId: string;
+  userId: string;
+  userName: string;
+  context: Record<string, unknown>;
+  messagesCount: number;
+  createdAt: string;
+  updatedAt: string;
+  lastMessage?: Message;
+  totalMessages: number;
+  averageResponseTime: number;
+  totalTokensUsed: number;
+  lastActivity: string;
 }
 
 /**
  * 获取对话列表
  */
-export const fetchConversations = async (params: ConversationQueryParams = {}): Promise<ConversationListResponse> => {
-  const response = await axios.get('/conversations', { params });
-
-  // 确保返回的数据有默认值，防止undefined错误
-  const data = response.data;
-  return {
-    items: data.items || [],
-    total: data.total || 0,
-    page: data.page || 1,
-    page_size: data.page_size || 20,
-    total_pages: data.total_pages || 0,
-    statistics: {
-      total: data.statistics?.total || 0,
-      today: data.statistics?.today || 0,
-      active: data.statistics?.active || 0,
-      average_messages: data.statistics?.average_messages || 0,
-      average_response_time: data.statistics?.average_response_time || 0,
-      success_rate: data.statistics?.success_rate || 0,
-    },
+export const fetchConversations = async (
+  params: Partial<PaginationRequest> & { filters?: ConversationFilters } = { page: 1, page_size: 12 }
+): Promise<PaginationResponse<ConversationListData>> => {
+  const defaultParams: PaginationRequest = {
+    page: 1,
+    page_size: 12,
+    sorts: [{ key: 'created_at', desc: true }],
+    filters: params.filters || {},
   };
+
+  const requestParams = { ...defaultParams, ...params };
+  const response = await axios.get<PaginationResponse<ConversationListData>>('/conversations', {
+    params: requestParams,
+  });
+
+  return response.data;
 };
 
 /**
@@ -95,50 +61,38 @@ export const fetchConversation = async (id: string): Promise<ConversationDetailR
 };
 
 /**
- * 获取对话消息
+ * 获取对话消息列表
  */
-export const fetchConversationMessages = async (
+export const fetchMessages = async (
   conversationId: string,
-  params: MessageQueryParams = {}
-): Promise<MessageListResponse> => {
-  const response = await axios.get<MessageListResponse>(`/conversations/${conversationId}/messages`, { params });
-  return response.data;
-};
-
-/**
- * 获取对话统计信息
- */
-export const fetchConversationStats = async (): Promise<ConversationStatistics> => {
-  const response = await axios.get<ConversationStatistics>('/conversations/stats');
-  return response.data;
-};
-
-// 兼容现有前端代码的转换函数
-export const convertConversationData = (conversation: Record<string, unknown>): Conversation => {
-  return {
-    id: conversation.id?.toString() || '',
-    agentId: conversation.agent_id?.toString() || '',
-    agentName: (conversation.agent_name as string) || (conversation.agentName as string) || '',
-    dootaskChatId: (conversation.dootask_chat_id as string) || '',
-    dootaskUserId: (conversation.dootask_user_id as string) || '',
-    userId: (conversation.dootask_user_id as string) || '',
-    userName: (conversation.user_name as string) || (conversation.userName as string) || '',
-    context: (conversation.context as Record<string, unknown>) || {},
-    messagesCount: (conversation.message_count as number) || (conversation.messagesCount as number) || 0,
-    createdAt: (conversation.created_at as string) || (conversation.createdAt as string) || '',
-    updatedAt: (conversation.updated_at as string) || (conversation.updatedAt as string) || '',
-    lastMessage: (conversation.last_message as Message) || (conversation.lastMessage as Message) || undefined,
+  params: Partial<PaginationRequest> & { filters?: MessageFilters } = { page: 1, page_size: 50 }
+): Promise<PaginationResponse<MessageListData>> => {
+  const defaultParams: PaginationRequest = {
+    page: 1,
+    page_size: 50,
+    sorts: [{ key: 'created_at', desc: false }], // 消息默认升序排列
+    filters: params.filters || {},
   };
+
+  const requestParams = { ...defaultParams, ...params };
+  const response = await axios.get<PaginationResponse<MessageListData>>(`/conversations/${conversationId}/messages`, {
+    params: requestParams,
+  });
+
+  return response.data;
 };
 
-export const convertMessageData = (message: Record<string, unknown>): Message => {
+// 创建分页请求参数的辅助函数
+export const createConversationListRequest = (
+  page = 1,
+  pageSize = 12,
+  filters: Record<string, unknown> = {},
+  sorts: { key: string; desc: boolean }[] = []
+): PaginationRequest => {
   return {
-    id: message.id?.toString() || '',
-    conversationId: (message.conversation_id as string) || (message.conversationId as string) || '',
-    role: (message.role as 'user' | 'assistant' | 'system') || 'user',
-    content: (message.content as string) || '',
-    metadata: (message.metadata as Record<string, unknown>) || {},
-    responseTime: (message.response_time as number) || (message.responseTime as number) || undefined,
-    createdAt: (message.created_at as string) || (message.createdAt as string) || '',
+    page,
+    page_size: pageSize,
+    sorts: sorts.length > 0 ? sorts : [{ key: 'created_at', desc: true }],
+    filters,
   };
 };

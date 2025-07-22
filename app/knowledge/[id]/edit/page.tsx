@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { aiModelsApi } from '@/lib/api/ai-models';
-import { formatKnowledgeBaseForUI, knowledgeBasesApi, parseKnowledgeBaseMetadata } from '@/lib/api/knowledge-bases';
+import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
 import { AIModelConfig } from '@/lib/types';
 import { Database, Save, Settings } from 'lucide-react';
 import Link from 'next/link';
@@ -54,12 +54,13 @@ export default function EditKnowledgeBasePage() {
     const loadEmbeddingModels = async () => {
       try {
         setModelsLoading(true);
-        const response = await aiModelsApi.getAIModels({ enabled: true });
+        const response = await aiModelsApi.getAIModels({ filters: { is_enabled: true } });
         // 在客户端过滤embedding模型
-        const embeddingModels = response.models.filter(
-          model => model.model_name.includes('embedding') || model.name.toLowerCase().includes('embedding')
+        const embeddingModels = response.data.items.filter(
+          (model: AIModelConfig) =>
+            model.model_name.includes('embedding') || model.name.toLowerCase().includes('embedding')
         );
-        setAvailableModels(embeddingModels.length > 0 ? embeddingModels : response.models);
+        setAvailableModels(embeddingModels.length > 0 ? embeddingModels : response.data.items);
       } catch (error) {
         console.error('加载Embedding模型失败:', error);
         toast.error('加载模型列表失败，请检查AI模型配置');
@@ -84,16 +85,16 @@ export default function EditKnowledgeBasePage() {
     try {
       const kbId = parseInt(params.id as string);
       const kb = await knowledgeBasesApi.get(kbId);
-      const parsedKB = parseKnowledgeBaseMetadata(kb);
-      const formattedKB = formatKnowledgeBaseForUI(parsedKB);
+      const parsedKB = kb; // Assuming parseKnowledgeBaseMetadata is no longer needed
+      const formattedKB = parsedKB;
 
       setFormData({
         name: formattedKB.name || '',
         description: formattedKB.description || '',
-        embeddingModel: formattedKB.embeddingModel || formattedKB.embedding_model,
+        embeddingModel: formattedKB.embedding_model,
         chunkSize: formattedKB.chunk_size || 1000,
         chunkOverlap: formattedKB.chunk_overlap || 200,
-        isActive: formattedKB.isActive !== undefined ? formattedKB.isActive : formattedKB.is_active,
+        isActive: formattedKB.is_active,
       });
     } catch (error) {
       console.error('加载知识库数据失败:', error);

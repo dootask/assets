@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
+import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
 import { agentsApi } from '@/lib/api/agents';
 import { mcpToolsApi } from '@/lib/api/mcp-tools';
 import { Agent, MCPTool } from '@/lib/types';
@@ -23,7 +24,6 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { toolCategories, toolPermissions, toolTypes } from '@/lib/ai';
 
 export default function MCPToolDetailPage() {
   const params = useParams();
@@ -44,13 +44,13 @@ export default function MCPToolDetailPage() {
 
         // 获取关联的智能体
         const agentsResponse = await agentsApi.list({ page: 1, page_size: 100 });
-        const usingAgents = agentsResponse.items.filter(agent => {
+        const usingAgents = agentsResponse.data.items.filter((agent: Agent) => {
           try {
             let toolIds: string[] = [];
             if (typeof agent.tools === 'string') {
               toolIds = JSON.parse(agent.tools);
             } else if (Array.isArray(agent.tools)) {
-              toolIds = agent.tools.map(tool => (typeof tool === 'string' ? tool : tool.toString()));
+              toolIds = agent.tools.map((tool: unknown) => (typeof tool === 'string' ? tool : String(tool)));
             }
             return toolIds.includes(toolId);
           } catch {

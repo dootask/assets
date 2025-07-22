@@ -27,7 +27,7 @@ export default function AgentsPage() {
     setIsLoading(true);
     try {
       const response = await agentsApi.list();
-      const formattedAgents = response.items.map(agent => {
+      const formattedAgents = response.data.items.map((agent: Agent) => {
         const parsedAgent = parseAgentJSONBFields(agent);
         return formatAgentForUI(parsedAgent);
       });

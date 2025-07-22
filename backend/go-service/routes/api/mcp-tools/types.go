@@ -45,13 +45,17 @@ type UpdateMCPToolRequest struct {
 	IsActive    *bool           `json:"is_active"`
 }
 
-// MCPToolListResponse MCP工具列表响应
-type MCPToolListResponse struct {
-	Items      []MCPTool `json:"items"`
-	Total      int64     `json:"total"`
-	Page       int       `json:"page"`
-	PageSize   int       `json:"page_size"`
-	TotalPages int       `json:"total_pages"`
+// MCPToolFilters MCP工具筛选条件
+type MCPToolFilters struct {
+	Search   string `json:"search" form:"search"`                                                        // 搜索关键词
+	Category string `json:"category" form:"category" validate:"omitempty,oneof=dootask external custom"` // 类别过滤
+	Type     string `json:"type" form:"type" validate:"omitempty,oneof=internal external"`               // 类型过滤
+	IsActive *bool  `json:"is_active" form:"is_active"`                                                  // 状态过滤
+}
+
+// MCPToolListData MCP工具列表数据结构
+type MCPToolListData struct {
+	Items []MCPTool `json:"items"`
 }
 
 // MCPToolResponse MCP工具详情响应
@@ -64,36 +68,6 @@ type MCPToolResponse struct {
 	SuccessRate         float64 `json:"success_rate"`
 	// 关联智能体数量
 	AssociatedAgents int64 `json:"associated_agents"`
-}
-
-// MCPToolQueryParams MCP工具查询参数
-type MCPToolQueryParams struct {
-	Page     int    `form:"page,default=1" validate:"min=1"`
-	PageSize int    `form:"page_size,default=20" validate:"min=1,max=100"`
-	Search   string `form:"search"`
-	Category string `form:"category" validate:"omitempty,oneof=dootask external custom"`
-	Type     string `form:"type" validate:"omitempty,oneof=internal external"`
-	IsActive *bool  `form:"is_active"`
-	OrderBy  string `form:"order_by,default=created_at"`
-	OrderDir string `form:"order_dir,default=desc" validate:"oneof=asc desc"`
-}
-
-// GetOrderBy 获取排序字段
-func (p *MCPToolQueryParams) GetOrderBy() string {
-	allowedFields := map[string]bool{
-		"id":         true,
-		"name":       true,
-		"category":   true,
-		"type":       true,
-		"is_active":  true,
-		"created_at": true,
-		"updated_at": true,
-	}
-
-	if allowedFields[p.OrderBy] {
-		return p.OrderBy
-	}
-	return "created_at"
 }
 
 // MCPToolStatsResponse MCP工具统计响应
@@ -126,4 +100,9 @@ type TestMCPToolResponse struct {
 	Message      string                 `json:"message"`
 	ResponseTime float64                `json:"response_time"` // 毫秒
 	TestResult   map[string]interface{} `json:"test_result,omitempty"`
+}
+
+// GetAllowedSortFields 获取允许的排序字段
+func GetAllowedSortFields() []string {
+	return []string{"id", "name", "category", "type", "is_active", "created_at", "updated_at"}
 }

@@ -64,13 +64,13 @@ export default function EditAgentPage() {
       try {
         // 并行加载基础数据
         const [modelsResponse, toolsResponse, kbResponse] = await Promise.all([
-          aiModelsApi.getAIModels({ enabled: true }),
-          mcpToolsApi.list({ page: 1, page_size: 100, is_active: true }),
+          aiModelsApi.getAIModels({ filters: { is_enabled: true } }),
+          mcpToolsApi.list({ page: 1, page_size: 100, filters: { is_active: true } }),
           knowledgeBasesApi.list({ page: 1, page_size: 100 }),
         ]);
 
         // 处理AI模型
-        const modelOptions = modelsResponse.models.map((model: AIModelConfig) => ({
+        const modelOptions = modelsResponse.data.items.map((model: AIModelConfig) => ({
           value: model.id.toString(),
           label: model.name,
           description: `${model.provider} - ${model.model_name}`,
@@ -79,10 +79,10 @@ export default function EditAgentPage() {
         setModelsLoading(false);
 
         // 处理工具和知识库
-        setAvailableTools(toolsResponse.items);
+        setAvailableTools(toolsResponse.data.items);
         setToolsLoading(false);
 
-        setAvailableKnowledgeBases(kbResponse.items);
+        setAvailableKnowledgeBases(kbResponse.data.items);
         setKnowledgeBasesLoading(false);
 
         // 加载智能体数据

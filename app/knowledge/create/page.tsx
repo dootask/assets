@@ -51,17 +51,18 @@ export default function CreateKnowledgeBasePage() {
     const loadEmbeddingModels = async () => {
       try {
         setModelsLoading(true);
-        const response = await aiModelsApi.getAIModels({ enabled: true });
-        // 在客户端过滤embedding模型（如果模型类型信息存在的话）
-        const embeddingModels = response.models.filter(
-          model => model.model_name.includes('embedding') || model.name.toLowerCase().includes('embedding')
-        );
-        setAvailableModels(embeddingModels.length > 0 ? embeddingModels : response.models);
+        const response = await aiModelsApi.getAIModels({ filters: { is_enabled: true } });
 
-        // 设置默认模型（如果有的话）
-        const modelsToUse = embeddingModels.length > 0 ? embeddingModels : response.models;
+        const embeddingModels = response.data.items.filter(
+          (model: AIModelConfig) =>
+            model.model_name.includes('embedding') || model.name.toLowerCase().includes('embedding')
+        );
+        setAvailableModels(embeddingModels.length > 0 ? embeddingModels : response.data.items);
+
+        // 设置默认嵌入模型
+        const modelsToUse = embeddingModels.length > 0 ? embeddingModels : response.data.items;
         if (modelsToUse.length > 0) {
-          const defaultModel = modelsToUse.find(model => model.is_default) || modelsToUse[0];
+          const defaultModel = modelsToUse.find((model: AIModelConfig) => model.is_default) || modelsToUse[0];
           setFormData(prev => ({ ...prev, embeddingModel: defaultModel.model_name }));
         }
       } catch (error) {
@@ -99,7 +100,16 @@ export default function CreateKnowledgeBasePage() {
     setIsLoading(true);
 
     try {
-      const newKB = await knowledgeBasesApi.create(formData);
+      // 转换为后端格式
+      const backendData = {
+        name: formData.name,
+        description: formData.description,
+        embedding_model: formData.embeddingModel,
+        chunk_size: formData.chunkSize,
+        chunk_overlap: formData.chunkOverlap,
+        is_active: true,
+      };
+      const newKB = await knowledgeBasesApi.create(backendData);
       toast.success(`知识库 "${newKB.name}" 创建成功！`);
       router.push('/knowledge');
     } catch (error) {

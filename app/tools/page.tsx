@@ -54,9 +54,9 @@ export default function ToolsPage() {
         order_by: 'created_at',
         order_dir: 'desc',
       };
-      const response = await mcpToolsApi.list(params);
-      setTools(response.items);
-      setFilteredTools(response.items);
+      const response = await mcpToolsApi.list();
+      setTools(response.data.items);
+      setFilteredTools(response.data.items);
     } catch (error) {
       console.error('Failed to load tools:', error);
       toast.error('加载工具列表失败');

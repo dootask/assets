@@ -1,10 +1,12 @@
 import axiosInstance from '@/lib/axios';
 import type {
   Agent,
-  AgentListResponse,
-  AgentQueryParams,
+  AgentFilters,
+  AgentListData,
   AgentResponse,
   CreateAgentRequest,
+  PaginationRequest,
+  PaginationResponse,
   UpdateAgentRequest,
 } from '@/lib/types';
 
@@ -26,9 +28,19 @@ interface AgentFormData {
 // 智能体管理API
 export const agentsApi = {
   // 获取智能体列表
-  list: async (params?: AgentQueryParams): Promise<AgentListResponse> => {
-    const response = await axiosInstance.get<AgentListResponse>('/admin/agents', {
-      params,
+  list: async (
+    params: Partial<PaginationRequest> & { filters?: AgentFilters } = { page: 1, page_size: 12 }
+  ): Promise<PaginationResponse<AgentListData>> => {
+    const defaultParams: PaginationRequest = {
+      page: 1,
+      page_size: 12,
+      sorts: [{ key: 'created_at', desc: true }],
+      filters: params.filters || {},
+    };
+
+    const requestParams = { ...defaultParams, ...params };
+    const response = await axiosInstance.get<PaginationResponse<AgentListData>>('/admin/agents', {
+      params: requestParams,
     });
     return response.data;
   },
@@ -148,6 +160,21 @@ export const parseAgentJSONBFields = (agent: Agent) => {
       metadata: {},
     };
   }
+};
+
+// 创建分页请求参数的辅助函数
+export const createAgentListRequest = (
+  page = 1,
+  pageSize = 12,
+  filters: Record<string, unknown> = {},
+  sorts: { key: string; desc: boolean }[] = []
+): PaginationRequest => {
+  return {
+    page,
+    page_size: pageSize,
+    sorts: sorts.length > 0 ? sorts : [{ key: 'created_at', desc: true }],
+    filters,
+  };
 };
 
 // 导出默认API对象

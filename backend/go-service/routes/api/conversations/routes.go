@@ -1,12 +1,13 @@
 package conversations
 
 import (
-	"math"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
 	"dootask-ai/go-service/global"
+	"dootask-ai/go-service/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -85,8 +86,10 @@ func TestConversations(c *gin.Context) {
 
 // ListConversations 获取对话列表
 func ListConversations(c *gin.Context) {
-	var params ConversationQueryParams
-	if err := c.ShouldBindQuery(&params); err != nil {
+	var req utils.PaginationRequest
+
+	// 绑定查询参数
+	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "VALIDATION_001",
 			"message": "查询参数格式错误",
@@ -95,9 +98,12 @@ func ListConversations(c *gin.Context) {
 		return
 	}
 
+	// 设置默认排序
+	req.SetDefaultSort("created_at", true)
+
 	// 验证参数
 	validate := validator.New()
-	if err := validate.Struct(&params); err != nil {
+	if err := validate.Struct(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "VALIDATION_001",
 			"message": "查询参数验证失败",
@@ -106,69 +112,100 @@ func ListConversations(c *gin.Context) {
 		return
 	}
 
+	// 解析筛选条件
+	var filters ConversationFilters
+	if req.Filters != nil {
+		filtersBytes, err := json.Marshal(req.Filters)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "筛选条件格式错误",
+				"data":    err.Error(),
+			})
+			return
+		}
+		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "筛选条件解析失败",
+				"data":    err.Error(),
+			})
+			return
+		}
+	}
+
+	// 验证排序字段
+	allowedFields := GetAllowedConversationSortFields()
+	for _, sort := range req.Sorts {
+		if !utils.ValidateSortField(sort.Key, allowedFields) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "无效的排序字段: " + sort.Key,
+				"data":    nil,
+			})
+			return
+		}
+	}
+
 	// 构建基础查询
 	query := global.DB.Model(&Conversation{})
 
-	// 搜索条件 - 支持按用户名或智能体名称搜索
-	if params.Search != "" {
-		searchTerm := "%" + params.Search + "%"
+	// 应用筛选条件
+	if filters.Search != "" {
+		searchTerm := "%" + filters.Search + "%"
 		query = query.Joins("LEFT JOIN agents ON conversations.agent_id = agents.id").
 			Where("agents.name ILIKE ? OR conversations.dootask_user_id ILIKE ?", searchTerm, searchTerm)
 	}
 
-	// 智能体过滤
-	if params.AgentID != nil {
-		query = query.Where("conversations.agent_id = ?", *params.AgentID)
+	if filters.AgentID != nil {
+		query = query.Where("conversations.agent_id = ?", *filters.AgentID)
 	}
 
-	// 状态过滤
-	if params.IsActive != nil {
-		query = query.Where("conversations.is_active = ?", *params.IsActive)
+	if filters.IsActive != nil {
+		query = query.Where("conversations.is_active = ?", *filters.IsActive)
 	}
 
-	// 用户过滤
-	if params.UserID != "" {
-		query = query.Where("conversations.dootask_user_id = ?", params.UserID)
+	if filters.UserID != "" {
+		query = query.Where("conversations.dootask_user_id = ?", filters.UserID)
 	}
 
 	// 日期范围过滤
-	if params.StartDate != nil && *params.StartDate != "" {
-		if startTime, err := time.Parse("2006-01-02", *params.StartDate); err == nil {
+	if filters.StartDate != nil && *filters.StartDate != "" {
+		if startTime, err := time.Parse("2006-01-02", *filters.StartDate); err == nil {
 			query = query.Where("conversations.created_at >= ?", startTime)
 		}
 	}
-	if params.EndDate != nil && *params.EndDate != "" {
-		if endTime, err := time.Parse("2006-01-02", *params.EndDate); err == nil {
-			// 设置为当天的23:59:59
+	if filters.EndDate != nil && *filters.EndDate != "" {
+		if endTime, err := time.Parse("2006-01-02", *filters.EndDate); err == nil {
 			endTime = endTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 			query = query.Where("conversations.created_at <= ?", endTime)
 		}
 	}
 
-	// 获取总数
+	// 获取总数（需要复制查询条件）
 	var total int64
 	countQuery := global.DB.Model(&Conversation{})
-	if params.Search != "" {
-		searchTerm := "%" + params.Search + "%"
+	if filters.Search != "" {
+		searchTerm := "%" + filters.Search + "%"
 		countQuery = countQuery.Joins("LEFT JOIN agents ON conversations.agent_id = agents.id").
 			Where("agents.name ILIKE ? OR conversations.dootask_user_id ILIKE ?", searchTerm, searchTerm)
 	}
-	if params.AgentID != nil {
-		countQuery = countQuery.Where("conversations.agent_id = ?", *params.AgentID)
+	if filters.AgentID != nil {
+		countQuery = countQuery.Where("conversations.agent_id = ?", *filters.AgentID)
 	}
-	if params.IsActive != nil {
-		countQuery = countQuery.Where("conversations.is_active = ?", *params.IsActive)
+	if filters.IsActive != nil {
+		countQuery = countQuery.Where("conversations.is_active = ?", *filters.IsActive)
 	}
-	if params.UserID != "" {
-		countQuery = countQuery.Where("conversations.dootask_user_id = ?", params.UserID)
+	if filters.UserID != "" {
+		countQuery = countQuery.Where("conversations.dootask_user_id = ?", filters.UserID)
 	}
-	if params.StartDate != nil && *params.StartDate != "" {
-		if startTime, err := time.Parse("2006-01-02", *params.StartDate); err == nil {
+	if filters.StartDate != nil && *filters.StartDate != "" {
+		if startTime, err := time.Parse("2006-01-02", *filters.StartDate); err == nil {
 			countQuery = countQuery.Where("conversations.created_at >= ?", startTime)
 		}
 	}
-	if params.EndDate != nil && *params.EndDate != "" {
-		if endTime, err := time.Parse("2006-01-02", *params.EndDate); err == nil {
+	if filters.EndDate != nil && *filters.EndDate != "" {
+		if endTime, err := time.Parse("2006-01-02", *filters.EndDate); err == nil {
 			endTime = endTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 			countQuery = countQuery.Where("conversations.created_at <= ?", endTime)
 		}
@@ -184,15 +221,14 @@ func ListConversations(c *gin.Context) {
 	}
 
 	// 分页和排序
-	offset := (params.Page - 1) * params.PageSize
-	orderBy := "conversations." + params.GetOrderBy() + " " + params.OrderDir
+	orderBy := "conversations." + req.GetOrderBy()
 
 	var conversations []Conversation
 	if err := query.
 		Preload("Agent").
 		Order(orderBy).
-		Limit(params.PageSize).
-		Offset(offset).
+		Limit(req.PageSize).
+		Offset(req.GetOffset()).
 		Find(&conversations).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "DATABASE_001",
@@ -207,7 +243,6 @@ func ListConversations(c *gin.Context) {
 		if conversations[i].Agent != nil {
 			conversations[i].AgentName = conversations[i].Agent.Name
 		}
-		// 简单模拟用户名，实际项目中应该从DooTask API获取
 		conversations[i].UserName = "用户" + conversations[i].DootaskUserID
 
 		// 获取消息数量
@@ -220,9 +255,8 @@ func ListConversations(c *gin.Context) {
 		if err := global.DB.Where("conversation_id = ?", conversations[i].ID).
 			Order("created_at DESC").
 			First(&lastMessage).Error; err == nil {
-			// 模拟响应时间计算
 			if lastMessage.Role == "assistant" {
-				responseTime := 2.1 // 模拟响应时间
+				responseTime := 2.1
 				lastMessage.ResponseTime = &responseTime
 			}
 			conversations[i].LastMessage = &lastMessage
@@ -232,18 +266,14 @@ func ListConversations(c *gin.Context) {
 	// 计算统计信息
 	stats := calculateConversationStatistics()
 
-	// 计算总页数
-	totalPages := int(math.Ceil(float64(total) / float64(params.PageSize)))
-
-	response := ConversationListResponse{
+	// 构造响应数据
+	data := ConversationListData{
 		Items:      conversations,
-		Total:      total,
-		Page:       params.Page,
-		PageSize:   params.PageSize,
-		TotalPages: totalPages,
 		Statistics: stats,
 	}
 
+	// 使用统一分页响应格式
+	response := utils.NewPaginationResponse(req.Page, req.PageSize, total, data)
 	c.JSON(http.StatusOK, response)
 }
 
@@ -317,7 +347,7 @@ func GetConversation(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// GetMessages 获取对话消息
+// GetMessages 获取对话消息列表
 func GetMessages(c *gin.Context) {
 	idStr := c.Param("id")
 	conversationID, err := strconv.ParseInt(idStr, 10, 64)
@@ -330,8 +360,10 @@ func GetMessages(c *gin.Context) {
 		return
 	}
 
-	var params MessageQueryParams
-	if err := c.ShouldBindQuery(&params); err != nil {
+	var req utils.PaginationRequest
+
+	// 绑定查询参数
+	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "VALIDATION_001",
 			"message": "查询参数格式错误",
@@ -340,15 +372,53 @@ func GetMessages(c *gin.Context) {
 		return
 	}
 
+	// 设置默认排序
+	req.SetDefaultSort("created_at", false) // 消息默认升序排列
+
 	// 验证参数
 	validate := validator.New()
-	if err := validate.Struct(&params); err != nil {
+	if err := validate.Struct(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "VALIDATION_001",
 			"message": "查询参数验证失败",
 			"data":    err.Error(),
 		})
 		return
+	}
+
+	// 解析筛选条件
+	var filters MessageFilters
+	if req.Filters != nil {
+		filtersBytes, err := json.Marshal(req.Filters)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "筛选条件格式错误",
+				"data":    err.Error(),
+			})
+			return
+		}
+		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "筛选条件解析失败",
+				"data":    err.Error(),
+			})
+			return
+		}
+	}
+
+	// 验证排序字段
+	allowedFields := GetAllowedMessageSortFields()
+	for _, sort := range req.Sorts {
+		if !utils.ValidateSortField(sort.Key, allowedFields) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "无效的排序字段: " + sort.Key,
+				"data":    nil,
+			})
+			return
+		}
 	}
 
 	// 检查对话是否存在
@@ -374,8 +444,8 @@ func GetMessages(c *gin.Context) {
 	query := global.DB.Model(&Message{}).Where("conversation_id = ?", conversationID)
 
 	// 角色过滤
-	if params.Role != "" {
-		query = query.Where("role = ?", params.Role)
+	if filters.Role != "" {
+		query = query.Where("role = ?", filters.Role)
 	}
 
 	// 获取总数
@@ -390,14 +460,13 @@ func GetMessages(c *gin.Context) {
 	}
 
 	// 分页和排序
-	offset := (params.Page - 1) * params.PageSize
-	orderBy := params.GetOrderBy() + " " + params.OrderDir
+	orderBy := req.GetOrderBy()
 
 	var messages []Message
 	if err := query.
 		Order(orderBy).
-		Limit(params.PageSize).
-		Offset(offset).
+		Limit(req.PageSize).
+		Offset(req.GetOffset()).
 		Find(&messages).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "DATABASE_001",
@@ -410,22 +479,18 @@ func GetMessages(c *gin.Context) {
 	// 为assistant消息添加模拟响应时间
 	for i := range messages {
 		if messages[i].Role == "assistant" {
-			responseTime := 2.1 // 模拟响应时间
+			responseTime := 2.1
 			messages[i].ResponseTime = &responseTime
 		}
 	}
 
-	// 计算总页数
-	totalPages := int(math.Ceil(float64(total) / float64(params.PageSize)))
-
-	response := MessageListResponse{
-		Items:      messages,
-		Total:      total,
-		Page:       params.Page,
-		PageSize:   params.PageSize,
-		TotalPages: totalPages,
+	// 构造响应数据
+	data := MessageListData{
+		Items: messages,
 	}
 
+	// 使用统一分页响应格式
+	response := utils.NewPaginationResponse(req.Page, req.PageSize, total, data)
 	c.JSON(http.StatusOK, response)
 }
 

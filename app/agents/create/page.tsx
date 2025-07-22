@@ -61,8 +61,8 @@ export default function CreateAgentPage() {
     const loadData = async () => {
       try {
         // 加载AI模型
-        const modelsResponse = await aiModelsApi.getAIModels({ enabled: true });
-        const modelOptions = modelsResponse.models.map((model: AIModelConfig) => ({
+        const modelsResponse = await aiModelsApi.getAIModels({ filters: { is_enabled: true } });
+        const modelOptions = modelsResponse.data.items.map((model: AIModelConfig) => ({
           value: model.id.toString(),
           label: model.name,
           description: `${model.provider} - ${model.model_name}`,
@@ -74,9 +74,9 @@ export default function CreateAgentPage() {
         const toolsResponse = await mcpToolsApi.list({
           page: 1,
           page_size: 100,
-          is_active: true,
+          filters: { is_active: true },
         });
-        setAvailableTools(toolsResponse.items);
+        setAvailableTools(toolsResponse.data.items);
         setToolsLoading(false);
 
         // 加载知识库
@@ -84,7 +84,7 @@ export default function CreateAgentPage() {
           page: 1,
           page_size: 100,
         });
-        setAvailableKnowledgeBases(kbResponse.items);
+        setAvailableKnowledgeBases(kbResponse.data.items);
         setKnowledgeBasesLoading(false);
       } catch (error) {
         console.error('加载数据失败:', error);

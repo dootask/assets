@@ -51,19 +51,15 @@ type UpdateAIModelRequest struct {
 	IsDefault   *bool    `json:"is_default,omitempty"`
 }
 
-// AIModelListResponse AI模型列表响应
-type AIModelListResponse struct {
-	Success bool        `json:"success"`
-	Data    AIModelList `json:"data"`
+// AIModelFilters AI模型筛选条件
+type AIModelFilters struct {
+	Provider  string `json:"provider" form:"provider"`     // 提供商过滤
+	IsEnabled *bool  `json:"is_enabled" form:"is_enabled"` // 启用状态过滤
 }
 
-// AIModelList AI模型列表数据
-type AIModelList struct {
-	Models     []AIModel `json:"models"`
-	Total      int64     `json:"total"`
-	Page       int       `json:"page"`
-	Size       int       `json:"size"`
-	TotalPages int       `json:"total_pages"`
+// AIModelListData AI模型列表数据结构
+type AIModelListData struct {
+	Items []AIModel `json:"items"`
 }
 
 // AIModelResponse 单个AI模型响应
@@ -77,4 +73,9 @@ type ErrorResponse struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error"`
 	Code    string `json:"code,omitempty"`
+}
+
+// GetAllowedSortFields 获取允许的排序字段
+func GetAllowedSortFields() []string {
+	return []string{"id", "name", "provider", "created_at", "updated_at"}
 }

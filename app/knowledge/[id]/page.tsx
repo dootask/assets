@@ -17,13 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/app-context';
 import { agentsApi } from '@/lib/api/agents';
-import {
-  formatDocumentForUI,
-  formatKnowledgeBaseForUI,
-  knowledgeBasesApi,
-  parseDocumentMetadata,
-  parseKnowledgeBaseMetadata,
-} from '@/lib/api/knowledge-bases';
+import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
 import { Agent, KnowledgeBase, KnowledgeBaseDocument } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
 import { Bot, Database, Edit, Eye, FileText, Plus, Search, Settings, Trash2 } from 'lucide-react';
@@ -54,29 +48,28 @@ export default function KnowledgeBaseDetailPage() {
 
       // 获取知识库详情
       const kbData = await knowledgeBasesApi.get(kbId);
-      const parsedKB = parseKnowledgeBaseMetadata(kbData);
-      setKnowledgeBase(formatKnowledgeBaseForUI(parsedKB));
+      const parsedKB = kbData; // Assuming parseKnowledgeBaseMetadata is removed
+      setKnowledgeBase(parsedKB);
 
       // 获取文档列表
       const docsResponse = await knowledgeBasesApi.getDocuments(kbId);
-      const formattedDocs = docsResponse.items.map(doc => {
-        const parsedDoc = parseDocumentMetadata(doc);
-        return formatDocumentForUI(parsedDoc);
+      const formattedDocs = docsResponse.data.items.map((doc: KnowledgeBaseDocument) => {
+        const parsedDoc = doc; // Assuming parseDocumentMetadata is removed
+        return parsedDoc;
       });
       setDocuments(formattedDocs);
 
-      // 获取关联的智能体
-      const agentsResponse = await agentsApi.list({ page: 1, page_size: 100 });
-      const usingAgents = agentsResponse.items.filter(agent => {
+      // 获取使用此知识库的智能体
+      const agentsResponse = await agentsApi.list();
+      const usingAgents = agentsResponse.data.items.filter((agent: Agent) => {
         try {
           let kbIds: number[] = [];
-          if (typeof agent.knowledge_bases === 'string') {
-            kbIds = JSON.parse(agent.knowledge_bases);
-          } else if (Array.isArray(agent.knowledge_bases)) {
-            kbIds = agent.knowledge_bases.map(kb => (typeof kb === 'number' ? kb : parseInt(kb.toString())));
+          if (Array.isArray(agent.knowledge_bases)) {
+            kbIds = agent.knowledge_bases.map((kb: unknown) => (typeof kb === 'number' ? kb : parseInt(String(kb))));
           }
           return kbIds.includes(kbId);
-        } catch {
+        } catch (error) {
+          console.error('解析智能体知识库失败:', error);
           return false;
         }
       });
@@ -160,9 +153,9 @@ export default function KnowledgeBaseDetailPage() {
       const documentData = {
         title: file.name,
         content: content,
-        fileType: file.name.split('.').pop()?.toLowerCase() || 'unknown',
-        fileSize: file.size,
-        filePath: `/uploads/${file.name}`,
+        file_type: file.name.split('.').pop()?.toLowerCase() || 'unknown',
+        file_size: file.size,
+        file_path: `/uploads/${file.name}`,
       };
 
       const newDocument = await knowledgeBasesApi.uploadDocument(parseInt(params.id as string), documentData);

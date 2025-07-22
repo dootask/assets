@@ -2,32 +2,33 @@ import { getProviderInfo } from '@/lib/ai';
 import apiClient from '@/lib/axios';
 import {
   AIModelConfig,
-  AIModelListResponse,
+  AIModelFilters,
+  AIModelListData,
   AIModelResponse,
   CreateAIModelRequest,
+  PaginationRequest,
+  PaginationResponse,
   UpdateAIModelRequest,
 } from '@/lib/types';
-
-export interface GetAIModelsParams {
-  page?: number;
-  size?: number;
-  provider?: string;
-  enabled?: boolean;
-}
 
 // AI模型API服务
 export const aiModelsApi = {
   // 获取AI模型列表
-  getAIModels: async (params: GetAIModelsParams = {}): Promise<AIModelListResponse['data']> => {
-    const searchParams = new URLSearchParams();
+  getAIModels: async (
+    params: Partial<PaginationRequest> & { filters?: AIModelFilters } = { page: 1, page_size: 12 }
+  ): Promise<PaginationResponse<AIModelListData>> => {
+    const defaultParams: PaginationRequest = {
+      page: 1,
+      page_size: 12,
+      sorts: [{ key: 'created_at', desc: true }],
+      filters: params.filters || {},
+    };
 
-    if (params.page) searchParams.append('page', params.page.toString());
-    if (params.size) searchParams.append('size', params.size.toString());
-    if (params.provider) searchParams.append('provider', params.provider);
-    if (params.enabled !== undefined) searchParams.append('enabled', params.enabled.toString());
-
-    const response = await apiClient.get<AIModelListResponse>(`/admin/ai-models?${searchParams.toString()}`);
-    return response.data.data;
+    const requestParams = { ...defaultParams, ...params };
+    const response = await apiClient.get<PaginationResponse<AIModelListData>>('/admin/ai-models', {
+      params: requestParams,
+    });
+    return response.data;
   },
 
   // 获取单个AI模型详情
@@ -54,6 +55,23 @@ export const aiModelsApi = {
     return response.data.data;
   },
 };
+
+// 创建分页请求参数的辅助函数
+export const createAIModelListRequest = (
+  page = 1,
+  pageSize = 12,
+  filters: Record<string, unknown> = {},
+  sorts: { key: string; desc: boolean }[] = []
+): PaginationRequest => {
+  return {
+    page,
+    page_size: pageSize,
+    sorts: sorts.length > 0 ? sorts : [{ key: 'created_at', desc: true }],
+    filters,
+  };
+};
+
+export default aiModelsApi;
 
 export const getModelDisplayName = (model: AIModelConfig): string => {
   if (model.displayName) return model.displayName;

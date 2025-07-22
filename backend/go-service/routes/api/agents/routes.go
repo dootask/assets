@@ -1,10 +1,12 @@
 package agents
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"dootask-ai/go-service/global"
+	"dootask-ai/go-service/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -27,8 +29,10 @@ func RegisterRoutes(router *gin.RouterGroup) {
 
 // ListAgents 获取智能体列表
 func ListAgents(c *gin.Context) {
-	var params AgentQueryParams
-	if err := c.ShouldBindQuery(&params); err != nil {
+	var req utils.PaginationRequest
+
+	// 绑定查询参数
+	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "VALIDATION_001",
 			"message": "查询参数格式错误",
@@ -37,9 +41,12 @@ func ListAgents(c *gin.Context) {
 		return
 	}
 
+	// 设置默认排序
+	req.SetDefaultSort("created_at", true)
+
 	// 验证参数
 	validate := validator.New()
-	if err := validate.Struct(&params); err != nil {
+	if err := validate.Struct(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "VALIDATION_001",
 			"message": "查询参数验证失败",
@@ -48,23 +55,56 @@ func ListAgents(c *gin.Context) {
 		return
 	}
 
+	// 解析筛选条件
+	var filters AgentFilters
+	if req.Filters != nil {
+		filtersBytes, err := json.Marshal(req.Filters)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "筛选条件格式错误",
+				"data":    err.Error(),
+			})
+			return
+		}
+		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "筛选条件解析失败",
+				"data":    err.Error(),
+			})
+			return
+		}
+	}
+
+	// 验证排序字段
+	allowedFields := GetAllowedSortFields()
+	for _, sort := range req.Sorts {
+		if !utils.ValidateSortField(sort.Key, allowedFields) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "无效的排序字段: " + sort.Key,
+				"data":    nil,
+			})
+			return
+		}
+	}
+
 	// 构建查询
 	query := global.DB.Model(&Agent{})
 
-	// 搜索条件
-	if params.Search != "" {
-		searchTerm := "%" + params.Search + "%"
+	// 应用筛选条件
+	if filters.Search != "" {
+		searchTerm := "%" + filters.Search + "%"
 		query = query.Where("name ILIKE ? OR description ILIKE ?", searchTerm, searchTerm)
 	}
 
-	// AI模型过滤
-	if params.AIModelID != nil {
-		query = query.Where("ai_model_id = ?", *params.AIModelID)
+	if filters.AIModelID != nil {
+		query = query.Where("ai_model_id = ?", *filters.AIModelID)
 	}
 
-	// 状态过滤
-	if params.IsActive != nil {
-		query = query.Where("is_active = ?", *params.IsActive)
+	if filters.IsActive != nil {
+		query = query.Where("is_active = ?", *filters.IsActive)
 	}
 
 	// 获取总数
@@ -79,15 +119,14 @@ func ListAgents(c *gin.Context) {
 	}
 
 	// 分页和排序
-	offset := (params.Page - 1) * params.PageSize
-	orderBy := params.GetOrderBy() + " " + params.OrderDir
+	orderBy := req.GetOrderBy()
 
 	var agents []Agent
 	if err := query.
 		Preload("AIModel").
 		Order(orderBy).
-		Limit(params.PageSize).
-		Offset(offset).
+		Limit(req.PageSize).
+		Offset(req.GetOffset()).
 		Find(&agents).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "DATABASE_001",
@@ -97,17 +136,13 @@ func ListAgents(c *gin.Context) {
 		return
 	}
 
-	// 计算总页数
-	totalPages := int(total+int64(params.PageSize)-1) / params.PageSize
-
-	response := AgentListResponse{
-		Items:      agents,
-		Total:      total,
-		Page:       params.Page,
-		PageSize:   params.PageSize,
-		TotalPages: totalPages,
+	// 构造响应数据
+	data := AgentListData{
+		Items: agents,
 	}
 
+	// 使用统一分页响应格式
+	response := utils.NewPaginationResponse(req.Page, req.PageSize, total, data)
 	c.JSON(http.StatusOK, response)
 }
 
