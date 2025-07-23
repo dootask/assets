@@ -2,12 +2,14 @@ package agents
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/pkg/utils"
 
+	dootask "github.com/dootask/tools/server/go"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
@@ -224,11 +226,27 @@ func CreateAgent(c *gin.Context) {
 		req.Metadata = []byte("{}")
 	}
 
+	// 创建机器人
+	bot, err := global.DooTaskClient.Client.CreateBot(dootask.CreateBotRequest{
+		Name:       req.Name,
+		WebhookURL: fmt.Sprintf("%s/webhook/agent", c.GetString("base_url")),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DOOTASK_001",
+			"message": "创建机器人失败",
+			"data":    nil,
+		})
+		return
+	}
+	botID := int64(bot.ID)
+
 	// 创建智能体
 	agent := Agent{
 		Name:           req.Name,
 		Description:    req.Description,
 		Prompt:         req.Prompt,
+		BotID:          &botID,
 		AIModelID:      req.AIModelID,
 		Temperature:    req.Temperature,
 		Tools:          req.Tools,
@@ -456,6 +474,23 @@ func UpdateAgent(c *gin.Context) {
 		updates["is_active"] = *req.IsActive
 	}
 
+	// 更新机器人
+	if agent.BotID != nil && req.Name != nil {
+		_, err = global.DooTaskClient.Client.UpdateBot(dootask.EditBotRequest{
+			ID:         int(*agent.BotID),
+			Name:       *req.Name,
+			WebhookURL: fmt.Sprintf("%s/webhook/agent", c.GetString("base_url")),
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DOOTASK_002",
+				"message": "更新机器人失败",
+				"data":    nil,
+			})
+			return
+		}
+	}
+
 	// 执行更新
 	if err := global.DB.Model(&agent).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -535,6 +570,22 @@ func DeleteAgent(c *gin.Context) {
 			"data":    map[string]int64{"conversation_count": conversationCount},
 		})
 		return
+	}
+
+	// 删除机器人
+	if agent.BotID != nil {
+		err = global.DooTaskClient.Client.DeleteBot(dootask.DeleteBotRequest{
+			ID:     int(*agent.BotID),
+			Remark: "删除智能体",
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DOOTASK_003",
+				"message": "删除机器人失败",
+				"data":    nil,
+			})
+			return
+		}
 	}
 
 	// 删除智能体

@@ -11,6 +11,7 @@ type Agent struct {
 	Name           string          `gorm:"type:varchar(255);not null" json:"name" validate:"required,max=255"`
 	Description    *string         `gorm:"type:text" json:"description"`
 	Prompt         string          `gorm:"type:text;not null" json:"prompt" validate:"required"`
+	BotID          *int64          `gorm:"column:bot_id" json:"bot_id"`
 	AIModelID      *int64          `gorm:"column:ai_model_id" json:"ai_model_id"`
 	Temperature    float64         `gorm:"type:decimal(3,2);default:0.7" json:"temperature" validate:"min=0,max=2"`
 	Tools          json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"tools"`

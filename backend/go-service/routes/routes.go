@@ -10,6 +10,7 @@ import (
 	mcptools "dootask-ai/go-service/routes/api/mcp-tools"
 	"dootask-ai/go-service/routes/api/test"
 	"dootask-ai/go-service/routes/health"
+	"dootask-ai/go-service/routes/webhook"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,6 +19,7 @@ func RegisterRoutes(r *gin.Engine) {
 	// 注册路由（不需要认证）
 	root := r.Group("/")
 	health.RegisterRoutes(root)
+	webhook.RegisterRoutes(root)
 
 	// 注册API路由（需要认证）
 	api := r.Group("/api")

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Handler 健康检查处理器
+// Handler 测试处理器
 type Handler struct {
 }
 
