@@ -158,6 +158,8 @@ func ListConversations(c *gin.Context) {
 
 	if filters.UserID != "" {
 		query = query.Where("conversations.dootask_user_id = ?", filters.UserID)
+	} else {
+		query = query.Where("conversations.dootask_user_id = ?", strconv.Itoa(int(global.DooTaskUser.UserID)))
 	}
 
 	// 日期范围过滤
@@ -189,6 +191,8 @@ func ListConversations(c *gin.Context) {
 	}
 	if filters.UserID != "" {
 		countQuery = countQuery.Where("conversations.dootask_user_id = ?", filters.UserID)
+	} else {
+		countQuery = countQuery.Where("conversations.dootask_user_id = ?", strconv.Itoa(int(global.DooTaskUser.UserID)))
 	}
 	if filters.StartDate != nil && *filters.StartDate != "" {
 		if startTime, err := time.Parse("2006-01-02", *filters.StartDate); err == nil {

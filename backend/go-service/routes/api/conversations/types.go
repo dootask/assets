@@ -31,6 +31,7 @@ type Conversation struct {
 type Message struct {
 	ID             int64           `gorm:"primaryKey;autoIncrement" json:"id"`
 	ConversationID int64           `gorm:"column:conversation_id;not null" json:"conversation_id"`
+	SendID         int64           `gorm:"column:send_id;not null" json:"send_id"`
 	Role           string          `gorm:"type:varchar(20);not null" json:"role"`
 	Content        string          `gorm:"type:text;not null" json:"content"`
 	Metadata       json.RawMessage `gorm:"type:jsonb;default:'{}'" json:"metadata"`

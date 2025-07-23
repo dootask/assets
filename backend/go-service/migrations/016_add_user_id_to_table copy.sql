@@ -1,3 +1,6 @@
+-- Description: 给ai_models,knowledge_bases,mcp_tools,agents表添加user_id字段
+-- 添加用户ID字段
+
 DO $$
 BEGIN
     -- ai_models 表

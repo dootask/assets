@@ -15,13 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+import { useDebounceCallback } from '@/hooks/use-debounce';
 import { agentsApi } from '@/lib/api/agents';
 import { fetchConversations, fetchMessages } from '@/lib/api/conversations';
 import { Agent, Conversation, Message, PaginationBase } from '@/lib/types';
 import { Bot, Calendar, CheckCircle, Clock, Eye, Filter, MessageSquare, Search, TrendingUp, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { defaultPagination, Pagination } from '../../components/pagination';
-import { useDebounceCallback } from '@/hooks/use-debounce';
 
 export default function ConversationsPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -334,25 +334,25 @@ export default function ConversationsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="text-muted-foreground h-4 w-4" />
-                        <span className="font-medium">{conversation.userName}</span>
+                        <span className="font-medium">{conversation.user_name}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Bot className="h-4 w-4 text-blue-500" />
-                        <span>{conversation.agentName}</span>
+                        <span>{conversation.agent_name}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="outline">{conversation.messagesCount}</Badge>
+                      <Badge variant="outline">{conversation.message_count}</Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      {getResponseTimeBadge(conversation.lastMessage?.responseTime)}
+                      {getResponseTimeBadge(conversation.last_message?.response_time)}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <div className="text-muted-foreground flex items-center gap-1 text-sm">
                         <Calendar className="h-3 w-3" />
-                        {new Date(conversation.createdAt).toLocaleString('zh-CN')}
+                        {new Date(conversation.created_at).toLocaleString('zh-CN')}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -367,7 +367,7 @@ export default function ConversationsPage() {
                           <DialogHeader>
                             <DialogTitle>对话详情</DialogTitle>
                             <DialogDescription>
-                              {conversation.userName} 与 {conversation.agentName} 的对话记录
+                              {conversation.user_name} 与 {conversation.agent_name} 的对话记录
                             </DialogDescription>
                           </DialogHeader>
 
@@ -378,22 +378,22 @@ export default function ConversationsPage() {
                                 <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg p-4">
                                   <div>
                                     <p className="text-sm font-medium">用户</p>
-                                    <p className="text-muted-foreground text-sm">{selectedConversation.userName}</p>
+                                    <p className="text-muted-foreground text-sm">{selectedConversation.user_name}</p>
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium">智能体</p>
-                                    <p className="text-muted-foreground text-sm">{selectedConversation.agentName}</p>
+                                    <p className="text-muted-foreground text-sm">{selectedConversation.agent_name}</p>
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium">消息总数</p>
                                     <p className="text-muted-foreground text-sm">
-                                      {selectedConversation.messagesCount}
+                                      {selectedConversation.message_count}
                                     </p>
                                   </div>
                                   <div>
                                     <p className="text-sm font-medium">开始时间</p>
                                     <p className="text-muted-foreground text-sm">
-                                      {new Date(selectedConversation.createdAt).toLocaleString('zh-CN')}
+                                      {new Date(selectedConversation.created_at).toLocaleString('zh-CN')}
                                     </p>
                                   </div>
                                 </div>
@@ -423,11 +423,11 @@ export default function ConversationsPage() {
                                           </>
                                         )}
                                         <span className="text-muted-foreground ml-auto text-xs">
-                                          {new Date(message.createdAt).toLocaleTimeString('zh-CN')}
+                                          {new Date(message.created_at).toLocaleTimeString('zh-CN')}
                                         </span>
-                                        {message.responseTime && (
+                                        {message.response_time && (
                                           <Badge variant="outline" className="ml-1">
-                                            {message.responseTime}s
+                                            {message.response_time}s
                                           </Badge>
                                         )}
                                       </div>

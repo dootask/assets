@@ -25,3 +25,22 @@ type WebhookMsgUser struct {
 	Lang       string `json:"lang" form:"lang"`
 	Token      string `json:"token" form:"token"`
 }
+
+// Response 机器人响应
+type Response struct {
+	Bot        int            `json:"bot"`
+	CreatedAt  string         `json:"created_at"`
+	DialogID   int            `json:"dialog_id"`
+	DialogType string         `json:"dialog_type"`
+	ForwardID  int            `json:"forward_id"`
+	ID         int            `json:"id"`
+	Link       int            `json:"link"`
+	UserID     int            `json:"userid"`
+	Msg        map[string]any `json:"msg"`
+}
+
+// Message 机器人消息
+type Message struct {
+	Text string `json:"text"`
+	Type string `json:"type"`
+}

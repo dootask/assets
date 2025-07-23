@@ -193,27 +193,27 @@ export interface AgentQueryParams {
 // 对话相关类型
 export interface Conversation {
   id: string;
-  agentId: string;
-  agentName: string;
-  dootaskChatId: string;
-  dootaskUserId: string;
-  userId: string;
-  userName: string;
+  agent_id: string;
+  agent_name: string;
+  dootask_chat_id: string;
+  dootask_user_id: string;
+  user_id: string;
+  user_name: string;
   context: Record<string, unknown>;
-  messagesCount: number;
-  createdAt: string;
-  updatedAt: string;
-  lastMessage?: Message;
+  message_count: number;
+  created_at: string;
+  updated_at: string;
+  last_message?: Message;
 }
 
 export interface Message {
   id: string;
-  conversationId: string;
+  conversation_id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   metadata?: Record<string, unknown>;
-  responseTime?: number;
-  createdAt: string;
+  response_time?: number;
+  created_at: string;
 }
 
 // 知识库相关类型

@@ -5,12 +5,16 @@ import (
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/pkg/utils"
 	"dootask-ai/go-service/routes/api/agents"
+	"dootask-ai/go-service/routes/api/conversations"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	dootask "github.com/dootask/tools/server/go"
+	"gorm.io/gorm"
 
 	"github.com/duke-git/lancet/v2/convertor"
 	"github.com/duke-git/lancet/v2/random"
@@ -91,7 +95,53 @@ func (h *Handler) Webhook(c *gin.Context) {
 		StreamURL: fmt.Sprintf("%s/service/stream/%s", c.GetString("base_url"), streamId),
 	})
 
-	fmt.Println("sendId", sendId, "response", response)
+	// 获取消息 map 转 json
+	responseData, err := h.parseResponse(response)
+	if err != nil {
+		fmt.Println("解析响应数据失败:", err)
+		return
+	}
+
+	messageData, err := h.parseMessage(responseData.Msg)
+	if err != nil {
+		fmt.Println("解析消息数据失败:", err)
+		return
+	}
+
+	fmt.Printf("messageData: %+v\n", messageData)
+
+	// 创建对话
+	var conversation conversations.Conversation
+	dialogId := strconv.Itoa(responseData.DialogID)
+	userID := strconv.Itoa(int(agent.UserID))
+	if err := global.DB.Where("dootask_chat_id = ? AND dootask_user_id = ?", dialogId, userID).First(&conversation).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			conversation = conversations.Conversation{
+				AgentID:       agent.ID,
+				DootaskChatID: dialogId,
+				DootaskUserID: userID,
+				IsActive:      true,
+			}
+			if err := global.DB.Create(&conversation).Error; err != nil {
+				fmt.Println("创建对话失败:", err)
+				return
+			}
+		} else {
+			fmt.Println("查询对话失败:", err)
+			return
+		}
+	}
+
+	// 创建消息
+	message := conversations.Message{
+		ConversationID: conversation.ID,
+		SendID:         sendId,
+		Role:           "user",
+	}
+	if err := global.DB.Create(&message).Error; err != nil {
+		fmt.Println("创建消息失败:", err)
+		return
+	}
 }
 
 // Stream 流式消息
@@ -111,6 +161,18 @@ func (h *Handler) Stream(c *gin.Context) {
 	streamId := c.Param("streamId")
 	sendId, err := global.Redis.Get(context.Background(), fmt.Sprintf("stream:%s", streamId)).Int()
 
+	contents := map[string]string{
+		"replace": "替换消息",
+		"append":  "追加消息",
+		"done":    "完成消息",
+	}
+
+	message := conversations.Message{}
+	global.DB.Where("send_id = ?", sendId).First(&message)
+	if message.ID > 0 {
+		global.DB.Model(&message).Update("content", contents["replace"])
+	}
+
 	// 流式消息
 	c.Stream(func(w io.Writer) bool {
 		// 消息不存在
@@ -123,15 +185,49 @@ func (h *Handler) Stream(c *gin.Context) {
 		time.Sleep(time.Second * 3)
 
 		// 追加消息
-		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "append", "追加消息")
+		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "append", contents["append"])
 
 		// 替换消息
-		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "replace", "替换消息")
+		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "replace", contents["replace"])
 
 		// 完成消息
-		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "done", "完成消息")
+		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "done", contents["done"])
 
 		// 返回 false 结束流
 		return false
 	})
+}
+
+// 解析响应数据
+func (h *Handler) parseResponse(response map[string]any) (*Response, error) {
+	responseJson, err := json.Marshal(response)
+	if err != nil {
+		fmt.Println("解析响应数据失败:", err)
+		return nil, err
+	}
+
+	var responseData Response
+	if err := json.Unmarshal(responseJson, &responseData); err != nil {
+		fmt.Println("解析响应数据失败:", err)
+		return nil, err
+	}
+
+	return &responseData, nil
+}
+
+// 解析消息数据
+func (h *Handler) parseMessage(message map[string]any) (*Message, error) {
+	messageJson, err := json.Marshal(message)
+	if err != nil {
+		fmt.Println("解析消息数据失败:", err)
+		return nil, err
+	}
+
+	var messageData Message
+	if err := json.Unmarshal(messageJson, &messageData); err != nil {
+		fmt.Println("解析消息数据失败:", err)
+		return nil, err
+	}
+
+	return &messageData, nil
 }
