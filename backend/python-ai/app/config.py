@@ -1,8 +1,6 @@
 
-try:
-    from pydantic_settings import BaseSettings
-except ImportError:
-    from pydantic import BaseSettings
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -32,11 +30,11 @@ class Settings(BaseSettings):
     log_level: str = "info"
     enable_debug: bool = True
     
-    class Config:
-        # 从环境变量读取，转换为大写
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
+    )
 
 
 # 全局设置实例
