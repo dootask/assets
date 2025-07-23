@@ -14,6 +14,10 @@ type WebhookRequest struct {
 	BotUid     int64          `json:"bot_uid" form:"bot_uid"`         // 机器人ID
 	Version    string         `json:"version" form:"version"`         // 系统版本
 	Extras     map[string]any `json:"extras" form:"extras"`           // 扩展字段
+
+	// 流式消息相关
+	StreamId string `json:"stream_id"` // 流式消息ID
+	SendId   int64  `json:"send_id"`   // 发送消息后返回的消息ID
 }
 
 // WebhookMsgUser 消息发送人

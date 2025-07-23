@@ -5,6 +5,7 @@ import (
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/pkg/utils"
 	"dootask-ai/go-service/routes/api/agents"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -79,19 +80,17 @@ func (h *Handler) Webhook(c *gin.Context) {
 		ReplyID:    int(req.MsgId),
 		ReplyCheck: "yes",
 	}, &response)
-	sendId, _ := convertor.ToInt(response["id"])
+	req.SendId, _ = convertor.ToInt(response["id"])
 
 	// 生成随机流ID
-	streamId := random.RandString(6)
-	global.Redis.Set(context.Background(), fmt.Sprintf("stream:%s", streamId), sendId, time.Minute*10)
+	req.StreamId = random.RandString(6)
+	global.Redis.Set(context.Background(), fmt.Sprintf("stream:%s", req.StreamId), convertor.ToString(req), time.Minute*10)
 
 	// 通知 Stream 服务
 	global.DooTaskClient.Client.SendStreamMessage(dootask.SendStreamMessageRequest{
 		UserID:    int(req.MsgUid),
-		StreamURL: fmt.Sprintf("%s/service/stream/%s", c.GetString("base_url"), streamId),
+		StreamURL: fmt.Sprintf("%s/service/stream/%s", c.GetString("base_url"), req.StreamId),
 	})
-
-	fmt.Println("sendId", sendId, "response", response)
 }
 
 // Stream 流式消息
@@ -109,27 +108,48 @@ func (h *Handler) Stream(c *gin.Context) {
 
 	// 获取流ID
 	streamId := c.Param("streamId")
-	sendId, err := global.Redis.Get(context.Background(), fmt.Sprintf("stream:%s", streamId)).Int()
+	cache, err := global.Redis.Get(context.Background(), fmt.Sprintf("stream:%s", streamId)).Result()
+
+	// 判断流式消息是否存在
+	if err != nil {
+		c.String(http.StatusOK, "id: %d\nevent: %s\ndata: {\"error\": \"%s\"}\n\n", 0, "done", "流式消息不存在")
+		return
+	}
+
+	// 反序列化流式消息
+	var req WebhookRequest
+	if err := json.Unmarshal([]byte(cache), &req); err != nil {
+		c.String(http.StatusOK, "id: %d\nevent: %s\ndata: {\"error\": \"%s\"}\n\n", 0, "done", "流式消息错误")
+		return
+	}
+
+	// 创建 DooTask 客户端
+	client := utils.NewDooTaskClient(req.Token)
+	global.DooTaskClient = &client
+
+	// TODO:延迟2秒
+	time.Sleep(time.Second * 2)
 
 	// 流式消息
 	c.Stream(func(w io.Writer) bool {
-		// 消息不存在
-		if err != nil {
-			fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"error\": \"%s\"}\n\n", sendId, "done", "流式消息不存在")
-			return false
-		}
-
-		// 延迟3秒
-		time.Sleep(time.Second * 3)
-
 		// 追加消息
-		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "append", "追加消息")
+		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", req.SendId, "append", "追加消息")
 
 		// 替换消息
-		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "replace", "替换消息")
+		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", req.SendId, "replace", "替换消息")
 
 		// 完成消息
-		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", sendId, "done", "完成消息")
+		fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", req.SendId, "done", "完成消息")
+
+		// 更新消息
+		global.DooTaskClient.Client.SendMessage(dootask.SendMessageRequest{
+			DialogID:   int(req.DialogId),
+			UpdateID:   int(req.SendId),
+			UpdateMark: "no",
+			Text:       "更新消息",
+			TextType:   "md",
+			Silence:    true,
+		})
 
 		// 返回 false 结束流
 		return false
