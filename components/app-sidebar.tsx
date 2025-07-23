@@ -63,8 +63,8 @@ const menuGroups = [
     label: '系统管理',
     items: [
       {
-        title: '系统设置',
-        url: '/settings',
+        title: 'DooTask 集成',
+        url: '/settings/dootask',
         icon: Settings,
       },
     ],

@@ -14,6 +14,19 @@ const apiClient = axios.create({
 // 请求拦截器 - 添加认证头等
 apiClient.interceptors.request.use(
   config => {
+    // 使用设置
+    const dootaskSettings = storage.getJsonItem('dootaskSettings', {
+      token: '',
+      apiBaseUrl: '',
+      isConnected: false,
+    });
+    if (dootaskSettings.isConnected) {
+      config.headers.Authorization = `Bearer ${dootaskSettings.token}`;
+      config.headers.Server = dootaskSettings.apiBaseUrl;
+      return config;
+    }
+
+    // 使用本地token
     const token = storage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
