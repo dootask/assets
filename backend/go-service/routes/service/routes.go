@@ -103,7 +103,7 @@ func (h *Handler) Stream(c *gin.Context) {
 	*/
 
 	// 设置响应头
-	c.Header("Content-Type", "text/event-stream")
+	c.Header("Content-Type", "text/event-stream; charset=utf-8")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
