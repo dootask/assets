@@ -8,6 +8,7 @@ import (
 // MCPTool MCP工具模型
 type MCPTool struct {
 	ID          int64           `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID      int64           `gorm:"not null;index" json:"user_id"`
 	Name        string          `gorm:"type:varchar(255);not null;unique" json:"name" validate:"required,max=255"`
 	Description *string         `gorm:"type:text" json:"description"`
 	Category    string          `gorm:"type:varchar(50);not null;default:'external'" json:"category" validate:"required,oneof=dootask external custom"`

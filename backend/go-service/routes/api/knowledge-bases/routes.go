@@ -89,6 +89,9 @@ func ListKnowledgeBases(c *gin.Context) {
 	// 构建查询
 	query := global.DB.Model(&KnowledgeBase{})
 
+	// 设置默认筛选条件
+	query = query.Where("user_id = ?", global.DooTaskUser.UserID)
+
 	// 应用筛选条件
 	if filters.Search != "" {
 		searchTerm := "%" + strings.ToLower(filters.Search) + "%"
@@ -168,7 +171,7 @@ func CreateKnowledgeBase(c *gin.Context) {
 
 	// 检查名称是否已存在
 	var count int64
-	if err := global.DB.Model(&KnowledgeBase{}).Where("name = ?", req.Name).Count(&count).Error; err != nil {
+	if err := global.DB.Model(&KnowledgeBase{}).Where("user_id = ? AND name = ?", global.DooTaskUser.UserID, req.Name).Count(&count).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "DATABASE_001",
 			"message": "检查名称唯一性失败",
@@ -198,6 +201,7 @@ func CreateKnowledgeBase(c *gin.Context) {
 
 	// 创建知识库
 	kb := KnowledgeBase{
+		UserID:         int64(global.DooTaskUser.UserID),
 		Name:           req.Name,
 		Description:    req.Description,
 		EmbeddingModel: req.EmbeddingModel,
@@ -339,7 +343,7 @@ func UpdateKnowledgeBase(c *gin.Context) {
 
 	// 检查知识库是否存在
 	var kb KnowledgeBase
-	if err := global.DB.First(&kb, id).Error; err != nil {
+	if err := global.DB.Where("user_id = ?", global.DooTaskUser.UserID).First(&kb, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    "KB_002",
@@ -359,7 +363,7 @@ func UpdateKnowledgeBase(c *gin.Context) {
 	// 检查名称唯一性（如果要更新名称）
 	if req.Name != nil && *req.Name != kb.Name {
 		var count int64
-		if err := global.DB.Model(&KnowledgeBase{}).Where("name = ? AND id != ?", *req.Name, id).Count(&count).Error; err != nil {
+		if err := global.DB.Model(&KnowledgeBase{}).Where("user_id = ? AND name = ? AND id != ?", global.DooTaskUser.UserID, *req.Name, id).Count(&count).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"code":    "DATABASE_001",
 				"message": "检查名称唯一性失败",
@@ -443,7 +447,7 @@ func DeleteKnowledgeBase(c *gin.Context) {
 
 	// 检查知识库是否存在
 	var kb KnowledgeBase
-	if err := global.DB.First(&kb, id).Error; err != nil {
+	if err := global.DB.Where("user_id = ?", global.DooTaskUser.UserID).First(&kb, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    "KB_002",
@@ -460,11 +464,11 @@ func DeleteKnowledgeBase(c *gin.Context) {
 		return
 	}
 
-	// 检查是否被智能体使用（简化版本，仅检查数量）
+	// 检查是否被智能体使用
 	var agentCount int64
 	if err := global.DB.Model(&struct {
 		ID int64 `gorm:"primaryKey"`
-	}{}).Table("agents").Where("is_active = true").Count(&agentCount).Error; err != nil {
+	}{}).Table("agents").Where("knowledge_bases @> ?", `[`+strconv.FormatInt(id, 10)+`]`).Count(&agentCount).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "DATABASE_001",
 			"message": "检查知识库使用状态失败",
@@ -472,9 +476,6 @@ func DeleteKnowledgeBase(c *gin.Context) {
 		})
 		return
 	}
-
-	// 暂时简化检查逻辑，直接允许删除
-	// TODO: 实现更复杂的JSONB查询来检查具体的知识库使用情况
 
 	if agentCount > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{

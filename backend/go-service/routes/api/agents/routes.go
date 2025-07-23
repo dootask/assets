@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	dootask "github.com/dootask/tools/server/go"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -85,6 +87,9 @@ func ListAgents(c *gin.Context) {
 
 	// 构建查询
 	query := global.DB.Model(&Agent{})
+
+	// 设置默认筛选条件
+	query = query.Where("user_id = ?", global.DooTaskUser.UserID)
 
 	// 应用筛选条件
 	if filters.Search != "" {
@@ -164,7 +169,7 @@ func CreateAgent(c *gin.Context) {
 
 	// 检查智能体名称是否已存在
 	var existingAgent Agent
-	if err := global.DB.Where("name = ?", req.Name).First(&existingAgent).Error; err == nil {
+	if err := global.DB.Where("user_id = ? AND name = ?", global.DooTaskUser.UserID, req.Name).First(&existingAgent).Error; err == nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code":    "AGENT_001",
 			"message": "智能体名称已存在",
@@ -192,7 +197,7 @@ func CreateAgent(c *gin.Context) {
 	var modelCount int64
 	if err := global.DB.Model(&struct {
 		ID int64 `gorm:"primaryKey"`
-	}{}).Table("ai_models").Where("id = ? AND is_enabled = true", *req.AIModelID).Count(&modelCount).Error; err != nil {
+	}{}).Table("ai_models").Where("id = ? AND user_id = ? AND is_enabled = true", *req.AIModelID, global.DooTaskUser.UserID).Count(&modelCount).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "DATABASE_001",
 			"message": "验证AI模型失败",
@@ -209,15 +214,18 @@ func CreateAgent(c *gin.Context) {
 		return
 	}
 
-	// 处理JSONB字段默认值
-	if req.Tools == nil {
-		req.Tools = []byte("[]")
+	// 处理JSONB字段值
+	kbIDsJson := datatypes.JSON([]byte(`[]`))
+	if req.KnowledgeBases != nil {
+		kbIDsJson = datatypes.JSON(req.KnowledgeBases)
 	}
-	if req.KnowledgeBases == nil {
-		req.KnowledgeBases = []byte("[]")
+	toolsJson := datatypes.JSON([]byte(`[]`))
+	if req.Tools != nil {
+		toolsJson = datatypes.JSON(req.Tools)
 	}
-	if req.Metadata == nil {
-		req.Metadata = []byte("{}")
+	metadataJson := datatypes.JSON([]byte(`{}`))
+	if req.Metadata != nil {
+		metadataJson = datatypes.JSON(req.Metadata)
 	}
 
 	// 创建机器人
@@ -237,15 +245,16 @@ func CreateAgent(c *gin.Context) {
 
 	// 创建智能体
 	agent := Agent{
+		UserID:         int64(global.DooTaskUser.UserID),
 		Name:           req.Name,
 		Description:    req.Description,
 		Prompt:         req.Prompt,
 		BotID:          &botID,
 		AIModelID:      req.AIModelID,
 		Temperature:    req.Temperature,
-		Tools:          req.Tools,
-		KnowledgeBases: req.KnowledgeBases,
-		Metadata:       req.Metadata,
+		Tools:          toolsJson,
+		KnowledgeBases: kbIDsJson,
+		Metadata:       metadataJson,
 		IsActive:       true,
 	}
 
@@ -378,7 +387,7 @@ func UpdateAgent(c *gin.Context) {
 
 	// 检查智能体是否存在
 	var agent Agent
-	if err := global.DB.Where("id = ?", id).First(&agent).Error; err != nil {
+	if err := global.DB.Where("id = ? AND user_id = ?", id, global.DooTaskUser.UserID).First(&agent).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    "AGENT_002",
@@ -398,7 +407,7 @@ func UpdateAgent(c *gin.Context) {
 	// 检查智能体名称是否已被其他智能体使用
 	if req.Name != nil && *req.Name != agent.Name {
 		var existingAgent Agent
-		if err := global.DB.Where("name = ? AND id != ?", *req.Name, id).First(&existingAgent).Error; err == nil {
+		if err := global.DB.Where("user_id = ? AND name = ? AND id != ?", global.DooTaskUser.UserID, *req.Name, id).First(&existingAgent).Error; err == nil {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{
 				"code":    "AGENT_001",
 				"message": "智能体名称已存在",
@@ -427,7 +436,7 @@ func UpdateAgent(c *gin.Context) {
 	var modelCount int64
 	if err := global.DB.Model(&struct {
 		ID int64 `gorm:"primaryKey"`
-	}{}).Table("ai_models").Where("id = ? AND is_enabled = true", *req.AIModelID).Count(&modelCount).Error; err != nil {
+	}{}).Table("ai_models").Where("id = ? AND user_id = ? AND is_enabled = true", *req.AIModelID, global.DooTaskUser.UserID).Count(&modelCount).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "DATABASE_001",
 			"message": "验证AI模型失败",
@@ -442,6 +451,70 @@ func UpdateAgent(c *gin.Context) {
 			"data":    nil,
 		})
 		return
+	}
+
+	// 检查知识库是否存在
+	if req.KnowledgeBases != nil {
+		var kbIDs []int64
+		if err := json.Unmarshal(req.KnowledgeBases, &kbIDs); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "知识库ID格式错误",
+				"data":    nil,
+			})
+			return
+		}
+		var knowledgeBaseCount int64
+		if err := global.DB.Model(&struct {
+			ID int64 `gorm:"primaryKey"`
+		}{}).Table("knowledge_bases").Where("id IN (?) AND user_id = ?", kbIDs, global.DooTaskUser.UserID).Count(&knowledgeBaseCount).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "验证知识库失败",
+				"data":    nil,
+			})
+			return
+		}
+		if knowledgeBaseCount == 0 {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"code":    "KNOWLEDGE_BASE_001",
+				"message": "指定的知识库不存在",
+				"data":    nil,
+			})
+			return
+		}
+	}
+
+	// 检查工具是否存在
+	if req.Tools != nil {
+		var toolIDs []int64
+		if err := json.Unmarshal(req.Tools, &toolIDs); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "VALIDATION_001",
+				"message": "工具ID格式错误",
+				"data":    nil,
+			})
+			return
+		}
+		var toolCount int64
+		if err := global.DB.Model(&struct {
+			ID int64 `gorm:"primaryKey"`
+		}{}).Table("mcp_tools").Where("id IN (?) AND user_id = ?", toolIDs, global.DooTaskUser.UserID).Count(&toolCount).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "DATABASE_001",
+				"message": "验证工具失败",
+				"data":    nil,
+			})
+			return
+		}
+		if toolCount == 0 {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"code":    "MCP_TOOL_001",
+				"message": "指定的工具不存在",
+				"data":    nil,
+			})
+			return
+		}
 	}
 
 	// 构建更新数据
@@ -533,7 +606,7 @@ func DeleteAgent(c *gin.Context) {
 
 	// 检查智能体是否存在
 	var agent Agent
-	if err := global.DB.Where("id = ?", id).First(&agent).Error; err != nil {
+	if err := global.DB.Where("id = ? AND user_id = ?", id, global.DooTaskUser.UserID).First(&agent).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    "AGENT_002",
@@ -630,7 +703,7 @@ func ToggleAgentActive(c *gin.Context) {
 
 	// 检查智能体是否存在
 	var agent Agent
-	if err := global.DB.Where("id = ?", id).First(&agent).Error; err != nil {
+	if err := global.DB.Where("id = ? AND user_id = ?", id, global.DooTaskUser.UserID).First(&agent).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    "AGENT_002",

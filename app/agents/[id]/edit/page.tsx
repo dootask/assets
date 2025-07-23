@@ -1,6 +1,7 @@
 'use client';
 
 import { CommandSelect, CommandSelectOption } from '@/components/command-select';
+import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
+import { embeddingModels, toolCategories, toolTypes } from '@/lib/ai';
 import { agentsApi, formatUpdateRequestForAPI } from '@/lib/api/agents';
 import { aiModelsApi } from '@/lib/api/ai-models';
 import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
@@ -26,12 +28,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { embeddingModels, toolCategories, toolTypes } from '@/lib/ai';
-import { Badge } from '@/components/ui/badge';
 
 interface FormData extends CreateAgentRequest {
   maxTokens: number;
-  selectedToolIds: string[];
+  tools: number[];
+  knowledge_bases: number[];
+  selectedToolIds: number[];
   selectedKnowledgeBaseIds: number[];
 }
 
@@ -53,8 +55,8 @@ export default function EditAgentPage() {
     ai_model_id: null,
     temperature: 0.7,
     maxTokens: 2000,
-    tools: '[]',
-    knowledge_bases: '[]',
+    tools: [],
+    knowledge_bases: [],
     selectedToolIds: [],
     selectedKnowledgeBaseIds: [],
   });
@@ -91,28 +93,18 @@ export default function EditAgentPage() {
         const agent = await agentsApi.get(agentId);
 
         // 解析工具和知识库ID
-        let selectedToolIds: string[] = [];
+        let selectedToolIds: number[] = [];
         let selectedKnowledgeBaseIds: number[] = [];
 
         try {
-          if (typeof agent.tools === 'string') {
-            selectedToolIds = JSON.parse(agent.tools);
-          } else if (Array.isArray(agent.tools)) {
-            selectedToolIds = agent.tools.map(tool => (typeof tool === 'string' ? tool : tool.toString()));
-          }
+          selectedToolIds = agent.tools.map((tool: number) => tool);
         } catch (error) {
           console.error('解析工具数据失败:', error);
           selectedToolIds = [];
         }
 
         try {
-          if (typeof agent.knowledge_bases === 'string') {
-            selectedKnowledgeBaseIds = JSON.parse(agent.knowledge_bases);
-          } else if (Array.isArray(agent.knowledge_bases)) {
-            selectedKnowledgeBaseIds = agent.knowledge_bases.map(kb =>
-              typeof kb === 'number' ? kb : parseInt(kb.toString())
-            );
-          }
+          selectedKnowledgeBaseIds = agent.knowledge_bases.map((kb: number) => kb);
         } catch (error) {
           console.error('解析知识库数据失败:', error);
           selectedKnowledgeBaseIds = [];
@@ -125,11 +117,8 @@ export default function EditAgentPage() {
           ai_model_id: agent.ai_model_id,
           temperature: agent.temperature || 0.7,
           maxTokens: 2000, // 默认值
-          tools: typeof agent.tools === 'string' ? agent.tools : JSON.stringify(agent.tools || []),
-          knowledge_bases:
-            typeof agent.knowledge_bases === 'string'
-              ? agent.knowledge_bases
-              : JSON.stringify(agent.knowledge_bases || []),
+          tools: agent.tools,
+          knowledge_bases: agent.knowledge_bases,
           selectedToolIds,
           selectedKnowledgeBaseIds,
         });
@@ -177,7 +166,7 @@ export default function EditAgentPage() {
     }
   };
 
-  const handleToolToggle = (toolId: string, checked: boolean) => {
+  const handleToolToggle = (toolId: number, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
       selectedToolIds: checked ? [...prev.selectedToolIds, toolId] : prev.selectedToolIds.filter(id => id !== toolId),
@@ -393,8 +382,8 @@ export default function EditAgentPage() {
                       <div className="relative mt-1 h-4 w-4">
                         <Checkbox
                           id={`tool-${tool.id}`}
-                          checked={formData.selectedToolIds.includes(tool.id)}
-                          onCheckedChange={checked => handleToolToggle(tool.id, Boolean(checked))}
+                          checked={formData.selectedToolIds.includes(Number(tool.id))}
+                          onCheckedChange={checked => handleToolToggle(Number(tool.id), Boolean(checked))}
                           className="absolute top-0 left-0"
                         />
                       </div>

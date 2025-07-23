@@ -7,14 +7,15 @@ import (
 // AIModel AI模型数据结构
 type AIModel struct {
 	ID          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID      int64     `json:"user_id" gorm:"not null;index"`
 	Name        string    `json:"name" gorm:"type:varchar(255);not null" validate:"required,min=1,max=255"`
-	Provider    string    `json:"provider" gorm:"type:varchar(100);not null" validate:"required,oneof=openai anthropic google azure local"`
+	Provider    string    `json:"provider" gorm:"type:varchar(100);not null" validate:"required,oneof=openai anthropic google azure local xai cohere voyage"`
 	ModelName   string    `json:"model_name" gorm:"type:varchar(255);not null" validate:"required,min=1,max=255"`
 	ApiKey      *string   `json:"api_key,omitempty" gorm:"type:text"`
 	BaseURL     string    `json:"base_url" gorm:"type:varchar(500)" validate:"omitempty,url"`
 	MaxTokens   int       `json:"max_tokens" gorm:"default:4000" validate:"min=1,max=100000"`
 	Temperature float32   `json:"temperature" gorm:"type:decimal(3,2);default:0.7" validate:"min=0,max=2"`
-	IsEnabled   bool      `json:"is_enabled" gorm:"default:true"`
+	IsEnabled   *bool     `json:"is_enabled" gorm:"default:true"`
 	IsDefault   bool      `json:"is_default" gorm:"default:false"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
@@ -28,7 +29,7 @@ func (AIModel) TableName() string {
 // CreateAIModelRequest 创建AI模型请求
 type CreateAIModelRequest struct {
 	Name        string  `json:"name" validate:"required,min=1,max=255"`
-	Provider    string  `json:"provider" validate:"required,oneof=openai anthropic google azure local"`
+	Provider    string  `json:"provider" validate:"required,oneof=openai anthropic google azure local xai cohere voyage"`
 	ModelName   string  `json:"model_name" validate:"required,min=1,max=255"`
 	ApiKey      *string `json:"api_key,omitempty"`
 	BaseURL     string  `json:"base_url" validate:"omitempty,url"`
@@ -41,7 +42,7 @@ type CreateAIModelRequest struct {
 // UpdateAIModelRequest 更新AI模型请求
 type UpdateAIModelRequest struct {
 	Name        *string  `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
-	Provider    *string  `json:"provider,omitempty" validate:"omitempty,oneof=openai anthropic google azure local"`
+	Provider    *string  `json:"provider,omitempty" validate:"omitempty,oneof=openai anthropic google azure local xai cohere voyage"`
 	ModelName   *string  `json:"model_name,omitempty" validate:"omitempty,min=1,max=255"`
 	ApiKey      *string  `json:"api_key,omitempty"`
 	BaseURL     *string  `json:"base_url,omitempty" validate:"omitempty,url"`
@@ -77,5 +78,5 @@ type ErrorResponse struct {
 
 // GetAllowedSortFields 获取允许的排序字段
 func GetAllowedSortFields() []string {
-	return []string{"id", "name", "provider", "created_at", "updated_at"}
+	return []string{"id", "name", "provider", "is_default", "created_at", "updated_at"}
 }

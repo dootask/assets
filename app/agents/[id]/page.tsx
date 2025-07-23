@@ -80,11 +80,7 @@ export default function AgentDetailPage() {
         if (response.knowledge_bases) {
           try {
             let kbIds: number[] = [];
-            if (typeof response.knowledge_bases === 'string') {
-              kbIds = JSON.parse(response.knowledge_bases);
-            } else if (Array.isArray(response.knowledge_bases)) {
-              kbIds = response.knowledge_bases.map(kb => (typeof kb === 'number' ? kb : parseInt(kb.toString())));
-            }
+            kbIds = response.knowledge_bases.map((kb: number) => kb);
 
             if (kbIds.length > 0) {
               const kbPromises = kbIds.map(kbId =>

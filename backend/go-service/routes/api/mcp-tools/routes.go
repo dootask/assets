@@ -87,6 +87,9 @@ func ListMCPTools(c *gin.Context) {
 	// 构建查询
 	query := global.DB.Model(&MCPTool{})
 
+	// 设置默认筛选条件
+	query = query.Where("user_id = ?", global.DooTaskUser.UserID)
+
 	// 应用筛选条件
 	if filters.Search != "" {
 		searchTerm := "%" + filters.Search + "%"
@@ -168,7 +171,7 @@ func CreateMCPTool(c *gin.Context) {
 
 	// 检查工具名称是否已存在
 	var existingTool MCPTool
-	if err := global.DB.Where("name = ?", req.Name).First(&existingTool).Error; err == nil {
+	if err := global.DB.Where("user_id = ? AND name = ?", global.DooTaskUser.UserID, req.Name).First(&existingTool).Error; err == nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code":    "MCP_TOOL_001",
 			"message": "工具名称已存在",
@@ -194,6 +197,7 @@ func CreateMCPTool(c *gin.Context) {
 
 	// 创建工具
 	tool := MCPTool{
+		UserID:      int64(global.DooTaskUser.UserID),
 		Name:        req.Name,
 		Description: req.Description,
 		Category:    req.Category,
@@ -251,7 +255,7 @@ func GetMCPTool(c *gin.Context) {
 	global.DB.Model(&struct {
 		ID int64 `gorm:"primaryKey"`
 	}{}).Table("agents").
-		Where("tools::jsonb ? ?", strconv.FormatInt(id, 10)).
+		Where("tools::jsonb ? '" + idStr + "'").
 		Count(&associatedAgents)
 
 	response := MCPToolResponse{
@@ -302,7 +306,7 @@ func UpdateMCPTool(c *gin.Context) {
 
 	// 检查工具是否存在
 	var tool MCPTool
-	if err := global.DB.Where("id = ?", id).First(&tool).Error; err != nil {
+	if err := global.DB.Where("id = ? AND user_id = ?", id, global.DooTaskUser.UserID).First(&tool).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    "MCP_TOOL_002",
@@ -322,7 +326,7 @@ func UpdateMCPTool(c *gin.Context) {
 	// 检查工具名称是否已被其他工具使用
 	if req.Name != nil && *req.Name != tool.Name {
 		var existingTool MCPTool
-		if err := global.DB.Where("name = ? AND id != ?", *req.Name, id).First(&existingTool).Error; err == nil {
+		if err := global.DB.Where("user_id = ? AND name = ? AND id != ?", global.DooTaskUser.UserID, *req.Name, id).First(&existingTool).Error; err == nil {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{
 				"code":    "MCP_TOOL_001",
 				"message": "工具名称已存在",
@@ -402,7 +406,7 @@ func DeleteMCPTool(c *gin.Context) {
 
 	// 检查工具是否存在
 	var tool MCPTool
-	if err := global.DB.Where("id = ?", id).First(&tool).Error; err != nil {
+	if err := global.DB.Where("id = ? AND user_id = ?", id, global.DooTaskUser.UserID).First(&tool).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    "MCP_TOOL_002",
@@ -425,9 +429,7 @@ func DeleteMCPTool(c *gin.Context) {
 	// 使用JSONB包含操作符检查tools数组是否包含该工具ID
 	if err := global.DB.Model(&struct {
 		ID int64 `gorm:"primaryKey"`
-	}{}).Table("agents").
-		Where("tools @> ?", `["`+toolIDStr+`"]`).
-		Count(&agentCount).Error; err != nil {
+	}{}).Table("agents").Where("tools @> ?", `[`+toolIDStr+`]`).Count(&agentCount).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    "DATABASE_001",
 			"message": "检查关联智能体失败",
@@ -435,7 +437,6 @@ func DeleteMCPTool(c *gin.Context) {
 		})
 		return
 	}
-
 	if agentCount > 0 {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code":    "MCP_TOOL_003",
@@ -485,7 +486,7 @@ func ToggleMCPToolActive(c *gin.Context) {
 
 	// 检查工具是否存在
 	var tool MCPTool
-	if err := global.DB.Where("id = ?", id).First(&tool).Error; err != nil {
+	if err := global.DB.Where("id = ? AND user_id = ?", id, global.DooTaskUser.UserID).First(&tool).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    "MCP_TOOL_002",

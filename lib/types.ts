@@ -119,9 +119,9 @@ export interface Agent {
   prompt: string;
   ai_model_id?: number | null;
   temperature: number;
-  tools: unknown; // JSONB array
-  knowledge_bases: unknown; // JSONB array
-  metadata: unknown; // JSONB object
+  tools: number[]; // JSONB array
+  knowledge_bases: number[]; // JSONB array
+  metadata: Record<string, unknown>; // JSONB object
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -146,9 +146,9 @@ export interface CreateAgentRequest {
   prompt: string;
   ai_model_id?: number | null;
   temperature: number;
-  tools?: unknown; // JSONB array
-  knowledge_bases?: unknown; // JSONB array
-  metadata?: unknown; // JSONB object
+  tools?: number[]; // JSONB array
+  knowledge_bases?: number[]; // JSONB array
+  metadata?: Record<string, unknown>; // JSONB object
 }
 
 export interface UpdateAgentRequest {

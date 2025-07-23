@@ -3,23 +3,26 @@ package agents
 import (
 	"encoding/json"
 	"time"
+
+	"gorm.io/datatypes"
 )
 
 // Agent 智能体模型
 type Agent struct {
-	ID             int64           `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name           string          `gorm:"type:varchar(255);not null" json:"name" validate:"required,max=255"`
-	Description    *string         `gorm:"type:text" json:"description"`
-	Prompt         string          `gorm:"type:text;not null" json:"prompt" validate:"required"`
-	BotID          *int64          `gorm:"column:bot_id" json:"bot_id"`
-	AIModelID      *int64          `gorm:"column:ai_model_id" json:"ai_model_id"`
-	Temperature    float64         `gorm:"type:decimal(3,2);default:0.7" json:"temperature" validate:"min=0,max=2"`
-	Tools          json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"tools"`
-	KnowledgeBases json.RawMessage `gorm:"type:jsonb;default:'[]'" json:"knowledge_bases"`
-	Metadata       json.RawMessage `gorm:"type:jsonb;default:'{}'" json:"metadata"`
-	IsActive       bool            `gorm:"default:true" json:"is_active"`
-	CreatedAt      time.Time       `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt      time.Time       `gorm:"autoUpdateTime" json:"updated_at"`
+	ID             int64          `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID         int64          `gorm:"not null;index" json:"user_id"`
+	Name           string         `gorm:"type:varchar(255);not null" json:"name" validate:"required,max=255"`
+	Description    *string        `gorm:"type:text" json:"description"`
+	Prompt         string         `gorm:"type:text;not null" json:"prompt" validate:"required"`
+	BotID          *int64         `gorm:"column:bot_id" json:"bot_id"`
+	AIModelID      *int64         `gorm:"column:ai_model_id" json:"ai_model_id"`
+	Temperature    float64        `gorm:"type:decimal(3,2);default:0.7" json:"temperature" validate:"min=0,max=2"`
+	Tools          datatypes.JSON `gorm:"type:jsonb;default:'[]'" json:"tools"`
+	KnowledgeBases datatypes.JSON `gorm:"type:jsonb;default:'[]'" json:"knowledge_bases"`
+	Metadata       datatypes.JSON `gorm:"type:jsonb;default:'{}'" json:"metadata"`
+	IsActive       bool           `gorm:"default:true" json:"is_active"`
+	CreatedAt      time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 
 	// 关联模型
 	AIModel *AIModel `gorm:"foreignKey:AIModelID" json:"ai_model,omitempty"`

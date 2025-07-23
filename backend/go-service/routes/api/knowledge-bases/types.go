@@ -8,6 +8,7 @@ import (
 // KnowledgeBase 知识库模型
 type KnowledgeBase struct {
 	ID             int64           `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID         int64           `gorm:"not null;index" json:"user_id"`
 	Name           string          `gorm:"type:varchar(255);not null" json:"name" validate:"required,max=255"`
 	Description    *string         `gorm:"type:text" json:"description"`
 	EmbeddingModel string          `gorm:"type:varchar(100);default:'text-embedding-ada-002'" json:"embedding_model" validate:"required"`

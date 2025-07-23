@@ -1,6 +1,7 @@
 'use client';
 
 import { CommandSelect, CommandSelectOption } from '@/components/command-select';
+import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
+import { embeddingModels, toolCategories, toolTypes } from '@/lib/ai';
 import { agentsApi, formatCreateRequestForAPI } from '@/lib/api/agents';
 import { aiModelsApi } from '@/lib/api/ai-models';
 import { knowledgeBasesApi } from '@/lib/api/knowledge-bases';
@@ -26,12 +28,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { embeddingModels, toolCategories, toolTypes } from '@/lib/ai';
-import { Badge } from '@/components/ui/badge';
 
 interface FormData extends CreateAgentRequest {
   maxTokens: number;
-  selectedToolIds: string[];
+  selectedToolIds: number[];
   selectedKnowledgeBaseIds: number[];
 }
 
@@ -51,8 +51,8 @@ export default function CreateAgentPage() {
     ai_model_id: null,
     temperature: 0.7,
     maxTokens: 2000,
-    tools: '[]',
-    knowledge_bases: '[]',
+    tools: [],
+    knowledge_bases: [],
     selectedToolIds: [],
     selectedKnowledgeBaseIds: [],
   });
@@ -132,7 +132,7 @@ export default function CreateAgentPage() {
     }
   };
 
-  const handleToolToggle = (toolId: string, checked: boolean) => {
+  const handleToolToggle = (toolId: number, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
       selectedToolIds: checked ? [...prev.selectedToolIds, toolId] : prev.selectedToolIds.filter(id => id !== toolId),
@@ -334,8 +334,8 @@ export default function CreateAgentPage() {
                       <div className="relative mt-1 h-4 w-4">
                         <Checkbox
                           id={`tool-${tool.id}`}
-                          checked={formData.selectedToolIds.includes(tool.id)}
-                          onCheckedChange={checked => handleToolToggle(tool.id, Boolean(checked))}
+                          checked={formData.selectedToolIds.includes(Number(tool.id))}
+                          onCheckedChange={checked => handleToolToggle(Number(tool.id), Boolean(checked))}
                           className="absolute top-0 left-0"
                         />
                       </div>

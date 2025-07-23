@@ -18,8 +18,8 @@ interface AgentFormData {
   ai_model_id?: number | null;
   aiModelId?: number | null; // 兼容字段
   temperature: number;
-  tools?: string[] | unknown;
-  knowledgeBases?: string[] | unknown;
+  tools?: number[] | unknown;
+  knowledgeBases?: number[] | unknown;
   metadata?: Record<string, unknown>;
   isActive?: boolean;
   is_active?: boolean;
@@ -90,8 +90,8 @@ export const formatAgentForUI = (agent: Agent): Agent & { model: string; isActiv
 
 // 辅助函数 - 格式化创建请求数据（从前端格式转换为后端格式）
 export const formatCreateRequestForAPI = (data: AgentFormData): CreateAgentRequest => {
-  const tools = Array.isArray(data.tools) ? JSON.stringify(data.tools) : '[]';
-  const knowledgeBases = Array.isArray(data.knowledgeBases) ? JSON.stringify(data.knowledgeBases) : '[]';
+  const tools = data.tools || [];
+  const knowledgeBases = data.knowledgeBases || [];
 
   return {
     name: data.name,
@@ -99,9 +99,9 @@ export const formatCreateRequestForAPI = (data: AgentFormData): CreateAgentReque
     prompt: data.prompt,
     ai_model_id: data.ai_model_id || data.aiModelId || null,
     temperature: data.temperature,
-    tools,
-    knowledge_bases: knowledgeBases,
-    metadata: data.metadata ? JSON.stringify(data.metadata) : '{}',
+    tools: tools as unknown as number[],
+    knowledge_bases: knowledgeBases as unknown as number[],
+    metadata: data.metadata || {},
   };
 };
 
@@ -117,15 +117,13 @@ export const formatUpdateRequestForAPI = (data: Partial<AgentFormData>): UpdateA
   }
   if (data.temperature !== undefined) result.temperature = data.temperature;
   if (data.tools !== undefined) {
-    result.tools = Array.isArray(data.tools) ? JSON.stringify(data.tools) : data.tools;
+    result.tools = data.tools as unknown as number[];
   }
   if (data.knowledgeBases !== undefined) {
-    result.knowledge_bases = Array.isArray(data.knowledgeBases)
-      ? JSON.stringify(data.knowledgeBases)
-      : data.knowledgeBases;
+    result.knowledge_bases = data.knowledgeBases as unknown as number[];
   }
   if (data.metadata !== undefined) {
-    result.metadata = data.metadata ? JSON.stringify(data.metadata) : '{}';
+    result.metadata = data.metadata as unknown as Record<string, unknown>;
   }
   if (data.isActive !== undefined) result.is_active = data.isActive;
   if (data.is_active !== undefined) result.is_active = data.is_active;
