@@ -27,7 +27,7 @@ import { providerOptions } from '@/lib/ai';
 export default function CreateModelPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<CreateAIModelRequest>({
+  const [formData, setFormData] = useState<CreateAIModelRequest & { __manual_token__: boolean }>({
     name: '',
     provider: '',
     model_name: '',
@@ -37,6 +37,7 @@ export default function CreateModelPage() {
     temperature: 0.7,
     is_enabled: true,
     is_default: false,
+    __manual_token__: false,
   });
 
   // 转换为CommandSelect选项
@@ -87,6 +88,7 @@ export default function CreateModelPage() {
       provider,
       base_url: providerConfig?.baseUrl || '',
       model_name: providerConfig?.models[0] || '',
+      max_tokens: prev.__manual_token__ ? prev.max_tokens : providerConfig?.maxTokens || 4000,
     }));
   };
 
@@ -210,7 +212,13 @@ export default function CreateModelPage() {
                       min="1"
                       max="100000"
                       value={formData.max_tokens}
-                      onChange={e => setFormData(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 4000 }))}
+                      onChange={e =>
+                        setFormData(prev => ({
+                          ...prev,
+                          __manual_token__: true,
+                          max_tokens: parseInt(e.target.value) || 4000,
+                        }))
+                      }
                       placeholder="4000"
                     />
                     <p className="text-muted-foreground text-xs">控制模型单次输出的最大长度</p>
@@ -329,13 +337,13 @@ export default function CreateModelPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div>
+                  <div className="space-y-1">
                     <p className="text-sm font-medium">默认API地址</p>
                     <p className="text-muted-foreground text-xs break-all">{selectedProvider.baseUrl}</p>
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <p className="text-sm font-medium">常用模型</p>
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {selectedProvider.models.map(model => (
                         <Button
                           key={model}
@@ -348,6 +356,17 @@ export default function CreateModelPage() {
                         </Button>
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">建议最大 Token 数</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => setFormData(prev => ({ ...prev, max_tokens: selectedProvider.maxTokens }))}
+                    >
+                      {selectedProvider.maxTokens}
+                    </Button>
                   </div>
                 </div>
               </CardContent>

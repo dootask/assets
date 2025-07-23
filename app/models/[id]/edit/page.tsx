@@ -370,13 +370,13 @@ export default function EditModelPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div>
+                  <div className="space-y-1">
                     <p className="text-sm font-medium">默认API地址</p>
                     <p className="text-muted-foreground text-xs break-all">{selectedProvider.baseUrl}</p>
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <p className="text-sm font-medium">常用模型</p>
-                    <div className="mt-1 flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {selectedProvider.models.map(modelName => (
                         <Button
                           key={modelName}
@@ -389,6 +389,17 @@ export default function EditModelPage() {
                         </Button>
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">建议最大 Token 数</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => setFormData(prev => ({ ...prev, max_tokens: selectedProvider.maxTokens }))}
+                    >
+                      {selectedProvider.maxTokens}
+                    </Button>
                   </div>
                 </div>
               </CardContent>
