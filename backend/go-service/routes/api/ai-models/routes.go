@@ -3,7 +3,6 @@ package aimodels
 import (
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/pkg/utils"
-	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -62,24 +61,13 @@ func (h *Handler) GetAIModels(c *gin.Context) {
 
 	// 解析筛选条件
 	var filters AIModelFilters
-	if req.Filters != nil {
-		filtersBytes, err := json.Marshal(req.Filters)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, ErrorResponse{
-				Success: false,
-				Error:   "筛选条件格式错误",
-				Code:    "VALIDATION_001",
-			})
-			return
-		}
-		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
-			c.JSON(http.StatusBadRequest, ErrorResponse{
-				Success: false,
-				Error:   "筛选条件解析失败",
-				Code:    "VALIDATION_001",
-			})
-			return
-		}
+	if err := req.ParseFiltersFromQuery(c, &filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "筛选条件解析失败",
+			"data":    err.Error(),
+		})
+		return
 	}
 
 	// 验证排序字段

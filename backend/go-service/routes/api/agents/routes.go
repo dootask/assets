@@ -1,7 +1,6 @@
 package agents
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -62,24 +61,13 @@ func ListAgents(c *gin.Context) {
 
 	// 解析筛选条件
 	var filters AgentFilters
-	if req.Filters != nil {
-		filtersBytes, err := json.Marshal(req.Filters)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    "VALIDATION_001",
-				"message": "筛选条件格式错误",
-				"data":    err.Error(),
-			})
-			return
-		}
-		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    "VALIDATION_001",
-				"message": "筛选条件解析失败",
-				"data":    err.Error(),
-			})
-			return
-		}
+	if err := req.ParseFiltersFromQuery(c, &filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "筛选条件解析失败",
+			"data":    err.Error(),
+		})
+		return
 	}
 
 	// 验证排序字段
@@ -193,26 +181,32 @@ func CreateAgent(c *gin.Context) {
 	}
 
 	// 验证AI模型是否存在
-	if req.AIModelID != nil {
-		var modelCount int64
-		if err := global.DB.Model(&struct {
-			ID int64 `gorm:"primaryKey"`
-		}{}).Table("ai_models").Where("id = ? AND is_enabled = true", *req.AIModelID).Count(&modelCount).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    "DATABASE_001",
-				"message": "验证AI模型失败",
-				"data":    nil,
-			})
-			return
-		}
-		if modelCount == 0 {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{
-				"code":    "AI_MODEL_001",
-				"message": "指定的AI模型不存在或未启用",
-				"data":    nil,
-			})
-			return
-		}
+	if req.AIModelID == nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    "AI_MODEL_001",
+			"message": "请选择AI模型",
+			"data":    nil,
+		})
+		return
+	}
+	var modelCount int64
+	if err := global.DB.Model(&struct {
+		ID int64 `gorm:"primaryKey"`
+	}{}).Table("ai_models").Where("id = ? AND is_enabled = true", *req.AIModelID).Count(&modelCount).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "验证AI模型失败",
+			"data":    nil,
+		})
+		return
+	}
+	if modelCount == 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    "AI_MODEL_001",
+			"message": "指定的AI模型不存在或未启用",
+			"data":    nil,
+		})
+		return
 	}
 
 	// 处理JSONB字段默认值
@@ -422,26 +416,32 @@ func UpdateAgent(c *gin.Context) {
 	}
 
 	// 验证AI模型是否存在
-	if req.AIModelID != nil {
-		var modelCount int64
-		if err := global.DB.Model(&struct {
-			ID int64 `gorm:"primaryKey"`
-		}{}).Table("ai_models").Where("id = ? AND is_enabled = true", *req.AIModelID).Count(&modelCount).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    "DATABASE_001",
-				"message": "验证AI模型失败",
-				"data":    nil,
-			})
-			return
-		}
-		if modelCount == 0 {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{
-				"code":    "AI_MODEL_001",
-				"message": "指定的AI模型不存在或未启用",
-				"data":    nil,
-			})
-			return
-		}
+	if req.AIModelID == nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    "AI_MODEL_001",
+			"message": "请选择AI模型",
+			"data":    nil,
+		})
+		return
+	}
+	var modelCount int64
+	if err := global.DB.Model(&struct {
+		ID int64 `gorm:"primaryKey"`
+	}{}).Table("ai_models").Where("id = ? AND is_enabled = true", *req.AIModelID).Count(&modelCount).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_001",
+			"message": "验证AI模型失败",
+			"data":    nil,
+		})
+		return
+	}
+	if modelCount == 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    "AI_MODEL_001",
+			"message": "指定的AI模型不存在或未启用",
+			"data":    nil,
+		})
+		return
 	}
 
 	// 构建更新数据
