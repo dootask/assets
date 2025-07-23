@@ -5,14 +5,7 @@ import (
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/middleware"
 	"dootask-ai/go-service/pkg/utils"
-	"dootask-ai/go-service/routes/api/agents"
-	"dootask-ai/go-service/routes/api/aimodels"
-	"dootask-ai/go-service/routes/api/conversations"
-	"dootask-ai/go-service/routes/api/dashboard"
-	knowledgebases "dootask-ai/go-service/routes/api/knowledge-bases"
-	mcptools "dootask-ai/go-service/routes/api/mcp-tools"
-	"dootask-ai/go-service/routes/api/test"
-	"dootask-ai/go-service/routes/health"
+	"dootask-ai/go-service/routes"
 	"fmt"
 	"log"
 	"os"
@@ -90,30 +83,7 @@ func runServer(*cobra.Command, []string) {
 	r.Use(middleware.AuthMiddleware())
 
 	// 注册路由
-	root := r.Group("/")
-	health.RegisterRoutes(root)
-
-	// 注册API路由
-	api := r.Group("/api")
-	test.RegisterRoutes(api)
-
-	// 导入AI模型管理路由
-	aimodels.RegisterRoutes(api)
-
-	// 导入智能体管理路由
-	agents.RegisterRoutes(api)
-
-	// 导入知识库管理路由
-	knowledgebases.RegisterRoutes(api)
-
-	// 导入MCP工具管理路由
-	mcptools.RegisterRoutes(api)
-
-	// 导入对话管理路由
-	conversations.RegisterRoutes(api)
-
-	// 导入仪表板路由
-	dashboard.RegisterRoutes(api)
+	routes.RegisterRoutes(r)
 
 	// 获取端口
 	port := utils.GetEnvWithDefault("GO_SERVICE_PORT", "8000")

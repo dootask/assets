@@ -2,7 +2,6 @@ package aimodels
 
 import (
 	"dootask-ai/go-service/global"
-	"dootask-ai/go-service/middleware"
 	"dootask-ai/go-service/pkg/utils"
 	"encoding/json"
 	"net/http"
@@ -21,8 +20,6 @@ func RegisterRoutes(r *gin.RouterGroup) {
 
 	// 创建管理员路由组
 	admin := r.Group("/admin")
-	admin.Use(middleware.AdminRoleMiddleware())
-
 	// AI模型管理路由
 	aimodels := admin.Group("/ai-models")
 	{
