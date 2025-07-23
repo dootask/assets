@@ -59,6 +59,7 @@
 // lib/axios.ts
 import axios from 'axios';
 import { toast } from '@/components/ui/use-toast';
+import { storage } from '@/lib/storage';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api',
@@ -70,7 +71,7 @@ const apiClient = axios.create({
 
 // 请求拦截器
 apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken');
+  const token = storage.getItem('authToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -98,7 +99,7 @@ const handleApiError = (response: { status: number; data: { code: string; messag
   switch (status) {
     case 401:
       // 认证失败，清除token并跳转登录
-      localStorage.removeItem('authToken');
+      storage.removeItem('authToken');
       window.location.href = '/login';
       break;
     case 403:

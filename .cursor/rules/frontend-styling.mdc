@@ -6,6 +6,7 @@ description: "前端开发和样式指南"
 # 前端开发规则
 
 ## 样式规范
+
 - **优先使用shadcn/ui**: 首选使用shadcn/ui组件库构建UI组件
 - **组件配置**: 遵循[components.json](mdc:components.json)的配置标准
 - **Tailwind CSS**: 使用Tailwind实用程序类进行样式定制和布局
@@ -13,22 +14,26 @@ description: "前端开发和样式指南"
 - **响应式设计**: 使用Tailwind的响应式前缀 (sm:, md:, lg:, xl:)
 
 ## shadcn/ui 集成规范
+
 - **组件安装**: 使用 `npx shadcn-ui@latest add [component-name]` 添加组件
 - **组件导入**: 从 `@/components/ui/` 路径导入shadcn/ui组件
 - **主题定制**: 通过修改CSS变量自定义主题
 - **变体使用**: 充分利用组件的内置变体 (variant, size等)
 
 ## Next.js App Router 规范
+
 - 使用App Router结构，文件放在[app/](mdc:app/)目录
 - 页面组件使用server component优先
 - 客户端组件明确标记'use client'
 
 ## TypeScript规范
+
 - 严格类型检查，避免使用any
 - 为props定义interface
 - 使用Next.js内置的类型定义
 
 ## 网络请求规范
+
 - **HTTP客户端**: 统一使用 Axios 进行网络请求
 - **拦截器配置**: 设置请求和响应拦截器处理通用逻辑
 - **基础配置**: 配置 baseURL、超时时间等基础参数
@@ -38,6 +43,7 @@ description: "前端开发和样式指南"
 - **重试机制**: 为网络异常实现适当的重试策略
 
 ## 错误处理规范
+
 - **HTTP状态码处理**: 根据HTTP状态码进行不同的错误处理策略
 - **错误码转换**: 统一处理后端返回的错误码，转换为用户友好的提示信息
 - **国际化翻译**: 基于错误码进行多语言翻译，支持中英文切换
@@ -46,6 +52,7 @@ description: "前端开发和样式指南"
 - **错误日志**: 前端错误统一上报，便于问题追踪
 
 ## HTTP状态码处理策略
+
 - **200**: 正常处理业务逻辑
 - **400**: 提示数据格式错误，引导用户检查输入
 - **401**: 自动跳转登录页面或刷新令牌
@@ -53,6 +60,7 @@ description: "前端开发和样式指南"
 - **422**: 显示具体的验证错误信息，高亮错误字段
 
 ## 组件结构
+
 - **shadcn/ui组件**: 优先从shadcn/ui导入基础组件 (Button, Card, Input等)
 - **组件组合**: 通过组合shadcn/ui组件构建复杂UI
 - **功能组件**: 优先使用function声明
@@ -62,40 +70,44 @@ description: "前端开发和样式指南"
 ## 示例
 
 ### 使用shadcn/ui组件
+
 ```tsx
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // 推荐：使用shadcn/ui组件 + Tailwind样式
 <Card className="w-full max-w-md">
   <CardHeader>
     <CardTitle className="text-lg font-semibold">标题</CardTitle>
   </CardHeader>
-  <CardContent className="flex justify-between items-center">
+  <CardContent className="flex items-center justify-between">
     <p className="text-gray-600">描述内容</p>
     <Button variant="default" className="ml-4">
       操作
     </Button>
   </CardContent>
-</Card>
+</Card>;
 ```
 
 ### 表单组件示例
+
 ```tsx
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 <div className="grid w-full max-w-sm items-center gap-1.5">
   <Label htmlFor="email">邮箱</Label>
   <Input type="email" id="email" placeholder="请输入邮箱" />
-</div>
+</div>;
 ```
 
 ### Axios配置示例
+
 ```tsx
 // lib/axios.ts - Axios基础配置
-import axios from 'axios'
-import { toast } from "@/components/ui/use-toast"
+import axios from 'axios';
+import { toast } from '@/components/ui/use-toast';
+import { storage } from '@/lib/storage';
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api',
@@ -103,93 +115,96 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-})
+});
 
 // 请求拦截器 - 添加认证头等
 apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('authToken')
+  config => {
+    const token = storage.getItem('authToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return config
+    return config;
   },
-  (error) => {
-    return Promise.reject(error)
+  error => {
+    return Promise.reject(error);
   }
-)
+);
 
 // 响应拦截器 - 统一错误处理
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  response => response,
+  error => {
     if (error.response) {
       // 服务器返回错误响应
-      handleApiError(error.response)
+      handleApiError(error.response);
     } else if (error.request) {
       // 网络错误
       toast({
-        variant: "destructive",
-        title: "网络错误",
-        description: "请检查网络连接后重试",
-      })
+        variant: 'destructive',
+        title: '网络错误',
+        description: '请检查网络连接后重试',
+      });
     } else {
       // 其他错误
       toast({
-        variant: "destructive",
-        title: "请求失败",
+        variant: 'destructive',
+        title: '请求失败',
         description: error.message,
-      })
+      });
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 
-export default apiClient
+export default apiClient;
 ```
 
 ### TypeScript类型定义示例
+
 ```tsx
 // types/api.ts - API响应类型定义
 interface APIResponse<T> {
-  code: string
-  message: string
-  data: T
+  code: string;
+  message: string;
+  data: T;
 }
 
 interface Task {
-  id: number
-  title: string
-  description: string
-  status: 'pending' | 'in_progress' | 'completed'
-  createdAt: string
-  updatedAt: string
+  id: number;
+  title: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface CreateTaskRequest {
-  title: string
-  description?: string
+  title: string;
+  description?: string;
 }
 
 // 带类型的API调用示例
 const fetchTasks = async (): Promise<Task[]> => {
-  const response = await apiClient.get<APIResponse<Task[]>>('/tasks')
-  return response.data.data
-}
+  const response = await apiClient.get<APIResponse<Task[]>>('/tasks');
+  return response.data.data;
+};
 
 const createTask = async (taskData: CreateTaskRequest): Promise<Task> => {
-  const response = await apiClient.post<APIResponse<Task>>('/tasks', taskData)
-  return response.data.data
-}
+  const response = await apiClient.post<APIResponse<Task>>('/tasks', taskData);
+  return response.data.data;
+};
 ```
 
 ### 错误处理示例
+
 ```tsx
 import { useState } from "react"
 import { toast } from "@/components/ui/use-toast"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useRouter } from "next/navigation"
 import apiClient from "@/lib/axios"
+import { storage } from '@/lib/storage'
 
 // 错误码翻译函数
 const translateErrorCode = (code: string): string => {
@@ -232,7 +247,7 @@ const handleApiError = (response: {
         description: userMessage,
       })
       // 清除本地token
-      localStorage.removeItem('authToken')
+      storage.removeItem('authToken')
       window.location.href = '/login'
       break
 
@@ -291,13 +306,13 @@ const MyComponent = () => {
     try {
       setLoading(true)
       const response = await apiClient.post('/tasks', taskData)
-      
+
       // 成功提示
       toast({
         title: "操作成功",
         description: "任务创建成功",
       })
-      
+
       return response.data
     } catch (error) {
       // 错误已在拦截器中处理
@@ -313,13 +328,13 @@ const MyComponent = () => {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      
+
       const response = await apiClient.post('/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       })
-      
+
       return response.data
     } catch (error) {
       console.error('文件上传失败:', error)

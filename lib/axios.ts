@@ -72,7 +72,7 @@ const handleApiError = (response: { status: number; data: { code: string; messag
         description: userMessage,
       });
       // 清除本地token
-      localStorage.removeItem('authToken');
+      storage.removeItem('authToken');
       // 这里可以添加跳转逻辑，但在插件系统中可能不需要独立登录
       break;
 
