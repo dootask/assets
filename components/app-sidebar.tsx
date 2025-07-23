@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot, Brain, Cpu, Database, Home, MessageSquare, Settings, Wrench } from 'lucide-react';
+import { Bot, Brain, Cpu, Database, Home, MessageSquare, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -56,16 +56,6 @@ const menuGroups = [
         title: 'MCP工具',
         url: '/tools',
         icon: Wrench,
-      },
-    ],
-  },
-  {
-    label: '系统管理',
-    items: [
-      {
-        title: 'DooTask 集成',
-        url: '/settings/dootask',
-        icon: Settings,
       },
     ],
   },

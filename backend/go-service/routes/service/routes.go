@@ -45,7 +45,7 @@ func (h *Handler) Webhook(c *gin.Context) {
 	}
 
 	// 设置 DooTask 客户端
-	client := utils.NewDooTaskClient(req.Token, "http://192.168.0.211:2222") // TODO: 上线后不需要添加server参数
+	client := utils.NewDooTaskClient(req.Token)
 	global.DooTaskClient = &client
 
 	// 检查智能体是否存在

@@ -23,8 +23,8 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 设置用户信息为空
 		global.DooTaskError = errors.New("not_authenticated")
 
-		// 从请求头获取token
-		authToken := c.GetHeader("Authorization")
+		// 从请求头获取token（优先使用环境变量）
+		authToken := utils.GetEnvWithDefault("DOOTASK_API_USER_TOKEN", c.GetHeader("Authorization"))
 		if after, ok := strings.CutPrefix(authToken, "Bearer "); ok {
 			authToken = after
 		}
@@ -36,14 +36,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// 从请求头获取server
-		server := "http://nginx"
-		if serverHeader := c.GetHeader("Server"); strings.HasPrefix(serverHeader, "http") {
-			server = serverHeader
-		}
-
 		// 创建DooTask客户端
-		client := utils.NewDooTaskClient(authToken, server)
+		client := utils.NewDooTaskClient(authToken)
 		user, err := client.Client.GetUserInfo()
 		if err != nil {
 			global.DooTaskError = err
