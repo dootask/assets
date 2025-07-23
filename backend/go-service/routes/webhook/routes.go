@@ -1,7 +1,12 @@
 package webhook
 
 import (
+	"dootask-ai/go-service/global"
+	"dootask-ai/go-service/pkg/utils"
+	"dootask-ai/go-service/routes/api/agents"
 	"net/http"
+
+	dootask "github.com/dootask/tools/server/go"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -28,8 +33,35 @@ func (h *Handler) Webhook(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"message": "机器人webhook",
-		"data":    req,
+
+	// 设置 DooTask 客户端
+	client := utils.NewDooTaskClient(req.Token, "http://192.168.0.211:2222") // TODO: 上线后不需要添加server参数
+	global.DooTaskClient = &client
+
+	// 检查智能体是否存在
+	var agent agents.Agent
+	if err := global.DB.Where("bot_id = ?", req.BotUid).First(&agent).Error; err != nil {
+		global.DooTaskClient.Client.SendMessage(dootask.SendMessageRequest{
+			DialogID: int(req.DialogId),
+			Text:     "智能体不存在",
+			Silence:  true,
+		})
+		return
+	}
+
+	// 检查智能体是否启用
+	if !agent.IsActive {
+		global.DooTaskClient.Client.SendMessage(dootask.SendMessageRequest{
+			DialogID: int(req.DialogId),
+			Text:     "智能体未启用",
+			Silence:  true,
+		})
+		return
+	}
+
+	global.DooTaskClient.Client.SendMessage(dootask.SendMessageRequest{
+		DialogID: int(req.DialogId),
+		Text:     "你好，我是智能体：" + agent.Name + "，很高兴认识你",
+		Silence:  true,
 	})
 }
