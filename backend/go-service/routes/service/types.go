@@ -1,4 +1,4 @@
-package webhook
+package service
 
 // WebhookRequest 机器人webhook请求
 type WebhookRequest struct {
