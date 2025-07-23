@@ -5,6 +5,7 @@ import (
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/pkg/utils"
 	"dootask-ai/go-service/routes/api/agents"
+	aimodels "dootask-ai/go-service/routes/api/ai-models"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,6 +43,11 @@ func (h *Handler) Webhook(c *gin.Context) {
 			"message": "请求数据格式错误",
 			"data":    err.Error(),
 		})
+		return
+	}
+
+	// 群聊且没有@机器人，不处理
+	if req.DialogType == "group" && req.Mention == 0 {
 		return
 	}
 
@@ -95,12 +101,6 @@ func (h *Handler) Webhook(c *gin.Context) {
 
 // Stream 流式消息
 func (h *Handler) Stream(c *gin.Context) {
-	/* 流式消息的格式为：
-	id: 消息ID
-	event: replace|append|done
-	data: {"content": "...", "error"?: "..."}
-	*/
-
 	// 设置响应头
 	c.Header("Content-Type", "text/event-stream; charset=utf-8")
 	c.Header("Cache-Control", "no-cache")
@@ -123,11 +123,57 @@ func (h *Handler) Stream(c *gin.Context) {
 		return
 	}
 
+	// 检查智能体是否存在
+	var agent agents.Agent
+	if err := global.DB.Where("bot_id = ?", req.BotUid).First(&agent).Error; err != nil {
+		c.String(http.StatusOK, "id: %d\nevent: %s\ndata: {\"error\": \"%s\"}\n\n", 0, "done", "智能体不存在")
+		return
+	}
+
+	// 检查智能体是否启用
+	if !agent.IsActive {
+		c.String(http.StatusOK, "id: %d\nevent: %s\ndata: {\"error\": \"%s\"}\n\n", 0, "done", "智能体未启用")
+		return
+	}
+
+	// 检查AI模型是否存在
+	var aiModel aimodels.AIModel
+	if err := global.DB.Where("id = ?", agent.AIModelID).First(&aiModel).Error; err != nil {
+		c.String(http.StatusOK, "id: %d\nevent: %s\ndata: {\"error\": \"%s\"}\n\n", 0, "done", "AI模型不存在")
+		return
+	}
+
+	// 检查AI模型是否启用
+	if !aiModel.IsEnabled {
+		c.String(http.StatusOK, "id: %d\nevent: %s\ndata: {\"error\": \"%s\"}\n\n", 0, "done", "AI模型未启用")
+		return
+	}
+
+	// TODO: 发起AI请求
+	request := gin.H{
+		// 模型参数
+		"provider":    aiModel.Provider,
+		"model":       aiModel.ModelName,
+		"api_key":     aiModel.ApiKey,
+		"base_url":    aiModel.BaseURL,
+		"max_tokens":  aiModel.MaxTokens,
+		"temperature": aiModel.Temperature,
+		// 请求参数
+		"prompt": agent.Prompt,
+		"messages": []gin.H{
+			{
+				"role":    "user",
+				"content": req.Text,
+			},
+		},
+	}
+	fmt.Println("request", request)
+
 	// 创建 DooTask 客户端
 	client := utils.NewDooTaskClient(req.Token)
 	global.DooTaskClient = &client
 
-	// TODO:延迟2秒
+	// TODO: 延迟2秒
 	time.Sleep(time.Second * 2)
 
 	// 流式消息
