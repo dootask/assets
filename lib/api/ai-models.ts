@@ -25,7 +25,7 @@ export const aiModelsApi = {
     };
 
     const requestParams = { ...defaultParams, ...params };
-    const response = await apiClient.get<PaginationResponse<AIModelListData>>('/admin/ai-models', {
+    const response = await apiClient.get<PaginationResponse<AIModelListData>>('/ai-models', {
       params: requestParams,
     });
     return response.data;
@@ -33,25 +33,25 @@ export const aiModelsApi = {
 
   // 获取单个AI模型详情
   getAIModel: async (id: number): Promise<AIModelConfig> => {
-    const response = await apiClient.get<AIModelResponse>(`/admin/ai-models/${id}`);
+    const response = await apiClient.get<AIModelResponse>(`/ai-models/${id}`);
     return response.data.data;
   },
 
   // 创建AI模型
   createAIModel: async (data: CreateAIModelRequest): Promise<AIModelConfig> => {
-    const response = await apiClient.post<AIModelResponse>('/admin/ai-models', data);
+    const response = await apiClient.post<AIModelResponse>('/ai-models', data);
     return response.data.data;
   },
 
   // 更新AI模型
   updateAIModel: async (id: number, data: UpdateAIModelRequest): Promise<AIModelConfig> => {
-    const response = await apiClient.put<AIModelResponse>(`/admin/ai-models/${id}`, data);
+    const response = await apiClient.put<AIModelResponse>(`/ai-models/${id}`, data);
     return response.data.data;
   },
 
   // 删除AI模型
   deleteAIModel: async (id: number): Promise<{ message: string }> => {
-    const response = await apiClient.delete<{ success: boolean; data: { message: string } }>(`/admin/ai-models/${id}`);
+    const response = await apiClient.delete<{ success: boolean; data: { message: string } }>(`/ai-models/${id}`);
     return response.data.data;
   },
 };

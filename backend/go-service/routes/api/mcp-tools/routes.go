@@ -15,8 +15,8 @@ import (
 
 // RegisterRoutes 注册MCP工具管理路由
 func RegisterRoutes(router *gin.RouterGroup) {
-	// MCP工具管理 - 需要管理员权限
-	mcpToolGroup := router.Group("/admin/mcp-tools")
+	// MCP工具管理
+	mcpToolGroup := router.Group("/mcp-tools")
 	{
 		mcpToolGroup.GET("", ListMCPTools)                     // 获取工具列表
 		mcpToolGroup.POST("", CreateMCPTool)                   // 创建工具

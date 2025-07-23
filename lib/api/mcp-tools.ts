@@ -146,7 +146,7 @@ export const mcpToolsApi = {
       };
     }
 
-    const response = await axiosInstance.get<BackendResponse>('/admin/mcp-tools', {
+    const response = await axiosInstance.get<BackendResponse>('/mcp-tools', {
       params: requestParams,
     });
 
@@ -166,33 +166,33 @@ export const mcpToolsApi = {
 
   // 获取工具详情
   get: async (id: string): Promise<MCPTool> => {
-    const response = await axiosInstance.get<MCPToolResponse>(`/admin/mcp-tools/${id}`);
+    const response = await axiosInstance.get<MCPToolResponse>(`/mcp-tools/${id}`);
     return transformToFrontendFormat(response.data);
   },
 
   // 创建工具
   create: async (data: MCPToolFormData): Promise<MCPTool> => {
     const backendData = transformToBackendFormat(data);
-    const response = await axiosInstance.post<MCPToolResponse>('/admin/mcp-tools', backendData);
+    const response = await axiosInstance.post<MCPToolResponse>('/mcp-tools', backendData);
     return transformToFrontendFormat(response.data);
   },
 
   // 更新工具
   update: async (id: string, data: Partial<MCPToolFormData>): Promise<MCPTool> => {
     const backendData = transformToBackendFormat(data as MCPToolFormData);
-    const response = await axiosInstance.put<MCPToolResponse>(`/admin/mcp-tools/${id}`, backendData);
+    const response = await axiosInstance.put<MCPToolResponse>(`/mcp-tools/${id}`, backendData);
     return transformToFrontendFormat(response.data);
   },
 
   // 删除工具
   delete: async (id: string): Promise<{ message: string }> => {
-    const response = await axiosInstance.delete(`/admin/mcp-tools/${id}`);
+    const response = await axiosInstance.delete(`/mcp-tools/${id}`);
     return response.data;
   },
 
   // 切换工具状态
   toggle: async (id: string, isActive: boolean): Promise<MCPTool> => {
-    const response = await axiosInstance.patch<MCPToolResponse>(`/admin/mcp-tools/${id}/toggle`, {
+    const response = await axiosInstance.patch<MCPToolResponse>(`/mcp-tools/${id}/toggle`, {
       is_active: isActive,
     });
     return transformToFrontendFormat(response.data);
@@ -200,7 +200,7 @@ export const mcpToolsApi = {
 
   // 测试工具
   test: async (id: string, testData?: Record<string, unknown>): Promise<TestMCPToolResponse> => {
-    const response = await axiosInstance.post<TestMCPToolResponse>(`/admin/mcp-tools/${id}/test`, {
+    const response = await axiosInstance.post<TestMCPToolResponse>(`/mcp-tools/${id}/test`, {
       test_data: testData || {},
     });
     return response.data;
@@ -208,7 +208,7 @@ export const mcpToolsApi = {
 
   // 获取统计信息
   getStats: async (): Promise<MCPToolStatsResponse> => {
-    const response = await axiosInstance.get<MCPToolStatsResponse>('/admin/mcp-tools/stats');
+    const response = await axiosInstance.get<MCPToolStatsResponse>('/mcp-tools/stats');
     return response.data;
   },
 };

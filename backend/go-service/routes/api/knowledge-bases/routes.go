@@ -16,8 +16,8 @@ import (
 
 // RegisterRoutes 注册知识库管理路由
 func RegisterRoutes(router *gin.RouterGroup) {
-	// 知识库管理 - 需要管理员权限
-	kbGroup := router.Group("/admin/knowledge-bases")
+	// 知识库管理
+	kbGroup := router.Group("/knowledge-bases")
 	{
 		kbGroup.GET("", ListKnowledgeBases)         // 获取知识库列表
 		kbGroup.POST("", CreateKnowledgeBase)       // 创建知识库

@@ -3,7 +3,7 @@ package routes
 import (
 	"dootask-ai/go-service/middleware"
 	"dootask-ai/go-service/routes/api/agents"
-	"dootask-ai/go-service/routes/api/aimodels"
+	aimodels "dootask-ai/go-service/routes/api/ai-models"
 	"dootask-ai/go-service/routes/api/conversations"
 	"dootask-ai/go-service/routes/api/dashboard"
 	knowledgebases "dootask-ai/go-service/routes/api/knowledge-bases"

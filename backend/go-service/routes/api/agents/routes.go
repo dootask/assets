@@ -16,7 +16,7 @@ import (
 // RegisterRoutes 注册智能体管理路由
 func RegisterRoutes(router *gin.RouterGroup) {
 	// 智能体管理 - 需要管理员权限
-	agentGroup := router.Group("/admin/agents")
+	agentGroup := router.Group("/agents")
 	{
 		agentGroup.GET("", ListAgents)                     // 获取智能体列表
 		agentGroup.POST("", CreateAgent)                   // 创建智能体

@@ -39,7 +39,7 @@ export const agentsApi = {
     };
 
     const requestParams = { ...defaultParams, ...params };
-    const response = await axiosInstance.get<PaginationResponse<AgentListData>>('/admin/agents', {
+    const response = await axiosInstance.get<PaginationResponse<AgentListData>>('/agents', {
       params: requestParams,
     });
     return response.data;
@@ -47,31 +47,31 @@ export const agentsApi = {
 
   // 获取智能体详情
   get: async (id: number): Promise<AgentResponse> => {
-    const response = await axiosInstance.get<AgentResponse>(`/admin/agents/${id}`);
+    const response = await axiosInstance.get<AgentResponse>(`/agents/${id}`);
     return response.data;
   },
 
   // 创建智能体
   create: async (data: CreateAgentRequest): Promise<Agent> => {
-    const response = await axiosInstance.post<Agent>('/admin/agents', data);
+    const response = await axiosInstance.post<Agent>('/agents', data);
     return response.data;
   },
 
   // 更新智能体
   update: async (id: number, data: UpdateAgentRequest): Promise<Agent> => {
-    const response = await axiosInstance.put<Agent>(`/admin/agents/${id}`, data);
+    const response = await axiosInstance.put<Agent>(`/agents/${id}`, data);
     return response.data;
   },
 
   // 删除智能体
   delete: async (id: number): Promise<{ message: string }> => {
-    const response = await axiosInstance.delete<{ message: string }>(`/admin/agents/${id}`);
+    const response = await axiosInstance.delete<{ message: string }>(`/agents/${id}`);
     return response.data;
   },
 
   // 切换智能体状态
   toggle: async (id: number, isActive: boolean): Promise<Agent> => {
-    const response = await axiosInstance.patch<Agent>(`/admin/agents/${id}/toggle`, {
+    const response = await axiosInstance.patch<Agent>(`/agents/${id}/toggle`, {
       is_active: isActive,
     });
     return response.data;

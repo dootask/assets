@@ -75,7 +75,7 @@ export const knowledgeBasesApi = {
     };
 
     const requestParams = { ...defaultParams, ...params };
-    const response = await axiosInstance.get<PaginationResponse<KnowledgeBaseListData>>('/admin/knowledge-bases', {
+    const response = await axiosInstance.get<PaginationResponse<KnowledgeBaseListData>>('/knowledge-bases', {
       params: requestParams,
     });
     return response.data;
@@ -83,27 +83,27 @@ export const knowledgeBasesApi = {
 
   // 获取知识库详情
   get: async (id: number): Promise<KnowledgeBaseResponse> => {
-    const response = await axiosInstance.get<KnowledgeBaseResponse>(`/admin/knowledge-bases/${id}`);
+    const response = await axiosInstance.get<KnowledgeBaseResponse>(`/knowledge-bases/${id}`);
     return response.data;
   },
 
   // 创建知识库
   create: async (data: KnowledgeBaseFormData): Promise<KnowledgeBase> => {
     const requestData = formatCreateRequestForAPI(data);
-    const response = await axiosInstance.post<KnowledgeBase>('/admin/knowledge-bases', requestData);
+    const response = await axiosInstance.post<KnowledgeBase>('/knowledge-bases', requestData);
     return response.data;
   },
 
   // 更新知识库
   update: async (id: number, data: Partial<KnowledgeBaseFormData>): Promise<KnowledgeBase> => {
     const requestData = formatUpdateRequestForAPI(data);
-    const response = await axiosInstance.put<KnowledgeBase>(`/admin/knowledge-bases/${id}`, requestData);
+    const response = await axiosInstance.put<KnowledgeBase>(`/knowledge-bases/${id}`, requestData);
     return response.data;
   },
 
   // 删除知识库
   delete: async (id: number): Promise<void> => {
-    await axiosInstance.delete(`/admin/knowledge-bases/${id}`);
+    await axiosInstance.delete(`/knowledge-bases/${id}`);
   },
 
   // 获取文档列表
@@ -119,28 +119,22 @@ export const knowledgeBasesApi = {
     };
 
     const requestParams = { ...defaultParams, ...params };
-    const response = await axiosInstance.get<PaginationResponse<DocumentListData>>(
-      `/admin/knowledge-bases/${id}/documents`,
-      {
-        params: requestParams,
-      }
-    );
+    const response = await axiosInstance.get<PaginationResponse<DocumentListData>>(`/knowledge-bases/${id}/documents`, {
+      params: requestParams,
+    });
     return response.data;
   },
 
   // 上传文档
   uploadDocument: async (id: number, data: DocumentFormData): Promise<KnowledgeBaseDocument> => {
     const requestData = formatDocumentRequestForAPI(data);
-    const response = await axiosInstance.post<KnowledgeBaseDocument>(
-      `/admin/knowledge-bases/${id}/documents`,
-      requestData
-    );
+    const response = await axiosInstance.post<KnowledgeBaseDocument>(`/knowledge-bases/${id}/documents`, requestData);
     return response.data;
   },
 
   // 删除文档
   deleteDocument: async (id: number, docId: number): Promise<void> => {
-    await axiosInstance.delete(`/admin/knowledge-bases/${id}/documents/${docId}`);
+    await axiosInstance.delete(`/knowledge-bases/${id}/documents/${docId}`);
   },
 };
 

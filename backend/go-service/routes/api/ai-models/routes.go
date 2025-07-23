@@ -15,13 +15,11 @@ import (
 type Handler struct{}
 
 // RegisterRoutes 注册AI模型管理路由
-func RegisterRoutes(r *gin.RouterGroup) {
+func RegisterRoutes(router *gin.RouterGroup) {
 	handler := &Handler{}
 
 	// 创建管理员路由组
-	admin := r.Group("/admin")
-	// AI模型管理路由
-	aimodels := admin.Group("/ai-models")
+	aimodels := router.Group("/ai-models")
 	{
 		aimodels.GET("", handler.GetAIModels)          // 获取AI模型列表
 		aimodels.GET("/:id", handler.GetAIModel)       // 获取单个AI模型
