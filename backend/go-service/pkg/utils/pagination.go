@@ -2,7 +2,7 @@ package utils
 
 import (
 	"encoding/json"
-	"regexp"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -100,31 +100,44 @@ func (p *PaginationRequest) SetDefaultSorts(m map[string]bool) {
 }
 
 // ParseFilters 解析筛选条件
-func (p *PaginationRequest) ParseFiltersFromQuery(c *gin.Context, filters interface{}) error {
+func (p *PaginationRequest) ParseFiltersFromQuery(c *gin.Context, filtersStructure interface{}) error {
 	filtersMap := map[string]interface{}{}
+
+	// 使用反射获取结构体类型信息
+	structType := reflect.TypeOf(filtersStructure)
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+
+	// 创建字段类型映射
+	fieldTypes := make(map[string]reflect.Type)
+	if structType.Kind() == reflect.Struct {
+		for i := 0; i < structType.NumField(); i++ {
+			field := structType.Field(i)
+			// 获取json标签名，如果没有则使用字段名
+			jsonTag := field.Tag.Get("json")
+			fieldName := field.Name
+			if jsonTag != "" && jsonTag != "-" {
+				// 处理json标签（去掉omitempty等选项）
+				if commaIdx := strings.Index(jsonTag, ","); commaIdx != -1 {
+					fieldName = jsonTag[:commaIdx]
+				} else {
+					fieldName = jsonTag
+				}
+			}
+			fieldTypes[fieldName] = field.Type
+		}
+	}
+
 	for key, values := range c.Request.URL.Query() {
 		if strings.HasPrefix(key, "filters[") && strings.HasSuffix(key, "]") {
 			field := key[len("filters[") : len(key)-1]
 			if len(values) > 0 {
 				value := values[0]
-				switch value {
-				case "true":
-					// 布尔值
-					filtersMap[field] = true
-				case "false":
-					// 布尔值
-					filtersMap[field] = false
-				default:
-					// 如果 value 是数字、小数
-					if matched, _ := regexp.MatchString(`^\d+(\.\d+)?$`, value); matched {
-						if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
-							filtersMap[field] = floatVal
-						} else {
-							filtersMap[field] = value
-						}
-					} else {
-						filtersMap[field] = value
-					}
+				// 根据结构体字段类型来转换值
+				if fieldType, exists := fieldTypes[field]; exists {
+					convertedValue := convertValueByType(value, fieldType)
+					filtersMap[field] = convertedValue
 				}
 			}
 		}
@@ -135,7 +148,7 @@ func (p *PaginationRequest) ParseFiltersFromQuery(c *gin.Context, filters interf
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
+		if err := json.Unmarshal(filtersBytes, &filtersStructure); err != nil {
 			return err
 		}
 	}
@@ -143,4 +156,75 @@ func (p *PaginationRequest) ParseFiltersFromQuery(c *gin.Context, filters interf
 	p.Filters = filtersMap
 
 	return nil
+}
+
+// convertValueByType 根据目标类型转换值
+func convertValueByType(value string, targetType reflect.Type) interface{} {
+	// 处理指针类型
+	if targetType.Kind() == reflect.Ptr {
+		if value == "" {
+			return reflect.Zero(targetType).Interface()
+		}
+		elemType := targetType.Elem()
+		elemValue := convertValueByType(value, elemType)
+		ptrValue := reflect.New(elemType)
+		ptrValue.Elem().Set(reflect.ValueOf(elemValue))
+		return ptrValue.Interface()
+	}
+
+	switch targetType.Kind() {
+	case reflect.String:
+		return value
+	case reflect.Bool:
+		switch value {
+		case "true":
+			return true
+		case "false":
+			return false
+		}
+		return value
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if intVal, err := strconv.ParseInt(value, 10, 64); err == nil {
+			// 根据具体的int类型返回相应的值
+			switch targetType.Kind() {
+			case reflect.Int:
+				return int(intVal)
+			case reflect.Int8:
+				return int8(intVal)
+			case reflect.Int16:
+				return int16(intVal)
+			case reflect.Int32:
+				return int32(intVal)
+			case reflect.Int64:
+				return intVal
+			}
+		}
+		return value
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if uintVal, err := strconv.ParseUint(value, 10, 64); err == nil {
+			switch targetType.Kind() {
+			case reflect.Uint:
+				return uint(uintVal)
+			case reflect.Uint8:
+				return uint8(uintVal)
+			case reflect.Uint16:
+				return uint16(uintVal)
+			case reflect.Uint32:
+				return uint32(uintVal)
+			case reflect.Uint64:
+				return uintVal
+			}
+		}
+		return value
+	case reflect.Float32, reflect.Float64:
+		if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+			if targetType.Kind() == reflect.Float32 {
+				return float32(floatVal)
+			}
+			return floatVal
+		}
+		return value
+	default:
+		return value
+	}
 }
