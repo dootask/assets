@@ -1,10 +1,8 @@
 package mcptools
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"dootask-ai/go-service/global"
@@ -62,36 +60,15 @@ func ListMCPTools(c *gin.Context) {
 		return
 	}
 
-	// 解析筛选条件（兼容filters[xxx]=yyy嵌套参数）
-	filtersMap := map[string]interface{}{}
-	for key, values := range c.Request.URL.Query() {
-		if strings.HasPrefix(key, "filters[") && strings.HasSuffix(key, "]") {
-			field := key[len("filters[") : len(key)-1]
-			if len(values) > 0 {
-				filtersMap[field] = values[0]
-			}
-		}
-	}
-
+	// 解析筛选条件
 	var filters MCPToolFilters
-	if len(filtersMap) > 0 {
-		filtersBytes, err := json.Marshal(filtersMap)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    "VALIDATION_001",
-				"message": "筛选条件格式错误",
-				"data":    err.Error(),
-			})
-			return
-		}
-		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    "VALIDATION_001",
-				"message": "筛选条件解析失败",
-				"data":    err.Error(),
-			})
-			return
-		}
+	if err := req.ParseFiltersFromQuery(c, &filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "筛选条件解析失败",
+			"data":    err.Error(),
+		})
+		return
 	}
 
 	// 验证排序字段

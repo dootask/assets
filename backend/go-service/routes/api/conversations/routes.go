@@ -414,24 +414,13 @@ func GetMessages(c *gin.Context) {
 
 	// 解析筛选条件
 	var filters MessageFilters
-	if req.Filters != nil {
-		filtersBytes, err := json.Marshal(req.Filters)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    "VALIDATION_001",
-				"message": "筛选条件格式错误",
-				"data":    err.Error(),
-			})
-			return
-		}
-		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    "VALIDATION_001",
-				"message": "筛选条件解析失败",
-				"data":    err.Error(),
-			})
-			return
-		}
+	if err := req.ParseFiltersFromQuery(c, &filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "VALIDATION_001",
+			"message": "筛选条件解析失败",
+			"data":    err.Error(),
+		})
+		return
 	}
 
 	// 验证排序字段

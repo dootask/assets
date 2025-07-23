@@ -1,6 +1,13 @@
 package utils
 
-import "strings"
+import (
+	"encoding/json"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+)
 
 // SortField 排序字段
 type SortField struct {
@@ -90,4 +97,50 @@ func (p *PaginationRequest) SetDefaultSorts(m map[string]bool) {
 			p.Sorts = append(p.Sorts, SortField{Key: key, Desc: desc})
 		}
 	}
+}
+
+// ParseFilters 解析筛选条件
+func (p *PaginationRequest) ParseFiltersFromQuery(c *gin.Context, filters interface{}) error {
+	filtersMap := map[string]interface{}{}
+	for key, values := range c.Request.URL.Query() {
+		if strings.HasPrefix(key, "filters[") && strings.HasSuffix(key, "]") {
+			field := key[len("filters[") : len(key)-1]
+			if len(values) > 0 {
+				value := values[0]
+				switch value {
+				case "true":
+					// 布尔值
+					filtersMap[field] = true
+				case "false":
+					// 布尔值
+					filtersMap[field] = false
+				default:
+					// 如果 value 是数字、小数
+					if matched, _ := regexp.MatchString(`^\d+(\.\d+)?$`, value); matched {
+						if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+							filtersMap[field] = floatVal
+						} else {
+							filtersMap[field] = value
+						}
+					} else {
+						filtersMap[field] = value
+					}
+				}
+			}
+		}
+	}
+
+	if len(filtersMap) > 0 {
+		filtersBytes, err := json.Marshal(filtersMap)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(filtersBytes, &filters); err != nil {
+			return err
+		}
+	}
+
+	p.Filters = filtersMap
+
+	return nil
 }
