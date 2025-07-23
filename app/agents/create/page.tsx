@@ -328,7 +328,7 @@ export default function CreateAgentPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="-mx-6 max-h-64 space-y-3 overflow-y-auto px-6">
+                <div className="-mx-6 max-h-[266px] space-y-3 overflow-y-auto px-6">
                   {availableTools.map(tool => (
                     <div key={tool.id} className="flex items-start space-x-3 rounded-lg border p-3">
                       <div className="relative mt-1 h-4 w-4">
@@ -390,7 +390,7 @@ export default function CreateAgentPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="-mx-6 max-h-64 space-y-3 overflow-y-auto px-6">
+                <div className="-mx-6 max-h-[266px] space-y-3 overflow-y-auto px-6">
                   {availableKnowledgeBases.map(kb => (
                     <div key={kb.id} className="flex items-start space-x-3 rounded-lg border p-3">
                       <div className="relative mt-1 h-4 w-4">
