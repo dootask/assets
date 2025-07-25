@@ -1,15 +1,18 @@
 from core import get_model_by_provider, settings
 from langchain.chat_models import init_chat_model
+from langchain_core.messages import BaseMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langgraph.func import entrypoint
 from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 
 @entrypoint()
 async def mcp_agent(
-    inputs: dict[str, List[BaseMessage]],
+    inputs: dict[str, list[BaseMessage]],
     *,
-    previous: dict[str, List[BaseMessage]],
+    previous: dict[str, list[BaseMessage]],
     config: RunnableConfig,
 ):
     
