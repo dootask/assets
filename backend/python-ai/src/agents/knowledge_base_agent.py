@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Any
 
-from core import get_model, settings
+from core import get_model_by_provider, settings
 from langchain_aws import AmazonKnowledgeBasesRetriever
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage

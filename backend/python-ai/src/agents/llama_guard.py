@@ -4,7 +4,6 @@ from core import get_model_by_provider, settings
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
-from schema.models import GroqModelName
 
 
 class SafetyAssessment(Enum):
@@ -80,7 +79,7 @@ class LlamaGuard:
             print("GROQ_API_KEY not set, skipping LlamaGuard")
             self.model = None
             return
-        self.model = get_model_by_provider(config["configurable"].get("provider"),GroqModelName.LLAMA_GUARD_4_12B).with_config(tags=["skip_stream"])
+        self.model = get_model_by_provider(config["configurable"].get("provider"),config["configurable"].get("model",settings.DEFAULT_MODEL)).with_config(tags=["skip_stream"])
         self.prompt = PromptTemplate.from_template(llama_guard_instructions)
 
     def _compile_prompt(self, role: str, messages: list[AnyMessage]) -> str:

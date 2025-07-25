@@ -1,6 +1,6 @@
 from typing import List
 
-from core import get_model, settings
+from core import get_model_by_provider, settings
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.func import entrypoint

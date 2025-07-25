@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     MODE: str | None = None
 
     HOST: str = "0.0.0.0"
-    PORT: int = 8080
+    PYTHON_AI_SERVICE_PORT: int = 8002
 
     AUTH_SECRET: SecretStr | None = None
 
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: SecretStr | None = None
     GOOGLE_APPLICATION_CREDENTIALS: SecretStr | None = None
     GROQ_API_KEY: SecretStr | None = None
-    USE_AWS_BEDROCK: bool = False
+
     OLLAMA_MODEL: str | None = None
     OLLAMA_BASE_URL: str | None = None
     USE_FAKE_MODEL: bool = False
@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str | None = None
     POSTGRES_PORT: int | None = None
     POSTGRES_DB: str | None = None
-    POSTGRES_APPLICATION_NAME: str = "agent-service-toolkit"
+    POSTGRES_APPLICATION_NAME: str = "agent-service"
     POSTGRES_MIN_CONNECTIONS_PER_POOL: int = 1
     POSTGRES_MAX_CONNECTIONS_PER_POOL: int = 1
 

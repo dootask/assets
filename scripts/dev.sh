@@ -40,6 +40,11 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
+if ! command -v uv &> /dev/null; then
+    echo "❌ uv 未安装! 请安装uv: curl -LsSf https://astral.sh/uv/0.7.19/install.sh | sh"
+    exit 1
+fi
+
 echo "✅ Node.js: $(node --version)"
 echo "✅ Go: $(go version | cut -d' ' -f3)"
 echo "✅ Python: $(python3 --version)"
@@ -58,11 +63,12 @@ echo "🤖 准备Python AI服务..."
 pushd backend/python-ai > /dev/null
 if [ ! -d "venv" ]; then
     echo "📦 创建Python虚拟环境..."
-    python3 -m venv venv
+    # python3 -m venv venv
+    uv sync
 fi
-source venv/bin/activate
-pip install -q -r requirements.txt
-popd > /dev/null
+# source venv/bin/activate
+# pip install -q -r requirements.txt
+popd
 
 echo ""
 echo "🚀 启动所有服务..."
@@ -81,9 +87,16 @@ popd > /dev/null
 
 # 启动AI服务（后台）
 echo "🤖 启动AI服务 (端口$(getEnv PYTHON_AI_SERVICE_PORT))..."
-pushd backend/python-ai > /dev/null
-source venv/bin/activate
-python -m uvicorn app.main:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --env-file ${CURRENT_DIR}/.env --reload &
+pushd backend/python-ai
+source .venv/bin/activate
+
+# python -m uvicorn app.main:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --env-file ${CURRENT_DIR}/.env --reload &
+if [ -f "../../.env" ]; then
+  cp ../../.env src/.env
+else
+  cp ../../config.example.env src/.env
+fi
+cd src; uvicorn service:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --reload &
 AI_PID=$!
 popd > /dev/null
 

@@ -1,9 +1,9 @@
 [project]
-name = "agent-service-toolkit"
+name = "agent-service"
 version = "0.1.0"
 description = "Full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit"
 readme = "README.md"
-authors = [{ name = "Joshua Carroll", email = "carroll.joshk@gmail.com" }]
+authors = [{ name = "Joshua Carroll", email = "carroll.joshk@gmail.com" },{name = "zzzzzhy", email = "11657924@qq.com"}]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -45,19 +45,21 @@ dependencies = [
 
     "pandas ~=2.2.3",
     "psycopg[binary,pool] ~=3.2.4",
-    "pyarrow >=18.1.0",
+
     "pydantic ~=2.10.1",
     "pydantic-settings ~=2.6.1",
     "pypdf ~=5.3.0",
     "pyowm ~=3.3.0",
     "python-dotenv ~=1.0.1",
     "setuptools ~=75.6.0",
-    "streamlit ~=1.40.1",
+
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
     "httpx[socks]",
     "langchain-deepseek",
-    "langchain-xai"
+    "langchain-xai",
+    "langchain_cohere",
+    "cohere <= 5.15.0"
 ]
 
 [dependency-groups]
