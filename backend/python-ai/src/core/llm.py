@@ -40,7 +40,7 @@ ModelT: TypeAlias = (
 
 # 提供商配置映射表
 PROVIDER_MODEL_MAPPING = {
-    "OpenAI": {
+    "openai": {
         "class": ChatOpenAI,
         "params": {
             "streaming": True,
@@ -50,10 +50,10 @@ PROVIDER_MODEL_MAPPING = {
             "model": "model",
             "api_key": "api_key",
             "temperature": "temperature",
-            "openai_proxy": None,
+            "openai_proxy": "openai_proxy",
         }
     },
-    "Anthropic": {
+    "anthropic": {
         "class": ChatAnthropic,
         "params": {
             "streaming": True,
@@ -65,7 +65,7 @@ PROVIDER_MODEL_MAPPING = {
             "temperature": "temperature",
         }
     },
-    "Google": {
+    "google": {
         "class": ChatGoogleGenerativeAI,
         "params": {
             "streaming": True,
@@ -77,18 +77,18 @@ PROVIDER_MODEL_MAPPING = {
             "temperature": "temperature",
         }
     },
-    "xAI (Grok)": {
+    "xai": {
         "class": ChatXAI,
         "params": {},
         "required_fields": ["api_key"],
         "param_mapping": {
             "model": "model",
             "api_key": "api_key",
-            "openai_proxy": None,
+            "openai_proxy": "openai_proxy",
             "temperature": "temperature",
         }
     },
-    "DeepSeek": {
+    "deepseek": {
         "class": ChatDeepSeek,
         "params": {
             "streaming": True,
@@ -97,11 +97,11 @@ PROVIDER_MODEL_MAPPING = {
         "param_mapping": {
             "model": "model",
             "api_key": "api_key",
-            "openai_proxy": None,
+            "openai_proxy": "openai_proxy",
             "temperature": "temperature",
         }
     },
-    "Azure OpenAI": {
+    "azure": {
         "class": AzureChatOpenAI,
         "params": {
             "streaming": True,
@@ -112,28 +112,28 @@ PROVIDER_MODEL_MAPPING = {
         "param_mapping": {
             "api_key": "api_key",
             "deployment_name": "model",
-            "azure_endpoint": None,
+            "azure_endpoint": "azure_endpoint",
             "api_version": "api_version",
             "temperature": "temperature",
-            "openai_proxy": None,
+            "openai_proxy": "openai_proxy",
         },
         "default_values": {
             "api_version": "2024-02-15-preview"
         }
     },
-    "本地模型": {
+    "local": {
         "class": ChatOllama,
         "params": {},
-        "required_fields": [],
+        "required_fields": ["base_url","api_key"],
         "param_mapping": {
             "model": "model",
             "temperature": "temperature",
-            "base_url": None,
-            "api_key": None
+            "base_url": "base_url",
+            "api_key": "api_key"
         }
     },
     # OpenAI 兼容的提供商
-    "Meta (Llama)": {
+    "meta": {
         "class": ChatOpenAI,
         "params": {
             "streaming": True,
@@ -141,13 +141,13 @@ PROVIDER_MODEL_MAPPING = {
         "required_fields": ["api_key","base_url"],
         "param_mapping": {
             "model": "model",
-            "base_url": None,
+            "base_url": "base_url",
             "api_key": "api_key",
             "temperature": "temperature",
-            "openai_proxy": None,
+            "openai_proxy": "openai_proxy",
         }
     },
-    "Alibaba (Qwen)": {
+    "alibaba": {
         "class": ChatOpenAI,
         "params": {
             "streaming": True,
@@ -158,10 +158,10 @@ PROVIDER_MODEL_MAPPING = {
             "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "api_key": "api_key",
             "temperature": "temperature",
-            "openai_proxy": None,
+            "openai_proxy": "openai_proxy",
         }
     },
-    "Cohere": {
+    "cohere": {
         "class": ChatCohere,
         "params": {
             "streaming": True,
@@ -169,12 +169,12 @@ PROVIDER_MODEL_MAPPING = {
         "required_fields": ["cohere_api_key"],
         "param_mapping": {
             "model": "model",
-            "base_url": None,
+            "base_url": "base_url",
             "cohere_api_key": "api_key",
             "temperature": "temperature"
         }
     },
-    "OpenRouter": {
+    "openrouter": {
         "class": ChatOpenAI,
         "params": {
             "streaming": True,
@@ -185,7 +185,7 @@ PROVIDER_MODEL_MAPPING = {
             "base_url": "https://openrouter.ai/api/v1/",
             "api_key": "api_key",
             "temperature": "temperature",
-            "openai_proxy": None,
+            "openai_proxy": "openai_proxy",
         }
     },
 }
@@ -235,11 +235,11 @@ def get_model_by_provider(
         if config_key == "model":
             model_params[model_param] = model_name
         elif config_key == "azure_endpoint":
-             model_params[model_param] = cfg("base_url", None)
+            model_params[model_param] = cfg("base_url", None)
         elif config_key == "deployment_name":
-             model_params[model_param] = model_name
+            model_params[model_param] = model_name
         elif config_key == "openai_proxy":
-             model_params[model_param] = cfg("proxy_url")
+            model_params[model_param] = cfg("proxy_url")
         else:
             value = cfg(config_key)
             if value is not None:
@@ -260,7 +260,7 @@ def get_model_by_provider(
     try:
         model = model_class(**model_params)
     finally:
-        if os.environ["https_proxy"]:
+        if cfg("proxy_url"):
             os.environ.pop("https_proxy", None)
             os.environ.pop("http_proxy", None)
     return model

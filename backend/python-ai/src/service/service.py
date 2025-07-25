@@ -89,7 +89,7 @@ async def _handle_input(
     Returns kwargs for agent invocation and the run_id.
     """
     run_id = uuid4()
-    thread_id = f"{user_input.thread_id or str(uuid4())}-{agent_id}"
+    thread_id = f"{user_input.thread_id or str(uuid4())}"
     user_id = user_input.user_id or str(uuid4())
 
     configurable = {
@@ -294,7 +294,7 @@ async def message_generator(
                     yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
     except Exception as e:
         logger.exception(f"Error in message generator: {e}")
-        yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'content': {str(e)}})}\n\n"
     finally:
         yield "data: [DONE]\n\n"
 
