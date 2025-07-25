@@ -115,6 +115,9 @@ async def _handle_input(
         configurable.update(user_input.agent_config)
         configurable["agent_config"] = tuple(sorted(user_input.agent_config.items()))
 
+    if user_input.mcp_config:
+        configurable["mcp_config"] = tuple(sorted(user_input.mcp_config.items()))
+
     config = RunnableConfig(
         configurable=configurable,
         run_id=run_id,
@@ -199,6 +202,7 @@ async def message_generator(
         async for stream_event in agent.astream(
             **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
         ):
+
             if not isinstance(stream_event, tuple):
                 continue
             # Handle different stream event structures based on subgraphs
@@ -294,7 +298,7 @@ async def message_generator(
                     yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
     except Exception as e:
         logger.exception(f"Error in message generator: {e}")
-        yield f"data: {json.dumps({'type': 'error', 'content': {str(e)}})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
     finally:
         yield "data: [DONE]\n\n"
 

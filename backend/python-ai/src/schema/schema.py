@@ -76,7 +76,23 @@ class UserInput(BaseModel):
             }
         ],
     )
-
+    mcp_config: dict[str, Any] = Field(
+        description="Additional configuration to pass through to the mcp agent",
+        default={},
+        examples=[
+            {
+                "math": {
+                    "url": "http://localhost:8003/mcp/",
+                    "transport": "streamable_http",
+                },
+                "weather": {
+                    # make sure you start your weather server on port 8000
+                    "url": "http://localhost:8000/mcp/",
+                    "transport": "streamable_http",
+                },
+            }
+        ],
+    )
 
 class StreamInput(UserInput):
     """User input for streaming the agent's response."""
