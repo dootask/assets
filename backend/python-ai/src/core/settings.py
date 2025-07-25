@@ -3,20 +3,9 @@ from json import loads
 from typing import Annotated, Any
 
 from dotenv import find_dotenv
-from pydantic import (
-    BeforeValidator,
-    Field,
-    HttpUrl,
-    SecretStr,
-    TypeAdapter,
-    computed_field,
-)
+from pydantic import (BeforeValidator, Field, HttpUrl, SecretStr, TypeAdapter,
+                      computed_field)
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-from schema.models import (
-    AllModelEnum,
-    PROVIDER_MODEL_ENUM_MAP,
-)
 
 
 class DatabaseType(StrEnum):
@@ -58,8 +47,7 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str | None = None
 
     # If DEFAULT_MODEL is None, it will be set in model_post_init
-    DEFAULT_MODEL: AllModelEnum | None = None  # type: ignore[assignment]
-    AVAILABLE_MODELS: set[AllModelEnum] = set()  # type: ignore[assignment]
+    DEFAULT_MODEL: str = "gpt-4o-mini"  # type: ignore[assignment]
 
     # Set openai compatible api, mainly used for proof of concept
     COMPATIBLE_MODEL: str | None = None
@@ -113,11 +101,6 @@ class Settings(BaseSettings):
     AZURE_OPENAI_DEPLOYMENT_MAP: dict[str, str] = Field(
         default_factory=dict, description="Map of model names to Azure deployment IDs"
     )
-
-    def model_post_init(self, __context: Any) -> None:
-        self.AVAILABLE_MODELS = set()
-        for model_enum in PROVIDER_MODEL_ENUM_MAP.values():
-            self.AVAILABLE_MODELS.update(set(model_enum))
 
     @computed_field  # type: ignore[prop-decorator]
     @property

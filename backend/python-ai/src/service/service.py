@@ -7,41 +7,24 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
+from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
+from core import settings
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import (
-    AIMessage,
-    AIMessageChunk,
-    AnyMessage,
-    HumanMessage,
-    ToolMessage,
-)
+from langchain_core.messages import (AIMessage, AIMessageChunk, AnyMessage,
+                                     HumanMessage, ToolMessage)
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
 from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
-
-from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
-from core import settings
 from memory import initialize_database, initialize_store
-from schema import (
-    ChatHistory,
-    ChatHistoryInput,
-    ChatMessage,
-    Feedback,
-    FeedbackResponse,
-    ServiceMetadata,
-    StreamInput,
-    UserInput,
-)
-from service.utils import (
-    convert_message_content_to_string,
-    langchain_to_chat_message,
-    remove_tool_calls,
-)
+from schema import (ChatHistory, ChatHistoryInput, ChatMessage, Feedback,
+                    FeedbackResponse, ServiceMetadata, StreamInput, UserInput)
+from service.utils import (convert_message_content_to_string,
+                           langchain_to_chat_message, remove_tool_calls)
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
@@ -96,18 +79,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
-
-
-@router.get("/info")
-async def info() -> ServiceMetadata:
-    models = list(settings.AVAILABLE_MODELS)
-    models.sort()
-    return ServiceMetadata(
-        agents=get_all_agent_info(),
-        models=models,
-        default_agent=DEFAULT_AGENT,
-        default_model=settings.DEFAULT_MODEL,
-    )
 
 
 async def _handle_input(

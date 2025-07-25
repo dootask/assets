@@ -3,8 +3,6 @@ from typing import Any, Literal, NotRequired
 from pydantic import BaseModel, Field, SerializeAsAny
 from typing_extensions import TypedDict
 
-from schema.models import AllModelEnum, AnthropicModelName, OpenAIModelName
-
 
 class AgentInfo(BaseModel):
     """Info about an available agent."""
@@ -25,14 +23,14 @@ class ServiceMetadata(BaseModel):
     agents: list[AgentInfo] = Field(
         description="List of available agents.",
     )
-    models: list[AllModelEnum] = Field(
+    models: list[str] = Field(
         description="List of available LLMs.",
     )
     default_agent: str = Field(
         description="Default agent used when none is specified.",
         examples=["research-assistant"],
     )
-    default_model: AllModelEnum = Field(
+    default_model: str = Field(default="gpt-4o-mini",
         description="Default model used when none is specified.",
     )
 
@@ -44,11 +42,15 @@ class UserInput(BaseModel):
         description="User input to the agent.",
         examples=["What is the weather in Tokyo?"],
     )
-    model: SerializeAsAny[AllModelEnum] | None = Field(
+    provider: str | None = Field(
+        description="Provider of the user input.",
+        examples=["OpenAI", "Anthropic", "Google", "xAI (Grok)"],
+    )
+    model: SerializeAsAny[str] | None = Field(
         title="Model",
         description="LLM Model to use for the agent.",
-        default=OpenAIModelName.GPT_4O_MINI,
-        examples=[OpenAIModelName.GPT_4O_MINI, AnthropicModelName.HAIKU_35],
+        default="gpt-4o-mini",
+        examples=["gpt-4o-mini", "claude-3.5-sonnet"],
     )
     thread_id: str | None = Field(
         description="Thread ID to persist and continue a multi-turn conversation.",
@@ -68,7 +70,6 @@ class UserInput(BaseModel):
                 "spicy_level": 0.8,
                 "api_key": "xxxx",
                 "base_url": "https://example.com",
-                "credentials": "base64后的谷歌凭证信息",
                 "api_version": "azure的model版本号",
                 "proxy_url": "http://proxy.com",
                 "temperature": 0.7,

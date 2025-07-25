@@ -1,10 +1,11 @@
+from typing import List
+
+from core import get_model, settings
+from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.runnables import RunnableConfig
+from langgraph.func import entrypoint
 from langgraph.prebuilt import create_react_agent
 from langgraph_supervisor import create_supervisor
-from langgraph.func import entrypoint
-from core import get_model, settings
-from typing import List
-from langchain_core.messages import BaseMessage, AIMessage
-from langchain_core.runnables import RunnableConfig
 
 
 def add(a: float, b: float) -> float:
@@ -29,9 +30,9 @@ def web_search(query: str) -> str:
     )
 
 
-def build_supervisor(model_name: str):
+def build_supervisor(provider: str,model_name: str):
     """动态构建 supervisor workflow（每次调用都重新 compile）。"""
-    model = get_model(model_name)
+    model = get_model_by_provider(provider, model_name)
 
     math_agent = create_react_agent(
         model=model,
@@ -75,6 +76,7 @@ async def supervisor_agent(
     # 2. 动态决定模型并构建 supervisor
     model_name = config["configurable"].get("model", settings.DEFAULT_MODEL)
     supervisor = build_supervisor(
+        config["configurable"].get("provider"),
         model_name,
         config["configurable"].get("agent_config", None),
     )

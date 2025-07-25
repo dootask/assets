@@ -2,22 +2,17 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from core import get_model_by_provider, settings
 from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.runnables import (
-    Runnable,
-    RunnableConfig,
-    RunnableLambda,
-    RunnableSerializable,
-)
+from langchain_core.runnables import (Runnable, RunnableConfig, RunnableLambda,
+                                      RunnableSerializable)
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
-
-from core import get_model, settings
 
 # Added logger
 logger = logging.getLogger(__name__)
@@ -54,7 +49,8 @@ Don't tell the user what their sign is, you are just demonstrating your knowledg
 async def background(state: AgentState, config: RunnableConfig) -> AgentState:
     """This node is to demonstrate doing work before the interrupt"""
 
-    m = get_model(
+    m = get_model_by_provider(
+        config["configurable"].get("provider"),
         config["configurable"].get("model", settings.DEFAULT_MODEL),
         config["configurable"].get("agent_config", None),
     )
@@ -143,7 +139,8 @@ async def determine_birthdate(
         )
 
     # If birthdate wasn't retrieved from store, proceed with extraction
-    m = get_model(
+    m = get_model_by_provider(
+        config["configurable"].get("provider"),
         config["configurable"].get("model", settings.DEFAULT_MODEL),
         config["configurable"].get("agent_config", None),
     )
@@ -236,7 +233,8 @@ async def generate_response(state: AgentState, config: RunnableConfig) -> AgentS
 
     birthdate_str = birthdate.strftime("%B %d, %Y")  # Format for display
 
-    m = get_model(
+    m = get_model_by_provider(
+        config["configurable"].get("provider"),
         config["configurable"].get("model", settings.DEFAULT_MODEL),
         config["configurable"].get("agent_config", None),
     )

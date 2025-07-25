@@ -1,22 +1,19 @@
 from datetime import datetime
 from typing import Literal
 
-from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
+from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
+from agents.tools import calculator
+from core import get_model_by_provider, settings
+from langchain_community.tools import (DuckDuckGoSearchResults,
+                                       OpenWeatherMapQueryRun)
 from langchain_community.utilities import OpenWeatherMapAPIWrapper
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
-from langchain_core.runnables import (
-    RunnableConfig,
-    RunnableLambda,
-    RunnableSerializable,
-)
+from langchain_core.runnables import (RunnableConfig, RunnableLambda,
+                                      RunnableSerializable)
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
 from langgraph.prebuilt import ToolNode
-
-from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
-from agents.tools import calculator
-from core import get_model, settings
 
 
 class AgentState(MessagesState, total=False):
@@ -70,7 +67,8 @@ def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = get_model(
+    m = get_model_by_provider(
+        config["configurable"].get("provider"),
         config["configurable"].get("model", settings.DEFAULT_MODEL),
         config["configurable"].get("agent_config", None),
     )

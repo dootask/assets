@@ -1,8 +1,7 @@
+from core import get_model_by_provider, settings
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.func import entrypoint
-
-from core import get_model, settings
 
 
 @entrypoint()
@@ -16,7 +15,8 @@ async def chatbot(
     if previous:
         messages = previous["messages"] + messages
 
-    model = get_model(
+    model = get_model_by_provider(
+        config["configurable"].get("provider"),
         config["configurable"].get("model", settings.DEFAULT_MODEL),
         config["configurable"].get("agent_config", None),
     )

@@ -2,19 +2,15 @@ import logging
 import os
 from typing import Any
 
+from core import get_model, settings
 from langchain_aws import AmazonKnowledgeBasesRetriever
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.runnables import (
-    RunnableConfig,
-    RunnableLambda,
-    RunnableSerializable,
-)
+from langchain_core.runnables import (RunnableConfig, RunnableLambda,
+                                      RunnableSerializable)
 from langchain_core.runnables.base import RunnableSequence
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
-
-from core import get_model, settings
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +152,8 @@ async def prepare_augmented_prompt(
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     """Generate a response based on the retrieved documents."""
-    m = get_model(
+    m = get_model_by_provider(
+        config["configurable"].get("provider"),
         config["configurable"].get("model", settings.DEFAULT_MODEL),
         config["configurable"].get("agent_config", None),
     )
