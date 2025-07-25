@@ -21,7 +21,7 @@ async def chatbot(
         config["configurable"].get("agent_config", None),
     )
     response = await model.ainvoke(messages)
-
+    print(response)
     return entrypoint.final(
         value={"messages": [response]}, save={"messages": messages + [response]}
     )

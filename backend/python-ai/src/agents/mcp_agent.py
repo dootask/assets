@@ -31,6 +31,7 @@ async def mcp_agent(
     if config_tuple is None:
         config = {}
     mcp_config = dict(config_tuple) if config_tuple else {}
+    print(mcp_config)
     client = MultiServerMCPClient(
         mcp_config
     )
@@ -50,7 +51,9 @@ async def mcp_agent(
     )
     builder.add_edge("tools", "call_model")
     graph = builder.compile()
-    response = await graph.ainvoke(messages)
+    response = await graph.ainvoke({"messages": messages})
+    final_messages = response["messages"]
+    print(response)
     return entrypoint.final(
-        value={"messages": [response]}, save={"messages": messages + [response]}
+        value={"messages": final_messages}, save={"messages": final_messages}
     )
