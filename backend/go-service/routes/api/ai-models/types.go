@@ -8,11 +8,11 @@ import (
 type AIModel struct {
 	ID          int64     `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name        string    `json:"name" gorm:"type:varchar(255);not null" validate:"required,min=1,max=255"`
-	Provider    string    `json:"provider" gorm:"type:varchar(100);not null" validate:"required,oneof=openai anthropic google azure local"`
+	Provider    string    `json:"provider" gorm:"type:varchar(100);not null" validate:"required"`
 	ModelName   string    `json:"model_name" gorm:"type:varchar(255);not null" validate:"required,min=1,max=255"`
 	ApiKey      *string   `json:"api_key,omitempty" gorm:"type:text"`
 	BaseURL     string    `json:"base_url" gorm:"type:varchar(500)" validate:"omitempty,url"`
-	MaxTokens   int       `json:"max_tokens" gorm:"default:4000" validate:"min=1,max=100000"`
+	MaxTokens   int       `json:"max_tokens" gorm:"default:4000" validate:"min=1"`
 	Temperature float32   `json:"temperature" gorm:"type:decimal(3,2);default:0.7" validate:"min=0,max=2"`
 	IsEnabled   bool      `json:"is_enabled" gorm:"default:true"`
 	IsDefault   bool      `json:"is_default" gorm:"default:false"`
@@ -28,11 +28,11 @@ func (AIModel) TableName() string {
 // CreateAIModelRequest 创建AI模型请求
 type CreateAIModelRequest struct {
 	Name        string  `json:"name" validate:"required,min=1,max=255"`
-	Provider    string  `json:"provider" validate:"required,oneof=openai anthropic google azure local"`
+	Provider    string  `json:"provider" validate:"required"`
 	ModelName   string  `json:"model_name" validate:"required,min=1,max=255"`
 	ApiKey      *string `json:"api_key,omitempty"`
 	BaseURL     string  `json:"base_url" validate:"omitempty,url"`
-	MaxTokens   int     `json:"max_tokens" validate:"min=1,max=100000"`
+	MaxTokens   int     `json:"max_tokens" validate:"min=1"`
 	Temperature float32 `json:"temperature" validate:"min=0,max=2"`
 	IsEnabled   bool    `json:"is_enabled"`
 	IsDefault   bool    `json:"is_default"`
@@ -41,11 +41,11 @@ type CreateAIModelRequest struct {
 // UpdateAIModelRequest 更新AI模型请求
 type UpdateAIModelRequest struct {
 	Name        *string  `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
-	Provider    *string  `json:"provider,omitempty" validate:"omitempty,oneof=openai anthropic google azure local"`
+	Provider    *string  `json:"provider,omitempty" validate:"omitempty"`
 	ModelName   *string  `json:"model_name,omitempty" validate:"omitempty,min=1,max=255"`
 	ApiKey      *string  `json:"api_key,omitempty"`
 	BaseURL     *string  `json:"base_url,omitempty" validate:"omitempty,url"`
-	MaxTokens   *int     `json:"max_tokens,omitempty" validate:"omitempty,min=1,max=100000"`
+	MaxTokens   *int     `json:"max_tokens,omitempty" validate:"omitempty,min=1"`
 	Temperature *float32 `json:"temperature,omitempty" validate:"omitempty,min=0,max=2"`
 	IsEnabled   *bool    `json:"is_enabled,omitempty"`
 	IsDefault   *bool    `json:"is_default,omitempty"`

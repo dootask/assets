@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { providerOptions } from '@/lib/ai';
 import { aiModelsApi } from '@/lib/api/ai-models';
 import { AIModelConfig, UpdateAIModelRequest } from '@/lib/types';
 import { Cpu, Key, Save, Settings, Star } from 'lucide-react';
@@ -22,7 +23,6 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { providerOptions } from '@/lib/ai';
 
 export default function EditModelPage() {
   const params = useParams();
@@ -254,7 +254,6 @@ export default function EditModelPage() {
                       id="max_tokens"
                       type="number"
                       min="1"
-                      max="100000"
                       value={formData.max_tokens || model.max_tokens}
                       onChange={e => setFormData(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 4000 }))}
                       placeholder="4000"
@@ -318,7 +317,7 @@ export default function EditModelPage() {
                     value={formData.base_url ?? model.base_url}
                     onChange={e => setFormData(prev => ({ ...prev, base_url: e.target.value }))}
                   />
-                  <p className="text-muted-foreground text-xs">当前地址：{formData.base_url ?? model.base_url}</p>
+                  <p className="text-muted-foreground text-xs">当前地址：{model.base_url}</p>
                 </div>
               </CardContent>
             </Card>

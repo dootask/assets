@@ -223,6 +223,7 @@ func CreateAgent(c *gin.Context) {
 	// 创建机器人
 	bot, err := global.DooTaskClient.Client.CreateBot(dootask.CreateBotRequest{
 		Name:       req.Name,
+		Session:    1,
 		WebhookURL: fmt.Sprintf("%s/service/webhook", c.GetString("base_url")),
 	})
 	if err != nil {
