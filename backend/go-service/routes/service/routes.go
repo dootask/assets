@@ -109,6 +109,7 @@ func (h *Handler) Stream(c *gin.Context) {
 	// 获取流ID
 	streamId := c.Param("streamId")
 	cache, err := global.Redis.Get(context.Background(), fmt.Sprintf("stream:%s", streamId)).Result()
+	fmt.Println("cache", cache)
 
 	// 判断流式消息是否存在
 	if err != nil {

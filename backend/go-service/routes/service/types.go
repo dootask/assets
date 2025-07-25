@@ -5,6 +5,7 @@ type WebhookRequest struct {
 	Text       string         `json:"text" form:"text"`               // 消息文本
 	ReplyText  string         `json:"reply_text" form:"reply_text"`   // 回复文本（引用的消息）
 	Token      string         `json:"token" form:"token"`             // 机器人Token
+	SessionId  int64          `json:"session_id" form:"session_id"`   // 对话会话ID
 	DialogId   int64          `json:"dialog_id" form:"dialog_id"`     // 对话ID
 	DialogType string         `json:"dialog_type" form:"dialog_type"` // 对话类型
 	MsgId      int64          `json:"msg_id" form:"msg_id"`           // 消息ID
