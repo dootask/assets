@@ -255,11 +255,12 @@ def get_model_by_provider(
     model_class = provider_config["class"]
     print(model_params)
     if cfg("proxy_url"):
-        os.environ["https_proxy"] = use_proxy
-        os.environ["http_proxy"] = use_proxy
+        os.environ["https_proxy"] = cfg("proxy_url")
+        os.environ["http_proxy"] = cfg("proxy_url")
     try:
         model = model_class(**model_params)
     finally:
-        os.environ.pop["https_proxy"]
-        os.environ.pop["http_proxy"]
+        if os.environ["https_proxy"]:
+            os.environ.pop("https_proxy", None)
+            os.environ.pop("http_proxy", None)
     return model

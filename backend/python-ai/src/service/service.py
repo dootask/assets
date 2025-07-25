@@ -94,6 +94,7 @@ async def _handle_input(
 
     configurable = {
         "thread_id": thread_id,
+        "provider": user_input.provider,
         "model": user_input.model,
         "user_id": user_id,
     }
@@ -292,7 +293,7 @@ async def message_generator(
                     # So we only print non-empty content.
                     yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
     except Exception as e:
-        logger.error(f"Error in message generator: {e}")
+        logger.exception(f"Error in message generator: {e}")
         yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
     finally:
         yield "data: [DONE]\n\n"
