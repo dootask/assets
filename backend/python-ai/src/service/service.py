@@ -11,7 +11,13 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    AnyMessage,
+    HumanMessage,
+    ToolMessage,
+)
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
 from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
@@ -44,7 +50,11 @@ logger = logging.getLogger(__name__)
 def verify_bearer(
     http_auth: Annotated[
         HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide AUTH_SECRET api key.", auto_error=False)),
+        Depends(
+            HTTPBearer(
+                description="Please provide AUTH_SECRET api key.", auto_error=False
+            )
+        ),
     ],
 ) -> None:
     if not settings.AUTH_SECRET:
@@ -100,16 +110,22 @@ async def info() -> ServiceMetadata:
     )
 
 
-async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[str, Any], UUID]:
+async def _handle_input(
+    user_input: UserInput, agent: AgentGraph, agent_id: str
+) -> tuple[dict[str, Any], UUID]:
     """
     Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
     """
     run_id = uuid4()
-    thread_id = user_input.thread_id or str(uuid4())
+    thread_id = f"{user_input.thread_id or str(uuid4())}-{agent_id}"
     user_id = user_input.user_id or str(uuid4())
 
-    configurable = {"thread_id": thread_id, "model": user_input.model, "user_id": user_id}
+    configurable = {
+        "thread_id": thread_id,
+        "model": user_input.model,
+        "user_id": user_id,
+    }
 
     callbacks = []
     if settings.LANGFUSE_TRACING:
@@ -125,6 +141,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
                 detail=f"agent_config contains reserved keys: {overlap}",
             )
         configurable.update(user_input.agent_config)
+        configurable["agent_config"] = tuple(sorted(user_input.agent_config.items()))
 
     config = RunnableConfig(
         configurable=configurable,
@@ -170,7 +187,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
     agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
 
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
@@ -190,7 +207,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
         output.run_id = str(run_id)
         return output
     except Exception as e:
-        logger.error(f"An exception occurred: {e}")
+        logger.exception(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
@@ -203,7 +220,7 @@ async def message_generator(
     This is the workhorse method for the /stream endpoint.
     """
     agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
@@ -280,7 +297,10 @@ async def message_generator(
                     yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
                     continue
                 # LangGraph re-sends the input message, which feels weird, so drop it
-                if chat_message.type == "human" and chat_message.content == user_input.message:
+                if (
+                    chat_message.type == "human"
+                    and chat_message.content == user_input.message
+                ):
                     continue
                 yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
@@ -333,8 +353,12 @@ def _sse_response_example() -> dict[int | str, Any]:
     response_class=StreamingResponse,
     responses=_sse_response_example(),
 )
-@router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
-async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
+@router.post(
+    "/stream", response_class=StreamingResponse, responses=_sse_response_example()
+)
+async def stream(
+    user_input: StreamInput, agent_id: str = DEFAULT_AGENT
+) -> StreamingResponse:
     """
     Stream an agent's response to a user input, including intermediate messages and tokens.
 
@@ -383,7 +407,9 @@ def history(input: ChatHistoryInput) -> ChatHistory:
             config=RunnableConfig(configurable={"thread_id": input.thread_id})
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]
-        chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
+        chat_messages: list[ChatMessage] = [
+            langchain_to_chat_message(m) for m in messages
+        ]
         return ChatHistory(messages=chat_messages)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
@@ -399,7 +425,9 @@ async def health_check():
     if settings.LANGFUSE_TRACING:
         try:
             langfuse = Langfuse()
-            health_status["langfuse"] = "connected" if langfuse.auth_check() else "disconnected"
+            health_status["langfuse"] = (
+                "connected" if langfuse.auth_check() else "disconnected"
+            )
         except Exception as e:
             logger.error(f"Langfuse connection error: {e}")
             health_status["langfuse"] = "disconnected"

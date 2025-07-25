@@ -63,7 +63,17 @@ class UserInput(BaseModel):
     agent_config: dict[str, Any] = Field(
         description="Additional configuration to pass through to the agent",
         default={},
-        examples=[{"spicy_level": 0.8}],
+        examples=[
+            {
+                "spicy_level": 0.8,
+                "api_key": "xxxx",
+                "base_url": "https://example.com",
+                "credentials": "base64后的谷歌凭证信息",
+                "api_version": "azure的model版本号",
+                "proxy_url": "http://proxy.com",
+                "temperature": 0.7,
+            }
+        ],
     )
 
 

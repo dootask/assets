@@ -15,6 +15,7 @@ class Provider(StrEnum):
     OLLAMA = auto()
     OPENROUTER = auto()
     FAKE = auto()
+    XAI = auto()
 
 
 class OpenAIModelName(StrEnum):
@@ -105,6 +106,13 @@ class FakeModelName(StrEnum):
     FAKE = "fake"
 
 
+class XAIModelName(StrEnum):
+    """Fake model for testing."""
+
+    XAI_3 = "grok-3"
+    XAI_4 = "grok-4"
+
+
 AllModelEnum: TypeAlias = (
     OpenAIModelName
     | OpenAICompatibleName
@@ -118,6 +126,7 @@ AllModelEnum: TypeAlias = (
     | OllamaModelName
     | OpenRouterModelName
     | FakeModelName
+    | XAIModelName
 )
 
 PROVIDER_MODEL_ENUM_MAP = {
@@ -133,4 +142,5 @@ PROVIDER_MODEL_ENUM_MAP = {
     Provider.OLLAMA: OllamaModelName,
     Provider.OPENROUTER: OpenRouterModelName,
     Provider.FAKE: FakeModelName,
+    Provider.XAI: XAIModelName,
 }

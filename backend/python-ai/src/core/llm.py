@@ -1,6 +1,8 @@
+import base64
 from functools import cache
+import os
 from typing import TypeAlias
-
+from typing import Optional
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import FakeListChatModel
@@ -9,8 +11,9 @@ from langchain_google_vertexai import ChatVertexAI
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langchain_deepseek import ChatDeepSeek
+from langchain_xai import ChatXAI
 
-from core.settings import settings
 from schema.models import (
     AllModelEnum,
     AnthropicModelName,
@@ -25,6 +28,7 @@ from schema.models import (
     OpenAIModelName,
     OpenRouterModelName,
     VertexAIModelName,
+    XAIModelName,
 )
 
 _MODEL_TABLE = (
@@ -40,6 +44,7 @@ _MODEL_TABLE = (
     | {m: m.value for m in OllamaModelName}
     | {m: m.value for m in OpenRouterModelName}
     | {m: m.value for m in FakeModelName}
+    | {m: m.value for m in XAIModelName}
 )
 
 
@@ -61,80 +66,147 @@ ModelT: TypeAlias = (
     | ChatBedrock
     | ChatOllama
     | FakeToolModel
+    | ChatXAI
 )
 
 
 @cache
-def get_model(model_name: AllModelEnum, /) -> ModelT:
-    # NOTE: models with streaming=True will send tokens as they are generated
-    # if the /stream endpoint is called with stream_tokens=True (the default)
+def get_model(
+    model_name: AllModelEnum, config_tuple: Optional[dict] = None, /
+) -> ModelT:
+    if config_tuple is None:
+        config = {}
+    config = dict(config_tuple) if config_tuple else {}
+
+    def cfg(key: str, default=None):
+        return config.get(key, default)
+
+    # 标准字段映射
+    api_key = cfg("api_key")
+    base_url = cfg("base_url")
+    credentials = cfg("credentials")
+    api_version = cfg("api_version")
+    proxy_url = cfg("proxy_url")
+    temperature = cfg("temperature", 0.7)
+
     api_model_name = _MODEL_TABLE.get(model_name)
     if not api_model_name:
         raise ValueError(f"Unsupported model: {model_name}")
 
     if model_name in OpenAIModelName:
-        return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
-    if model_name in OpenAICompatibleName:
-        if not settings.COMPATIBLE_BASE_URL or not settings.COMPATIBLE_MODEL:
-            raise ValueError("OpenAICompatible base url and endpoint must be configured")
-
         return ChatOpenAI(
-            model=settings.COMPATIBLE_MODEL,
-            temperature=0.5,
+            model=api_model_name,
+            openai_api_key=api_key,
+            temperature=temperature,
             streaming=True,
-            openai_api_base=settings.COMPATIBLE_BASE_URL,
-            openai_api_key=settings.COMPATIBLE_API_KEY,
+            openai_proxy=proxy_url,
         )
-    if model_name in AzureOpenAIModelName:
-        if not settings.AZURE_OPENAI_API_KEY or not settings.AZURE_OPENAI_ENDPOINT:
-            raise ValueError("Azure OpenAI API key and endpoint must be configured")
 
+    if model_name in OpenAICompatibleName:
+        if not base_url or not api_model_name:
+            raise ValueError(
+                "OpenAICompatible requires 'base_url' and 'model' in config"
+            )
+        return ChatOpenAI(
+            model=api_model_name,
+            temperature=temperature,
+            streaming=True,
+            openai_api_base=base_url,
+            openai_api_key=api_key,
+            openai_proxy=proxy_url,
+        )
+
+    if model_name in AzureOpenAIModelName:
+        if not api_key or not base_url or not api_model_name:
+            raise ValueError(
+                "Azure OpenAI requires 'api_key', 'base_url', and 'api_model_name'"
+            )
         return AzureChatOpenAI(
-            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+            azure_endpoint=base_url,
             deployment_name=api_model_name,
-            api_version=settings.AZURE_OPENAI_API_VERSION,
-            temperature=0.5,
+            api_version=api_version or "2024-02-15-preview",
+            temperature=temperature,
             streaming=True,
             timeout=60,
             max_retries=3,
+            openai_proxy=proxy_url,
         )
+
     if model_name in DeepseekModelName:
-        return ChatOpenAI(
+        if not api_key:
+            raise ValueError("DeepSeek API requires 'api_key'")
+        return ChatDeepSeek(
             model=api_model_name,
-            temperature=0.5,
+            temperature=temperature,
             streaming=True,
-            openai_api_base="https://api.deepseek.com",
-            openai_api_key=settings.DEEPSEEK_API_KEY,
+            api_key=api_key,
+            openai_proxy=proxy_url,
         )
+
     if model_name in AnthropicModelName:
-        return ChatAnthropic(model=api_model_name, temperature=0.5, streaming=True)
+        if not api_key:
+            raise ValueError("Anthropic API requires 'api_key'")
+        return ChatAnthropic(
+            model=api_model_name,
+            temperature=temperature,
+            streaming=True,
+            anthropic_api_key=api_key,
+        )
+
     if model_name in GoogleModelName:
-        return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True)
+        if not api_key:
+            raise ValueError("Google API requires 'api_key'")
+        return ChatGoogleGenerativeAI(
+            model=api_model_name,
+            temperature=temperature,
+            streaming=True,
+            google_api_key=api_key,
+        )
+
     if model_name in VertexAIModelName:
-        return ChatVertexAI(model=api_model_name, temperature=0.5, streaming=True)
+        if credentials:
+            with open("/tmp/google_credentials.json", "w") as f:
+                f.write(base64.decode(credentials))
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/google_credentials.json"
+        return ChatVertexAI(
+            model=api_model_name, temperature=temperature, streaming=True
+        )
+
     if model_name in GroqModelName:
-        if model_name == GroqModelName.LLAMA_GUARD_4_12B:
-            return ChatGroq(model=api_model_name, temperature=0.0)
-        return ChatGroq(model=api_model_name, temperature=0.5)
-    if model_name in AWSModelName:
-        return ChatBedrock(model_id=api_model_name, temperature=0.5)
+        temp = 0.0 if model_name == GroqModelName.LLAMA_GUARD_4_12B else 0.5
+        return ChatGroq(model=api_model_name, groq_api_key=api_key, temperature=temp)
+
     if model_name in OllamaModelName:
-        if settings.OLLAMA_BASE_URL:
-            chat_ollama = ChatOllama(
-                model=settings.OLLAMA_MODEL, temperature=0.5, base_url=settings.OLLAMA_BASE_URL
+        if not api_model_name:
+            raise ValueError("Ollama requires 'model' in config")
+        if base_url:
+            return ChatOllama(
+                model=api_model_name, temperature=temperature, base_url=base_url
             )
         else:
-            chat_ollama = ChatOllama(model=settings.OLLAMA_MODEL, temperature=0.5)
-        return chat_ollama
+            return ChatOllama(model=api_model_name, temperature=temperature)
+
     if model_name in OpenRouterModelName:
+        if not api_key:
+            raise ValueError("OpenRouter API requires 'api_key'")
         return ChatOpenAI(
             model=api_model_name,
-            temperature=0.5,
+            temperature=temperature,
             streaming=True,
             base_url="https://openrouter.ai/api/v1/",
-            api_key=settings.OPENROUTER_API_KEY,
+            api_key=api_key,
+            openai_proxy=proxy_url,
         )
+
+    if model_name in XAIModelName:
+        return ChatXAI(
+            model=api_model_name,
+            api_key=api_key,
+            openai_proxy=proxy_url,
+            temperature=temperature,
+        )
+
     if model_name in FakeModelName:
-        return FakeToolModel(responses=["This is a test response from the fake model."])
+        return FakeToolModel(responses=["Fake model response"])
 
     raise ValueError(f"Unsupported model: {model_name}")

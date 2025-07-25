@@ -2,7 +2,11 @@ import asyncio
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
-from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.runnables import (
+    RunnableConfig,
+    RunnableLambda,
+    RunnableSerializable,
+)
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.types import StreamWriter
 
@@ -26,7 +30,10 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(
+        config["configurable"].get("model", settings.DEFAULT_MODEL),
+        config["configurable"].get("agent_config", None),
+    )
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 

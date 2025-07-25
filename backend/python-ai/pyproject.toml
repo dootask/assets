@@ -56,6 +56,8 @@ dependencies = [
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
     "httpx[socks]",
+    "langchain-deepseek",
+    "langchain-xai"
 ]
 
 [dependency-groups]

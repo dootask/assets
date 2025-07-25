@@ -74,7 +74,10 @@ async def supervisor_agent(
 
     # 2. 动态决定模型并构建 supervisor
     model_name = config["configurable"].get("model", settings.DEFAULT_MODEL)
-    supervisor = build_supervisor(model_name)
+    supervisor = build_supervisor(
+        model_name,
+        config["configurable"].get("agent_config", None),
+    )
 
     # 3. 运行 supervisor
     result = await supervisor.ainvoke({"messages": messages})

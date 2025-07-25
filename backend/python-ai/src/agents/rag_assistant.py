@@ -57,14 +57,15 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
 
 
 def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
-    content = (
-        f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
-    )
+    content = f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
     return AIMessage(content=content)
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(
+        config["configurable"].get("model", settings.DEFAULT_MODEL),
+        config["configurable"].get("agent_config", None),
+    )
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 
@@ -141,6 +142,8 @@ def pending_tool_calls(state: AgentState) -> Literal["tools", "done"]:
     return "done"
 
 
-agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "done": END})
+agent.add_conditional_edges(
+    "model", pending_tool_calls, {"tools": "tools", "done": END}
+)
 
 rag_assistant = agent.compile()

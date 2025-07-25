@@ -16,7 +16,10 @@ async def chatbot(
     if previous:
         messages = previous["messages"] + messages
 
-    model = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    model = get_model(
+        config["configurable"].get("model", settings.DEFAULT_MODEL),
+        config["configurable"].get("agent_config", None),
+    )
     response = await model.ainvoke(messages)
     return entrypoint.final(
         value={"messages": [response]}, save={"messages": messages + [response]}

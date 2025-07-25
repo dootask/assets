@@ -5,7 +5,11 @@ from typing import Any
 from langchain_aws import AmazonKnowledgeBasesRetriever
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.runnables import (
+    RunnableConfig,
+    RunnableLambda,
+    RunnableSerializable,
+)
 from langchain_core.runnables.base import RunnableSequence
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
@@ -67,13 +71,15 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
         if "kb_documents" in state:
             # Append document information to the system prompt
             document_prompt = f"\n\nI've retrieved the following documents that may be relevant to the query:\n\n{state['kb_documents']}\n\nPlease use these documents to inform your response to the user's query. Only use information from these documents and clearly indicate when you are unsure."
-            return [SystemMessage(content=base_prompt + document_prompt)] + state["messages"]
+            return [SystemMessage(content=base_prompt + document_prompt)] + state[
+                "messages"
+            ]
         else:
             # No documents were retrieved
-            no_docs_prompt = (
-                "\n\nNo relevant documents were found in the knowledge base for this query."
-            )
-            return [SystemMessage(content=base_prompt + no_docs_prompt)] + state["messages"]
+            no_docs_prompt = "\n\nNo relevant documents were found in the knowledge base for this query."
+            return [SystemMessage(content=base_prompt + no_docs_prompt)] + state[
+                "messages"
+            ]
 
     preprocessor = RunnableLambda(
         create_system_message,
@@ -112,7 +118,9 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
             }
             document_summaries.append(summary)
 
-        logger.info(f"Retrieved {len(document_summaries)} documents for query: {query[:50]}...")
+        logger.info(
+            f"Retrieved {len(document_summaries)} documents for query: {query[:50]}..."
+        )
 
         return {"retrieved_documents": document_summaries, "messages": []}
 
@@ -121,7 +129,9 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
         return {"retrieved_documents": [], "messages": []}
 
 
-async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) -> AgentState:
+async def prepare_augmented_prompt(
+    state: AgentState, config: RunnableConfig
+) -> AgentState:
     """Prepare a prompt augmented with retrieved document content."""
     # Get retrieved documents
     documents = state.get("retrieved_documents", [])
@@ -146,7 +156,10 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     """Generate a response based on the retrieved documents."""
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(
+        config["configurable"].get("model", settings.DEFAULT_MODEL),
+        config["configurable"].get("agent_config", None),
+    )
     model_runnable = wrap_model(m)
 
     response = await model_runnable.ainvoke(state, config)

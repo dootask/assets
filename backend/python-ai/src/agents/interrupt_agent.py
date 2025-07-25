@@ -6,7 +6,12 @@ from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.runnables import (
+    Runnable,
+    RunnableConfig,
+    RunnableLambda,
+    RunnableSerializable,
+)
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
 from langgraph.types import interrupt
@@ -37,24 +42,30 @@ def wrap_model(
     return preprocessor | model
 
 
-background_prompt = SystemMessagePromptTemplate.from_template("""
+background_prompt = SystemMessagePromptTemplate.from_template(
+    """
 You are a helpful assistant that tells users there zodiac sign.
 Provide a one sentence summary of the origin of zodiac signs.
 Don't tell the user what their sign is, you are just demonstrating your knowledge on the topic.
-""")
+"""
+)
 
 
 async def background(state: AgentState, config: RunnableConfig) -> AgentState:
     """This node is to demonstrate doing work before the interrupt"""
 
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(
+        config["configurable"].get("model", settings.DEFAULT_MODEL),
+        config["configurable"].get("agent_config", None),
+    )
     model_runnable = wrap_model(m, background_prompt.format())
     response = await model_runnable.ainvoke(state, config)
 
     return {"messages": [AIMessage(content=response.content)]}
 
 
-birthdate_extraction_prompt = SystemMessagePromptTemplate.from_template("""
+birthdate_extraction_prompt = SystemMessagePromptTemplate.from_template(
+    """
 You are an expert at extracting birthdates from conversational text.
 
 Rules for extraction:
@@ -62,7 +73,8 @@ Rules for extraction:
 - Consider various date formats (MM/DD/YYYY, YYYY-MM-DD, Month Day, Year)
 - Validate that the date is reasonable (not in the future)
 - If no clear birthdate was provided by the user, return None
-""")
+"""
+)
 
 
 class BirthdateExtraction(BaseModel):
@@ -105,7 +117,9 @@ async def determine_birthdate(
             if user_data and user_data.value.get("birthdate"):
                 # Convert ISO format string back to datetime object
                 birthdate_str = user_data.value["birthdate"]
-                birthdate = datetime.fromisoformat(birthdate_str) if birthdate_str else None
+                birthdate = (
+                    datetime.fromisoformat(birthdate_str) if birthdate_str else None
+                )
                 # We already have the birthdate, return it
                 logger.info(
                     f"[determine_birthdate] Found birthdate in store for user {user_id}: {birthdate}"
@@ -116,7 +130,9 @@ async def determine_birthdate(
                 }
         except Exception as e:
             # Log the error or handle cases where the store might be unavailable
-            logger.error(f"Error reading from store for namespace {namespace}, key {key}: {e}")
+            logger.error(
+                f"Error reading from store for namespace {namespace}, key {key}: {e}"
+            )
             # Proceed with extraction if read fails
             pass
     else:
@@ -127,15 +143,21 @@ async def determine_birthdate(
         )
 
     # If birthdate wasn't retrieved from store, proceed with extraction
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(
+        config["configurable"].get("model", settings.DEFAULT_MODEL),
+        config["configurable"].get("agent_config", None),
+    )
     model_runnable = wrap_model(
-        m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
+        m.with_structured_output(BirthdateExtraction),
+        birthdate_extraction_prompt.format(),
     ).with_config(tags=["skip_stream"])
     response: BirthdateExtraction = await model_runnable.ainvoke(state, config)
 
     # If no birthdate found after extraction attempt, interrupt
     if response.birthdate is None:
-        birthdate_input = interrupt(f"{response.reasoning}\nPlease tell me your birthdate?")
+        birthdate_input = interrupt(
+            f"{response.reasoning}\nPlease tell me your birthdate?"
+        )
         # Re-run extraction with the new input
         state["messages"].append(HumanMessage(birthdate_input))
         # Note: Recursive call might need careful handling of depth or state updates
@@ -162,17 +184,22 @@ async def determine_birthdate(
             await store.aput(namespace, key, {"birthdate": birthdate_str})
         except Exception as e:
             # Log the error or handle cases where the store write might fail
-            logger.error(f"Error writing to store for namespace {namespace}, key {key}: {e}")
+            logger.error(
+                f"Error writing to store for namespace {namespace}, key {key}: {e}"
+            )
 
     # Return the determined birthdate (either from store or extracted)
-    logger.info(f"[determine_birthdate] Returning birthdate {birthdate} for user {user_id}")
+    logger.info(
+        f"[determine_birthdate] Returning birthdate {birthdate} for user {user_id}"
+    )
     return {
         "birthdate": birthdate,
         "messages": [],
     }
 
 
-response_prompt = SystemMessagePromptTemplate.from_template("""
+response_prompt = SystemMessagePromptTemplate.from_template(
+    """
 You are a helpful assistant.
 
 Known information:
@@ -184,7 +211,8 @@ Based on the known information and the user's message, provide a helpful and rel
 If the user asked for their birthdate, confirm it.
 If the user asked for their zodiac sign, calculate it and tell them.
 Otherwise, respond conversationally based on their message.
-""")
+"""
+)
 
 
 async def generate_response(state: AgentState, config: RunnableConfig) -> AgentState:
@@ -208,9 +236,15 @@ async def generate_response(state: AgentState, config: RunnableConfig) -> AgentS
 
     birthdate_str = birthdate.strftime("%B %d, %Y")  # Format for display
 
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    m = get_model(
+        config["configurable"].get("model", settings.DEFAULT_MODEL),
+        config["configurable"].get("agent_config", None),
+    )
     model_runnable = wrap_model(
-        m, response_prompt.format(birthdate_str=birthdate_str, last_user_message=last_user_message)
+        m,
+        response_prompt.format(
+            birthdate_str=birthdate_str, last_user_message=last_user_message
+        ),
     )
     response = await model_runnable.ainvoke(state, config)
 
