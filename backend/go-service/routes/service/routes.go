@@ -299,7 +299,7 @@ func (h *Handler) requestAI(aiModel aimodels.AIModel, agent agents.Agent, req We
 		"message":       req.Text,
 		"provider":      aiModel.Provider,
 		"model":         aiModel.ModelName,
-		"thread_id":     req.StreamId,
+		"thread_id":     strconv.Itoa(int(req.SessionId)),
 		"user_id":       strconv.Itoa(int(agent.UserID)),
 		"agent_config":  agentConfig,
 		"stream_tokens": true,
