@@ -304,23 +304,6 @@ export default function Dashboard() {
                   ))}
                 </div>
 
-                {recentConversations.length > 0 && (
-                  <div className="border-t pt-2">
-                    <p className="text-muted-foreground mb-2 text-xs font-medium">最近对话</p>
-                    {recentConversations.map(conv => (
-                      <div key={conv.id} className="hover:bg-muted/50 flex items-start gap-3 rounded-lg p-2">
-                        <MessageSquare className="mt-1 h-3 w-3 text-blue-500" />
-                        <div className="flex-1 space-y-1">
-                          <p className="text-xs">
-                            {conv.userName} 与 {conv.agentName}
-                          </p>
-                          <p className="text-muted-foreground text-xs">{conv.messagesCount} 条消息</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 {recentAgents.length === 0 && (
                   <div className="flex h-full items-center justify-center pb-8">
                     <p className="text-muted-foreground text-sm">暂无最近活动</p>

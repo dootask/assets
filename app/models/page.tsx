@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { useAppContext } from '@/contexts/app-context';
-import { getProviderInfo } from '@/lib/ai';
+import { getProviderInfo, providerOptions } from '@/lib/ai';
 import { aiModelsApi, getModelDisplayName } from '@/lib/api/ai-models';
 import { AIModelConfig, PaginationBase } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
@@ -423,10 +423,17 @@ export default function ModelsPage() {
                         <Key className="text-muted-foreground h-3 w-3" />
                         <span>密钥：{model.api_key ? '已配置' : '未配置'}</span>
                       </div>
-                      {model.base_url && (
+                      {model.base_url &&
+                        providerOptions.find(p => p.value === model.provider)?.baseUrl !== model.base_url && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Settings className="text-muted-foreground h-3 w-3" />
+                            <span className="truncate">自定义API地址</span>
+                          </div>
+                        )}
+                      {model.proxy_url && (
                         <div className="flex items-center gap-2 text-sm">
                           <Settings className="text-muted-foreground h-3 w-3" />
-                          <span className="truncate">自定义API地址</span>
+                          <span className="truncate">使用代理请求</span>
                         </div>
                       )}
                     </div>

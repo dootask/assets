@@ -13,7 +13,7 @@ type AIModel struct {
 	ModelName   string    `json:"model_name" gorm:"type:varchar(255);not null" validate:"required,min=1,max=255"`
 	ApiKey      *string   `json:"api_key,omitempty" gorm:"type:text"`
 	BaseURL     string    `json:"base_url" gorm:"type:varchar(500)" validate:"omitempty,url"`
-	ProxyURL    string    `json:"proxy_url" gorm:"type:varchar(500)" validate:"omitempty,url"`
+	ProxyURL    *string   `json:"proxy_url,omitempty" gorm:"type:varchar(500)" validate:"omitempty,url"`
 	MaxTokens   int       `json:"max_tokens" gorm:"default:4000" validate:"min=1"`
 	Temperature float32   `json:"temperature" gorm:"type:decimal(3,2);default:0.7" validate:"min=0,max=2"`
 	IsEnabled   *bool     `json:"is_enabled" gorm:"default:true"`
@@ -34,7 +34,7 @@ type CreateAIModelRequest struct {
 	ModelName   string  `json:"model_name" validate:"required,min=1,max=255"`
 	ApiKey      *string `json:"api_key,omitempty"`
 	BaseURL     string  `json:"base_url" validate:"omitempty,url"`
-	ProxyURL    string  `json:"proxy_url" validate:"omitempty,url"`
+	ProxyURL    *string `json:"proxy_url,omitempty" validate:"omitempty,url"`
 	MaxTokens   int     `json:"max_tokens" validate:"min=1"`
 	Temperature float32 `json:"temperature" validate:"min=0,max=2"`
 	IsEnabled   bool    `json:"is_enabled"`
