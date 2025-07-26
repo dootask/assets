@@ -96,7 +96,8 @@ if [ -f "../../.env" ]; then
 else
   cp ../../config.example.env src/.env
 fi
-cd src; uvicorn service:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --reload &
+cd src
+uvicorn service:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --reload &
 AI_PID=$!
 popd > /dev/null
 
@@ -136,7 +137,7 @@ cat > scripts/stop.sh << 'EOF'
 echo "🛑 停止所有开发服务..."
 docker-compose -f docker/docker-compose.dev.yml --env-file .env down
 pkill -f "air --build.cmd"
-pkill -f "uvicorn app.main:app"
+pkill -f "uvicorn service:app"
 pkill -f "next dev"
 echo "✅ 所有服务已停止"
 EOF
