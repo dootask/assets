@@ -49,20 +49,20 @@ echo ""
 
 # 准备Go后端
 echo "🎯 准备Go后端..."
-pushd backend/go-service
+pushd backend/go-service > /dev/null
 go mod tidy > /dev/null 2>&1
-popd
+popd > /dev/null
 
 # 准备Python AI服务
 echo "🤖 准备Python AI服务..."
-pushd backend/python-ai
+pushd backend/python-ai > /dev/null
 if [ ! -d "venv" ]; then
     echo "📦 创建Python虚拟环境..."
     python3 -m venv venv
 fi
 source venv/bin/activate
 pip install -q -r requirements.txt
-popd
+popd > /dev/null
 
 echo ""
 echo "🚀 启动所有服务..."
@@ -74,18 +74,18 @@ docker-compose -f docker/docker-compose.dev.yml --env-file .env up -d
 
 # 启动Go后端（后台）
 echo "🎯 启动Go后端 (端口$(getEnv GO_SERVICE_PORT))..."
-pushd backend/go-service
+pushd backend/go-service > /dev/null
 air --build.cmd "go build -o tmp/server main.go" --build.exclude_dir "uploads,tmp" --build.full_bin "./tmp/server --env-file ${CURRENT_DIR}/.env" &
 BACKEND_PID=$!
-popd
+popd > /dev/null
 
 # 启动AI服务（后台）
 echo "🤖 启动AI服务 (端口$(getEnv PYTHON_AI_SERVICE_PORT))..."
-pushd backend/python-ai
+pushd backend/python-ai > /dev/null
 source venv/bin/activate
 python -m uvicorn app.main:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --env-file ${CURRENT_DIR}/.env --reload &
 AI_PID=$!
-popd
+popd > /dev/null
 
 # 检查服务状态
 echo "🔍 检查服务状态..."

@@ -1,5 +1,6 @@
 'use client';
 
+import { defaultPagination, Pagination } from '@/components/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,11 +16,23 @@ import { getProviderInfo } from '@/lib/ai';
 import { aiModelsApi, getModelDisplayName } from '@/lib/api/ai-models';
 import { AIModelConfig, PaginationBase } from '@/lib/types';
 import { getAllAgents } from '@/lib/utils';
-import { Activity, CheckCircle, Cpu, Edit, Eye, Key, MoreHorizontal, Plus, Settings, Star, Trash2 } from 'lucide-react';
+import {
+  Activity,
+  Bot,
+  CheckCircle,
+  Cpu,
+  Edit,
+  Eye,
+  Key,
+  MoreHorizontal,
+  Plus,
+  Settings,
+  Star,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { defaultPagination, Pagination } from '@/components/pagination';
 
 export default function ModelsPage() {
   const { Confirm } = useAppContext();
@@ -232,7 +245,12 @@ export default function ModelsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">AI 模型管理</h1>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Bot className="text-primary h-8 w-8" />
+              <h1 className="text-3xl font-bold tracking-tight">AI 模型管理</h1>
+            </div>
+          </div>
           <p className="text-muted-foreground">管理和配置 AI 模型</p>
         </div>
         <Button asChild>

@@ -3,7 +3,7 @@ import sys
 from contextlib import asynccontextmanager
 
 from app.config import settings
-from app.routers import health
+from app.routers import health, chat
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -50,6 +50,7 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(health.router, tags=["健康检查"])
+app.include_router(chat.router, tags=["AI聊天"])
 
 if __name__ == "__main__":
     import uvicorn

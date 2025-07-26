@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { providerOptions } from '@/lib/ai';
 import { aiModelsApi } from '@/lib/api/ai-models';
 import { CreateAIModelRequest } from '@/lib/types';
 import { Cpu, Key, Save, Settings, Star } from 'lucide-react';
@@ -22,7 +23,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { providerOptions } from '@/lib/ai';
 
 export default function CreateModelPage() {
   const router = useRouter();
@@ -210,7 +210,6 @@ export default function CreateModelPage() {
                       id="max_tokens"
                       type="number"
                       min="1"
-                      max="100000"
                       value={formData.max_tokens}
                       onChange={e =>
                         setFormData(prev => ({
