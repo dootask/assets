@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bufio"
 	"context"
 	"dootask-ai/go-service/global"
 	"dootask-ai/go-service/pkg/utils"
@@ -24,6 +23,13 @@ import (
 	"github.com/duke-git/lancet/v2/random"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+)
+
+const (
+	// 流式处理超时时间
+	StreamTimeout = 5 * time.Minute
+	// Redis读取超时时间
+	RedisReadTimeout = 5 * time.Second
 )
 
 // Handler 机器人webhook处理器
@@ -154,6 +160,7 @@ func (h *Handler) Stream(c *gin.Context) {
 
 	// 获取流ID
 	streamId := c.Param("streamId")
+
 	cache, err := global.Redis.Get(context.Background(), fmt.Sprintf("stream:%s", streamId)).Result()
 	fmt.Println("cache", cache)
 
@@ -209,24 +216,44 @@ func (h *Handler) Stream(c *gin.Context) {
 	client := utils.NewDooTaskClient(req.Token)
 	global.DooTaskClient = &client
 
+	// 创建带超时的context
+	ctx, cancel := context.WithTimeout(context.Background(), StreamTimeout)
+	defer func() {
+		cancel()
+		// 清理Redis资源
+		global.Redis.Del(context.Background(), fmt.Sprintf("stream_message:%s", req.StreamId))
+	}()
+
 	// 创建消息处理器
 	handler := NewMessageHandler(global.DB, global.DooTaskClient.Client)
 
-	// TODO: 延迟2秒
-	time.Sleep(time.Second * 2)
+	// 启动协程写入AI响应到Redis
+	go handler.writeAIResponseToRedis(ctx, resp.Body, req.StreamId)
 
-	// 流式消息
+	// 流式消息读取，阻塞式BRPop
+	isFirstLine := true
+
 	c.Stream(func(w io.Writer) bool {
-		reader := bufio.NewReader(resp.Body)
 		for {
-			line, err := reader.ReadString('\n')
-			if err != nil {
-				if err.Error() == "EOF" {
-					break
-				}
-				logError("读取数据失败", err)
-				break
+			// 检查context是否已取消
+			select {
+			case <-ctx.Done():
+				return handler.handleError(w, req, "响应超时，请重试")
+			default:
+				// 继续处理
 			}
+
+			// 阻塞式读取，超时5秒
+			result, err := global.Redis.BRPop(ctx, RedisReadTimeout, fmt.Sprintf("stream_message:%s", req.StreamId)).Result()
+			if err != nil {
+				if err.Error() == "redis: nil" {
+					// 超时无数据，继续等待
+					continue
+				}
+				return handler.handleError(w, req, "获取响应失败")
+			}
+			// BRPop返回[key, value]
+			line := result[1]
 
 			if after, ok := strings.CutPrefix(line, "data:"); ok {
 				line = strings.TrimSpace(after)
@@ -234,7 +261,7 @@ func (h *Handler) Stream(c *gin.Context) {
 
 			if line == "[DONE]" {
 				handler.handleDone(req, w)
-				break
+				return false
 			}
 
 			var v StreamLineData
@@ -245,10 +272,14 @@ func (h *Handler) Stream(c *gin.Context) {
 				continue
 			}
 
+			// 设置是否为第一行，只有token类型的消息才需要判断
+			if v.Type == "token" {
+				v.IsFirst = isFirstLine
+				isFirstLine = false
+			}
+
 			handler.handleMessage(v, req, w)
 		}
-		// 返回 false 结束流
-		return false
 	})
 }
 
@@ -294,12 +325,13 @@ func (h *Handler) requestAI(aiModel aimodels.AIModel, agent agents.Agent, req We
 		"temperature": aiModel.Temperature,
 	}
 
+	// thread_id 是字符串类型: dialog_id + "_" + session_id
 	// 发送POST请求获取流式响应
 	data := map[string]any{
 		"message":       req.Text,
 		"provider":      aiModel.Provider,
 		"model":         aiModel.ModelName,
-		"thread_id":     strconv.Itoa(int(req.SessionId)),
+		"thread_id":     fmt.Sprintf("%d_%d", req.DialogId, req.SessionId),
 		"user_id":       strconv.Itoa(int(agent.UserID)),
 		"agent_config":  agentConfig,
 		"stream_tokens": true,

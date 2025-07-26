@@ -48,6 +48,7 @@ type WebhookResponse struct {
 type StreamLineData struct {
 	Type    string
 	Content any
+	IsFirst bool
 }
 
 // StreamMessageData 消息数据结构

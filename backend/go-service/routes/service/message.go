@@ -1,11 +1,18 @@
 package service
 
 import (
+	"bufio"
+	"context"
+	"dootask-ai/go-service/global"
+	"dootask-ai/go-service/pkg/utils"
 	"dootask-ai/go-service/routes/api/conversations"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	dootask "github.com/dootask/tools/server/go"
 
@@ -29,6 +36,13 @@ func NewMessageHandler(db *gorm.DB, client *dootask.Client) *MessageHandler {
 // sendSSEResponse 发送SSE响应
 func (h *MessageHandler) sendSSEResponse(w io.Writer, req WebhookRequest, event string, content string) {
 	fmt.Fprintf(w, "id: %d\nevent: %s\ndata: {\"content\": \"%s\"}\n\n", req.SendId, event, content)
+
+	// 确保立即刷新到客户端
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	} else {
+		fmt.Printf("[WARNING] Writer不支持Flush操作\n")
+	}
 }
 
 // sendDooTaskMessage 发送DooTask消息
@@ -46,9 +60,14 @@ func (h *MessageHandler) sendDooTaskMessage(req WebhookRequest, text string) {
 // handleTokenMessage 处理token类型消息
 func (h *MessageHandler) handleTokenMessage(v StreamLineData, req WebhookRequest, w io.Writer) {
 	if content, ok := v.Content.(string); ok {
-		// 去掉换行末尾\n
-		content = strings.TrimSuffix(content, "\n")
-		h.sendSSEResponse(w, req, "append", content)
+		// 将实际的换行符重新转义为 \n 字符串，以便前端正确显示
+		content = strings.ReplaceAll(content, "\n", "\\n")
+		event := "append"
+		if v.IsFirst {
+			event = "replace"
+		}
+
+		h.sendSSEResponse(w, req, event, content)
 	} else {
 		logError("Token消息内容类型错误", nil, "type:", v.Type, "content:", fmt.Sprintf("%v", v.Content))
 	}
@@ -126,7 +145,6 @@ func (h *MessageHandler) handleErrorMessage(v StreamLineData, req WebhookRequest
 
 // handleDone 处理结束消息
 func (h *MessageHandler) handleDone(req WebhookRequest, w io.Writer) {
-	fmt.Println("---------------结束-----------------")
 	h.sendSSEResponse(w, req, "done", "")
 }
 
@@ -160,4 +178,88 @@ func logError(message string, err error, fields ...string) {
 	} else {
 		fmt.Printf("[ERROR] %s | %s\n", message, strings.Join(fields, " | "))
 	}
+}
+
+// writeAIResponseToRedis 写入AI响应到Redis
+func (h *MessageHandler) writeAIResponseToRedis(ctx context.Context, body io.ReadCloser, streamId string) {
+	defer func() {
+		// 确保写入协程结束时发送结束信号
+		global.Redis.LPush(context.Background(), fmt.Sprintf("stream_message:%s", streamId), "[DONE]")
+	}()
+
+	reader := bufio.NewReader(body)
+
+	var tokenBuffer []string
+	lastCompressTime := time.Now()
+	// 获取流间隔时间
+	streamInterval, _ := strconv.Atoi(utils.GetEnvWithDefault("AI_STREAM_INTERVAL", "100"))
+	compressInterval := time.Duration(streamInterval) * time.Millisecond
+
+	// 压缩并写入Redis的函数
+	compressAndWrite := func() {
+		if len(tokenBuffer) > 0 {
+			combinedContent := strings.Join(tokenBuffer, "")
+			compressedMessage := StreamLineData{
+				Type:    "token",
+				Content: combinedContent,
+			}
+			if jsonData, err := json.Marshal(compressedMessage); err == nil {
+				global.Redis.LPush(context.Background(), fmt.Sprintf("stream_message:%s", streamId), string(jsonData))
+			}
+			tokenBuffer = tokenBuffer[:0]
+		}
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			compressAndWrite()
+			logError("AI响应读取超时", nil, "stream_id:", streamId)
+			return
+		default:
+		}
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err.Error() == "EOF" {
+				compressAndWrite()
+				break
+			}
+			logError("读取数据失败", err)
+			break
+		}
+
+		if after, ok := strings.CutPrefix(line, "data:"); ok {
+			line = strings.TrimSpace(after)
+		}
+
+		if line == "[DONE]" {
+			compressAndWrite()
+			break
+		}
+
+		var v StreamLineData
+		if err := json.Unmarshal([]byte(line), &v); err != nil {
+			continue
+		}
+
+		if v.Type == "token" {
+			if content, ok := v.Content.(string); ok {
+				tokenBuffer = append(tokenBuffer, content)
+				if time.Since(lastCompressTime) >= compressInterval {
+					compressAndWrite()
+					lastCompressTime = time.Now()
+				}
+			}
+		} else {
+			global.Redis.LPush(context.Background(), fmt.Sprintf("stream_message:%s", streamId), line)
+		}
+	}
+}
+
+// 错误处理函数
+func (h *MessageHandler) handleError(w io.Writer, req WebhookRequest, message string) bool {
+	logError(message, nil, "stream_id:", req.StreamId)
+	h.sendSSEResponse(w, req, "error", message)
+	return false
 }
