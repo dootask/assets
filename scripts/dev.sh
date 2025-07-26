@@ -90,14 +90,8 @@ echo "🤖 启动AI服务 (端口$(getEnv PYTHON_AI_SERVICE_PORT))..."
 pushd backend/python-ai
 source .venv/bin/activate
 
-# python -m uvicorn app.main:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --env-file ${CURRENT_DIR}/.env --reload &
-if [ -f "../../.env" ]; then
-  cp ../../.env src/.env
-else
-  cp ../../config.example.env src/.env
-fi
 cd src
-uvicorn service:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --reload &
+python3 -m uvicorn service:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --env-file ${CURRENT_DIR}/.env --reload &
 AI_PID=$!
 popd > /dev/null
 
