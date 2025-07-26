@@ -199,6 +199,21 @@ export default function EditModelPage() {
                 <CardDescription>AI 模型的基本配置信息</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="provider">AI 提供商 *</Label>
+                  <CommandSelect
+                    options={providerSelectOptions}
+                    value={formData.provider || model.provider}
+                    onValueChange={handleProviderSelectChange}
+                    placeholder="选择 AI 提供商"
+                    searchPlaceholder="搜索提供商..."
+                    emptyMessage="没有找到相关提供商"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    选择 AI 提供商，支持本地模型和第三方模型
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="name">模型名称 *</Label>
@@ -222,18 +237,6 @@ export default function EditModelPage() {
                     />
                     <p className="text-muted-foreground text-xs">API调用时使用的模型标识</p>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="provider">AI 提供商 *</Label>
-                  <CommandSelect
-                    options={providerSelectOptions}
-                    value={formData.provider || model.provider}
-                    onValueChange={handleProviderSelectChange}
-                    placeholder="选择 AI 提供商"
-                    searchPlaceholder="搜索提供商..."
-                    emptyMessage="没有找到相关提供商"
-                  />
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

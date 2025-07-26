@@ -29,7 +29,6 @@ export default function ModelDetailPage() {
   const { Confirm } = useAppContext();
   const [model, setModel] = useState<AIModelConfig | null>(null);
   const [loading, setLoading] = useState(true);
-  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     const loadModel = async () => {
@@ -99,17 +98,6 @@ export default function ModelDetailPage() {
       console.error('设置默认模型失败:', error);
       toast.error('设置默认模型失败');
     }
-  };
-
-  const testConnection = async () => {
-    if (!model) return;
-
-    setTesting(true);
-    // 模拟连接测试
-    setTimeout(() => {
-      toast.success('连接测试成功！');
-      setTesting(false);
-    }, 2000);
   };
 
   if (loading) {
@@ -255,12 +243,12 @@ export default function ModelDetailPage() {
             <Separator />
             <div className="space-y-2">
               <p className="text-sm font-medium">API地址</p>
-              <p className="text-muted-foreground text-sm break-all">{model.base_url}</p>
+              <p className="text-muted-foreground text-sm truncate">{model.base_url}</p>
             </div>
             <Separator />
             <div className="space-y-2">
               <p className="text-sm font-medium">使用代理请求</p>
-              <p className="text-muted-foreground text-sm break-all">{model.proxy_url || '未配置'}</p>
+              <p className="text-muted-foreground text-sm truncate">{model.proxy_url || '未配置'}</p>
             </div>
           </CardContent>
         </Card>
@@ -298,20 +286,23 @@ export default function ModelDetailPage() {
 
             {/* 测试连接 */}
             <div>
-              <p className="mb-2 font-medium">连接测试</p>
-              <Button onClick={testConnection} disabled={testing} className="w-full">
-                {testing ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    测试中...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="mr-2 h-4 w-4" />
-                    测试连接
-                  </>
-                )}
-              </Button>
+              <p className="mb-4 font-medium">快速操作</p>
+              <div className="flex flex-col gap-3">
+              <Button variant="outline" className="w-full" asChild>
+              <Link href={`/models/${model.id}/edit`}>
+                <Edit className="mr-2 h-4 w-4" />
+                编辑配置
+              </Link>
+            </Button>
+            <Button
+              variant={model.is_enabled ? 'destructive' : 'default'}
+              className="w-full"
+              onClick={handleToggleStatus}
+            >
+              <Power className="mr-2 h-4 w-4" />
+              {model.is_enabled ? '停用模型' : '启用模型'}
+            </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -354,35 +345,6 @@ export default function ModelDetailPage() {
               <p className="text-sm font-medium">Token使用</p>
               <p className="text-2xl font-bold">{(model.tokenUsage || 0).toLocaleString()}</p>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* 快速操作 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>快速操作</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full" asChild>
-              <Link href={`/models/${model.id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                编辑配置
-              </Link>
-            </Button>
-            {!model.is_default && (
-              <Button variant="outline" className="w-full" onClick={handleToggleDefault}>
-                <Star className="mr-2 h-4 w-4" />
-                设为默认
-              </Button>
-            )}
-            <Button
-              variant={model.is_enabled ? 'destructive' : 'default'}
-              className="w-full"
-              onClick={handleToggleStatus}
-            >
-              <Power className="mr-2 h-4 w-4" />
-              {model.is_enabled ? '停用模型' : '启用模型'}
-            </Button>
           </CardContent>
         </Card>
       </div>

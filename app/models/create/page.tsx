@@ -154,6 +154,21 @@ export default function CreateModelPage() {
                 <CardDescription>AI 模型的基本配置信息</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="provider">AI 提供商 *</Label>
+                  <CommandSelect
+                    options={providerSelectOptions}
+                    value={formData.provider}
+                    onValueChange={handleProviderSelectChange}
+                    placeholder="选择 AI 提供商"
+                    searchPlaceholder="搜索提供商..."
+                    emptyMessage="没有找到相关提供商"
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    选择 AI 提供商，支持本地模型和第三方模型
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="name">模型名称 *</Label>
@@ -177,18 +192,6 @@ export default function CreateModelPage() {
                     />
                     <p className="text-muted-foreground text-xs">API调用时使用的模型标识</p>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="provider">AI 提供商 *</Label>
-                  <CommandSelect
-                    options={providerSelectOptions}
-                    value={formData.provider}
-                    onValueChange={handleProviderSelectChange}
-                    placeholder="选择 AI 提供商"
-                    searchPlaceholder="搜索提供商..."
-                    emptyMessage="没有找到相关提供商"
-                  />
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -374,10 +377,6 @@ export default function CreateModelPage() {
                 <li className="flex items-start gap-2">
                   <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
                   <span>获取 API 密钥：访问提供商官网注册并获取</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
-                  <span>测试连接：配置完成后使用测试按钮验证</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500"></span>
