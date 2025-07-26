@@ -80,8 +80,23 @@ func (h *MessageHandler) handleMessageMessage(v StreamLineData, req WebhookReque
 
 // parseErrorContent 解析错误内容
 func (h *MessageHandler) parseErrorContent(content string) (*StreamErrorData, error) {
-	// 截取Error code: 400 - 后面的内容，并且把单引号替换为双引号
-	content = strings.TrimPrefix(content, "Error code: 400 - ")
+	// 使用正则表达式匹配 "Error code: XXX - " 格式，支持任意错误码
+	// 先尝试匹配标准格式
+	if strings.Contains(content, "Error code:") {
+		// 查找 "Error code: " 后面的第一个 " - " 分隔符
+		errorCodePrefix := "Error code:"
+		startIndex := strings.Index(content, errorCodePrefix)
+		if startIndex != -1 {
+			// 找到 " - " 分隔符的位置
+			dashIndex := strings.Index(content[startIndex:], " - ")
+			if dashIndex != -1 {
+				// 截取 " - " 后面的内容
+				content = content[startIndex+dashIndex+3:]
+			}
+		}
+	}
+
+	// 替换Python风格的引号和None值
 	content = strings.ReplaceAll(content, "'", "\"")
 	content = strings.ReplaceAll(content, "None", "null")
 
