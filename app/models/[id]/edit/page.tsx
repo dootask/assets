@@ -115,18 +115,6 @@ export default function EditModelPage() {
     handleProviderChange(value as AIModelConfig['provider']);
   };
 
-  const testConnection = async () => {
-    if (formData.provider !== 'local' && !formData.api_key) {
-      toast.error('请先填写API密钥');
-      return;
-    }
-
-    toast.loading('测试连接中...');
-    setTimeout(() => {
-      toast.success('连接测试成功！');
-    }, 1500);
-  };
-
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -295,18 +283,12 @@ export default function EditModelPage() {
                       <Key className="h-4 w-4" />
                       API 密钥
                     </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="password"
-                        placeholder={model.api_key ? '***已配置***' : 'sk-... 或其他API密钥'}
-                        value={formData.api_key || ''}
-                        onChange={e => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
-                      />
-                      <Button type="button" variant="outline" onClick={testConnection}>
-                        <Cpu className="mr-2 h-4 w-4" />
-                        测试
-                      </Button>
-                    </div>
+                    <Input
+                      type="password"
+                      placeholder={model.api_key ? '***已配置***' : 'sk-... 或其他API密钥'}
+                      value={formData.api_key || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
+                    />
                     <p className="text-muted-foreground text-xs">留空则不修改当前密钥</p>
                   </div>
                 )}

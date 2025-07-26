@@ -97,19 +97,6 @@ export default function CreateModelPage() {
     handleProviderChange(value as CreateAIModelRequest['provider']);
   };
 
-  const testConnection = async () => {
-    if (formData.provider !== 'local' && !formData.api_key) {
-      toast.error('请先填写API密钥');
-      return;
-    }
-
-    // 这里可以调用后端的测试连接API
-    toast.loading('测试连接中...');
-    setTimeout(() => {
-      toast.success('连接测试成功！');
-    }, 1500);
-  };
-
   return (
     <div className="space-y-6 p-6">
       {/* Breadcrumb导航 */}
@@ -257,19 +244,13 @@ export default function CreateModelPage() {
                       <Key className="h-4 w-4" />
                       API 密钥 *
                     </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="password"
-                        placeholder="sk-... 或其他API密钥"
-                        value={formData.api_key || ''}
-                        onChange={e => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
-                        required={formData.provider !== 'local'}
-                      />
-                      <Button type="button" variant="outline" onClick={testConnection}>
-                        <Cpu className="mr-2 h-4 w-4" />
-                        测试
-                      </Button>
-                    </div>
+                    <Input
+                      type="password"
+                      placeholder="sk-... 或其他API密钥"
+                      value={formData.api_key || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
+                      required={formData.provider !== 'local'}
+                    />
                     <p className="text-muted-foreground text-xs">请确保 API 密钥具有适当的权限</p>
                   </div>
                 )}
