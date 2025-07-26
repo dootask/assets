@@ -314,6 +314,7 @@ export interface AIModelConfig {
   model_name: string;
   api_key?: string | null;
   base_url: string;
+  proxy_url?: string;
   max_tokens: number;
   temperature: number;
   is_enabled: boolean;
@@ -337,6 +338,7 @@ export interface CreateAIModelRequest {
   model_name: string;
   api_key?: string | null;
   base_url?: string;
+  proxy_url?: string;
   max_tokens: number;
   temperature: number;
   is_enabled: boolean;
@@ -349,6 +351,7 @@ export interface UpdateAIModelRequest {
   model_name?: string;
   api_key?: string | null;
   base_url?: string;
+  proxy_url?: string;
   max_tokens?: number;
   temperature?: number;
   is_enabled?: boolean;

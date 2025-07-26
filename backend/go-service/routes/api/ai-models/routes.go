@@ -233,6 +233,7 @@ func (h *Handler) CreateAIModel(c *gin.Context) {
 		ModelName:   req.ModelName,
 		ApiKey:      req.ApiKey,
 		BaseURL:     req.BaseURL,
+		ProxyURL:    req.ProxyURL,
 		MaxTokens:   req.MaxTokens,
 		Temperature: req.Temperature,
 		IsEnabled:   &req.IsEnabled,
@@ -352,6 +353,9 @@ func (h *Handler) UpdateAIModel(c *gin.Context) {
 	}
 	if req.BaseURL != nil {
 		updates["base_url"] = *req.BaseURL
+	}
+	if req.ProxyURL != nil {
+		updates["proxy_url"] = *req.ProxyURL
 	}
 	if req.MaxTokens != nil {
 		updates["max_tokens"] = *req.MaxTokens

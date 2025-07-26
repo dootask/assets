@@ -302,13 +302,8 @@ func (h *Handler) parseWebhookResponse(response map[string]any) (*WebhookRespons
 
 // 请求AI
 func (h *Handler) requestAI(aiModel aimodels.AIModel, agent agents.Agent, req WebhookRequest) (*http.Response, error) {
-	baseURL := utils.GetEnvWithDefault("AI_BASE_URL", "")
-	proxyURL := utils.GetEnvWithDefault("AI_PROXY_URL", "")
+	baseURL := utils.GetEnvWithDefault("AI_BASE_URL", fmt.Sprintf("http://localhost:%s", utils.GetEnvWithDefault("PYTHON_AI_SERVICE_PORT", "8001")))
 	requestTimeout, _ := strconv.Atoi(utils.GetEnvWithDefault("AI_REQUEST_TIMEOUT", "60"))
-
-	if baseURL == "" {
-		return nil, errors.New("AI_BASE_URL 未配置")
-	}
 
 	httpClient := utils.NewHTTPClient(
 		baseURL,
@@ -320,12 +315,11 @@ func (h *Handler) requestAI(aiModel aimodels.AIModel, agent agents.Agent, req We
 		"api_version": "",
 		"base_url":    aiModel.BaseURL,
 		"credentials": "",
-		"proxy_url":   proxyURL,
+		"proxy_url":   aiModel.ProxyURL,
 		"spicy_level": 0,
 		"temperature": aiModel.Temperature,
 	}
 
-	// thread_id 是字符串类型: dialog_id + "_" + session_id
 	// 发送POST请求获取流式响应
 	data := map[string]any{
 		"message":       req.Text,

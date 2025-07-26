@@ -33,6 +33,7 @@ export default function CreateModelPage() {
     model_name: '',
     api_key: '',
     base_url: '',
+    proxy_url: '',
     max_tokens: 4000,
     temperature: 0.7,
     is_enabled: true,
@@ -285,6 +286,16 @@ export default function CreateModelPage() {
                       ? `当前地址：${formData.base_url || selectedProvider?.baseUrl}`
                       : '请填写API基础地址'}
                   </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>使用代理请求</Label>
+                  <Input
+                    placeholder="socks5://proxy.example.com:1080"
+                    value={formData.proxy_url}
+                    onChange={e => setFormData(prev => ({ ...prev, proxy_url: e.target.value }))}
+                  />
+                  <p className="text-muted-foreground text-xs">如果需要使用代理请求，请填写代理地址，否则请留空。</p>
                 </div>
               </CardContent>
             </Card>

@@ -257,6 +257,11 @@ export default function ModelDetailPage() {
               <p className="text-sm font-medium">API地址</p>
               <p className="text-muted-foreground text-sm break-all">{model.base_url}</p>
             </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">使用代理请求</p>
+              <p className="text-muted-foreground text-sm break-all">{model.proxy_url || '未配置'}</p>
+            </div>
           </CardContent>
         </Card>
 

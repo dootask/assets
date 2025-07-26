@@ -53,6 +53,7 @@ export default function EditModelPage() {
           provider: modelData.provider,
           model_name: modelData.model_name,
           base_url: modelData.base_url,
+          proxy_url: modelData.proxy_url,
           max_tokens: modelData.max_tokens,
           temperature: modelData.temperature,
           is_enabled: modelData.is_enabled,
@@ -318,6 +319,16 @@ export default function EditModelPage() {
                     onChange={e => setFormData(prev => ({ ...prev, base_url: e.target.value }))}
                   />
                   <p className="text-muted-foreground text-xs">当前地址：{model.base_url}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>使用代理请求</Label>
+                  <Input
+                    placeholder="socks5://proxy.example.com:1080"
+                    value={formData.proxy_url || ''}
+                    onChange={e => setFormData(prev => ({ ...prev, proxy_url: e.target.value }))}
+                  />
+                  <p className="text-muted-foreground text-xs">如果需要使用代理请求，请填写代理地址，否则请留空。</p>
                 </div>
               </CardContent>
             </Card>

@@ -18,6 +18,7 @@ getEnv() {
     local key=$1
     local default=$2
     local value=$(grep "^$key=" "${CURRENT_DIR}/.env" 2>/dev/null | cut -d '=' -f 2-)
+    value=$(echo "$value" | sed 's/[[:space:]]*#.*$//' | xargs)
     if [ -z "$value" ]; then
         value=$default
     fi
