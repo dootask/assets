@@ -5,6 +5,7 @@ type WebhookRequest struct {
 	Text       string         `json:"text" form:"text"`               // 消息文本
 	ReplyText  string         `json:"reply_text" form:"reply_text"`   // 回复文本（引用的消息）
 	Token      string         `json:"token" form:"token"`             // 机器人Token
+	SessionId  int64          `json:"session_id" form:"session_id"`   // 对话会话ID
 	DialogId   int64          `json:"dialog_id" form:"dialog_id"`     // 对话ID
 	DialogType string         `json:"dialog_type" form:"dialog_type"` // 对话类型
 	MsgId      int64          `json:"msg_id" form:"msg_id"`           // 消息ID
@@ -31,7 +32,7 @@ type WebhookMsgUser struct {
 }
 
 // Response 机器人响应
-type Response struct {
+type WebhookResponse struct {
 	Bot        int            `json:"bot"`
 	CreatedAt  string         `json:"created_at"`
 	DialogID   int            `json:"dialog_id"`
@@ -43,8 +44,20 @@ type Response struct {
 	Msg        map[string]any `json:"msg"`
 }
 
-// Message 机器人消息
-type Message struct {
-	Text string `json:"text"`
-	Type string `json:"type"`
+// StreamLineData 流式消息数据结构
+type StreamLineData struct {
+	Type    string
+	Content any
+}
+
+// StreamMessageData 消息数据结构
+type StreamMessageData struct {
+	Content string
+}
+
+// StreamErrorData 错误数据结构
+type StreamErrorData struct {
+	Error struct {
+		Message string
+	}
 }
