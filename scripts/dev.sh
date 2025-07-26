@@ -50,6 +50,7 @@ echo "✅ Go: $(go version | cut -d' ' -f3)"
 echo "✅ Python: $(python3 --version)"
 echo "✅ Docker: $(docker --version)"
 echo "✅ Docker Compose: $(docker-compose --version)"
+echo "✅ uv: $(uv --version)"
 echo ""
 
 # 准备Go后端
@@ -61,14 +62,11 @@ popd > /dev/null
 # 准备Python AI服务
 echo "🤖 准备Python AI服务..."
 pushd backend/python-ai > /dev/null
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "📦 创建Python虚拟环境..."
-    # python3 -m venv venv
     uv sync
 fi
-# source venv/bin/activate
-# pip install -q -r requirements.txt
-popd
+popd > /dev/null
 
 echo ""
 echo "🚀 启动所有服务..."
@@ -76,7 +74,7 @@ echo ""
 
 # 启动数据库服务
 echo "🎯 启动数据库服务..."
-docker-compose -f docker/docker-compose.dev.yml --env-file .env up -d
+docker-compose -f ${CURRENT_DIR}/docker/docker-compose.dev.yml --env-file ${CURRENT_DIR}/.env up -d
 
 # 启动Go后端（后台）
 echo "🎯 启动Go后端 (端口$(getEnv GO_SERVICE_PORT))..."
@@ -87,11 +85,8 @@ popd > /dev/null
 
 # 启动AI服务（后台）
 echo "🤖 启动AI服务 (端口$(getEnv PYTHON_AI_SERVICE_PORT))..."
-pushd backend/python-ai
-source .venv/bin/activate
-
-cd src
-python3 -m uvicorn service:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --env-file ${CURRENT_DIR}/.env --reload &
+pushd backend/python-ai/src > /dev/null
+../.venv/bin/uvicorn service:app --host 0.0.0.0 --port $(getEnv PYTHON_AI_SERVICE_PORT) --env-file ${CURRENT_DIR}/.env --reload &
 AI_PID=$!
 popd > /dev/null
 
@@ -122,14 +117,16 @@ for i in {1..30}; do
         echo "❌ 服务启动失败"
         kill $BACKEND_PID $AI_PID 2>/dev/null
         exit 1
+    else
+        echo "🔍 服务启动中... ($i/30)"
     fi
 done
 
 # 创建停止脚本
-cat > scripts/stop.sh << 'EOF'
+cat > scripts/stop.sh << EOF
 #!/bin/bash
 echo "🛑 停止所有开发服务..."
-docker-compose -f docker/docker-compose.dev.yml --env-file .env down
+docker-compose -f ${CURRENT_DIR}/docker/docker-compose.dev.yml --env-file ${CURRENT_DIR}/.env down
 pkill -f "air --build.cmd"
 pkill -f "uvicorn service:app"
 pkill -f "next dev"
@@ -149,7 +146,10 @@ echo ""
 
 # 启动前端（阻塞进程）
 echo "🎯 启动前端开发服务器..."
-npm install > /dev/null 2>&1
+if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules" ]; then
+    echo "📦 安装/更新依赖..."
+    npm install > /dev/null 2>&1
+fi
 npm run dev
 
 # 前端停止后，清理所有进程
