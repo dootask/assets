@@ -1,4 +1,4 @@
-# DooTask AI 智能体插件 - 开发指南
+# 企业固定资产管理系统 - 开发指南
 
 ## 🚀 快速开始
 
@@ -6,29 +6,34 @@
 
 - **Node.js** 22+
 - **Go** 1.21+
-- **Python** 3.11+
-- **PostgreSQL** 15+
-- **Redis** 7+
-- **Docker** 和 **Docker Compose**
+- **SQLite** 3+
 
 ### 项目克隆和初始化
 
 ```bash
-# 进入 dootask-ai 目录
-cd dootask-ai
+# 克隆项目
+git clone https://github.com/asset-management/system.git
+cd system
 
 # 安装前端依赖
 npm install
 
-# 一键启动开发环境
-npm run dev:all
+# 启动前端开发服务器
+npm run dev
+
+# 启动后端服务器（新终端）
+cd server
+go run main.go
 ```
 
 ### 环境配置
 
 ```bash
-# 必需编辑的环境变量 (.env 文件)
-DOOTASK_API_BASE_URL=http://localhost:2222
+# 后端环境变量 (server/.env)
+PORT=8000
+DATABASE_URL=./data/assets.db
+UPLOAD_DIR=./uploads
+LOG_LEVEL=info
 ```
 
 ## 📝 开发规范
@@ -37,10 +42,10 @@ DOOTASK_API_BASE_URL=http://localhost:2222
 
 ```bash
 # 功能分支命名规范
-feature/智能体管理    # feature/agent-management
-feature/知识库系统    # feature/knowledge-base
-feature/MCP集成      # feature/mcp-integration
-hotfix/修复XXX       # hotfix/fix-xxx
+feature/资产管理    # feature/asset-management
+feature/借用系统    # feature/borrow-system
+feature/盘点功能    # feature/inventory-feature
+hotfix/修复XXX     # hotfix/fix-xxx
 ```
 
 ### 代码格式化规范
@@ -56,20 +61,11 @@ npm run format:check
 npm run format:fix
 ```
 
-#### 格式化规则
-
-- **分号**: 使用分号结尾
-- **引号**: 使用单引号
-- **行宽**: 120 字符 (适合现代宽屏开发环境)
-- **缩进**: 2 空格
-- **尾随逗号**: ES5 标准
-- **Tailwind 排序**: 自动排序 Tailwind 类名
-
 ### 提交规范
 
 ```bash
-git commit -m "feat(frontend): 添加智能体配置页面"
-git commit -m "fix(backend): 修复webhook处理错误"
+git commit -m "feat(frontend): 添加资产列表页面"
+git commit -m "fix(backend): 修复借用记录查询错误"
 git commit -m "docs: 更新API文档"
 
 # 类型说明
@@ -82,423 +78,121 @@ test:     添加测试
 chore:    其他修改
 ```
 
-### 代码规范
-
-#### Go 代码规范
-
-```go
-// 包注释
-// Package handlers 提供HTTP请求处理器
-package handlers
-
-// 结构体注释
-// WebhookHandler 处理DooTask的webhook请求
-type WebhookHandler struct {
-    aiService   *AIService   // AI服务客户端
-    sseManager  *SSEManager  // SSE连接管理器
-    chatService *ChatService // 聊天服务
-}
-
-// 方法注释
-// HandleMessage 处理接收到的消息并返回AI回复
-func (h *WebhookHandler) HandleMessage(c *gin.Context) error {
-    // 实现细节...
-}
-```
-
-#### TypeScript 代码规范
-
-```typescript
-// 接口定义
-interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  prompt: string;
-  model: string;
-  temperature: number;
-  tools: string[];
-  knowledgeBases: string[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// 组件定义 - 使用shadcn/ui组件
-interface AgentConfigProps {
-  agent: Agent;
-  onSave: (agent: Agent) => void;
-  onCancel: () => void;
-}
-
-export default function AgentConfig({ agent, onSave, onCancel }: AgentConfigProps) {
-  // 组件实现...
-}
-```
-
 ## 🔧 核心模块开发
 
 ### 1. Go 后端服务开发
 
-#### 项目结构创建
+#### 项目结构
 
-```bash
-# 在 backend/go-service 目录下创建结构
-mkdir -p {handlers,models,middleware,services,mcp,config,utils}
+```
+server/
+├── main.go              # 主入口
+├── cmd/                 # 命令行工具
+├── database/            # 数据库连接
+├── global/              # 全局变量
+├── middleware/          # 中间件
+├── migrations/          # 数据库迁移
+├── pkg/                 # 工具包
+└── routes/             # 路由处理
 ```
 
 #### 主入口文件
 
 ```go
-// backend/go-service/main.go
+// server/main.go
 package main
 
 import (
-    "log"
-    "dootask-ai/go-service/config"
-    "dootask-ai/go-service/handlers"
-    "dootask-ai/go-service/middleware"
-    "github.com/gin-gonic/gin"
+    "fmt"
+    "os"
+    "asset-management-system/server/cmd"
 )
 
 func main() {
-    // 加载配置
-    cfg := config.Load()
-
-    // 初始化路由
-    r := gin.Default()
-
-    // 中间件
-    r.Use(middleware.CORS())
-    r.Use(middleware.Logger())
-
-    // 路由组
-    api := r.Group("/api")
-    {
-        auth := api.Group("/auth")
-        {
-            auth.POST("/login", handlers.Login)
-        }
-
-        protected := api.Group("/")
-        protected.Use(middleware.AuthRequired())
-        {
-            protected.POST("/webhook/message", handlers.HandleWebhook)
-            protected.GET("/sse/chat/:messageId", handlers.HandleSSE)
-            protected.GET("/agents", handlers.GetAgents)
-            protected.POST("/agents", handlers.CreateAgent)
-        }
+    if err := cmd.Execute(); err != nil {
+        fmt.Println(err)
+        os.Exit(1)
     }
-
-    log.Printf("服务启动在端口: %s", cfg.Port)
-    r.Run(":" + cfg.Port)
 }
 ```
 
-#### Webhook 处理器
+#### 资产管理 API
 
 ```go
-// backend/go-service/handlers/webhook.go
-package handlers
+// server/routes/api/assets/routes.go
+package assets
 
 import (
     "net/http"
+    "strconv"
+    "asset-management-system/server/global"
     "github.com/gin-gonic/gin"
 )
 
-type WebhookPayload struct {
-    ChatID    string `json:"chat_id"`
-    UserID    string `json:"user_id"`
-    Message   string `json:"message"`
-    BotID     string `json:"bot_id"`
-    Timestamp int64  `json:"timestamp"`
+type Asset struct {
+    ID          uint   `json:"id" gorm:"primaryKey"`
+    AssetNo     string `json:"asset_no" gorm:"uniqueIndex;not null"`
+    Name        string `json:"name" gorm:"not null"`
+    CategoryID  uint   `json:"category_id"`
+    Status      string `json:"status" gorm:"default:available"`
+    CreatedAt   time.Time `json:"created_at"`
+    UpdatedAt   time.Time `json:"updated_at"`
 }
 
-func HandleWebhook(c *gin.Context) {
-    var payload WebhookPayload
-    if err := c.ShouldBindJSON(&payload); err != nil {
+func GetAssets(c *gin.Context) {
+    var assets []Asset
+    if err := global.DB.Find(&assets).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, assets)
+}
+
+func CreateAsset(c *gin.Context) {
+    var asset Asset
+    if err := c.ShouldBindJSON(&asset); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
 
-    // 创建占位消息
-    messageID := createPlaceholderMessage(payload.ChatID)
+    if err := global.DB.Create(&asset).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
 
-    // 异步处理AI请求
-    go processAIRequest(payload, messageID)
-
-    // 返回SSE连接地址
-    c.JSON(http.StatusOK, gin.H{
-        "sse_url":    "/api/sse/chat/" + messageID,
-        "message_id": messageID,
-    })
+    c.JSON(http.StatusCreated, asset)
 }
 ```
 
-### 2. Python AI 服务开发
+### 2. 前端组件开发
 
-#### 主入口文件
-
-```python
-# backend/python-ai/main.py
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from agents.dootask_agent import DooTaskAgent
-from services.mcp_client import MCPClient
-import uvicorn
-
-app = FastAPI(title="DooTask AI Service")
-
-class MessageRequest(BaseModel):
-    message: str
-    agent_id: str
-    context: dict = {}
-
-class MessageResponse(BaseModel):
-    response: str
-    used_tools: list = []
-
-@app.post("/process", response_model=MessageResponse)
-async def process_message(request: MessageRequest):
-    try:
-        # 获取智能体配置
-        agent = get_agent_by_id(request.agent_id)
-
-        # 处理消息
-        response = agent.process_message(request.message, request.context)
-
-        return MessageResponse(
-            response=response,
-            used_tools=agent.get_used_tools()
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
-```
-
-#### 智能体实现
-
-```python
-# backend/python-ai/agents/dootask_agent.py
-from langchain.agents import initialize_agent, AgentType
-from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
-from langchain.tools import Tool
-from dootask_tools import DooTaskClient
-import os
-
-class DooTaskAgent:
-    def __init__(self, config):
-        self.config = config
-
-        # 从数据库加载 AI 模型配置
-        ai_model = self.load_ai_model_config(config.model_id)
-
-        self.llm = ChatOpenAI(
-            model=ai_model.model_name,
-            temperature=ai_model.temperature,
-            openai_api_key=ai_model.api_key,  # 从数据库加载
-            base_url=ai_model.base_url
-        )
-
-        self.memory = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
-
-        # 初始化 DooTask 客户端
-        self.dootask_client = DooTaskClient(
-            base_url=os.getenv("DOOTASK_API_BASE_URL"),
-            token="xxxxxxx" # 来自 DooTask 的用户的 Token
-        )
-
-        # 创建工具集
-        self.tools = self._create_dootask_tools()
-
-        # 初始化智能体
-        self.agent = initialize_agent(
-            self.tools,
-            self.llm,
-            agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
-            memory=self.memory,
-            verbose=True
-        )
-
-    def _create_dootask_tools(self):
-        """创建 DooTask 工具集"""
-        return [
-            Tool(
-                name="get_chat_messages",
-                description="获取聊天记录",
-                func=lambda chat_id, limit=50: self.dootask_client.chat.get_messages(chat_id, limit=limit)
-            ),
-            Tool(
-                name="create_project",
-                description="创建新项目",
-                func=lambda name, description="", owner_id="": self.dootask_client.project.create(
-                    name=name, description=description, owner_id=owner_id
-                )
-            ),
-            Tool(
-                name="create_task",
-                description="创建新任务",
-                func=lambda title, project_id, assignee_id, description="", priority="medium":
-                    self.dootask_client.task.create(
-                        title=title,
-                        description=description,
-                        project_id=project_id,
-                        assignee_id=assignee_id,
-                        priority=priority
-                    )
-            ),
-            Tool(
-                name="search_tasks",
-                description="搜索任务",
-                func=lambda query, project_id="", status="": self.dootask_client.task.search(
-                    query=query, project_id=project_id, status=status
-                )
-            ),
-            Tool(
-                name="send_message",
-                description="发送消息",
-                func=lambda chat_id, content, type="text": self.dootask_client.chat.send_message(
-                    chat_id=chat_id, content=content, type=type
-                )
-            )
-        ]
-
-    def process_message(self, message: str, context: dict = None) -> str:
-        # 增强消息上下文
-        if context:
-            enhanced_message = f"上下文: {context}\n\n用户消息: {message}"
-        else:
-            enhanced_message = message
-
-        # 调用智能体
-        response = self.agent.run(enhanced_message)
-        return response
-
-    def get_used_tools(self) -> list:
-        return [tool.name for tool in self.tools if hasattr(tool, 'was_used') and tool.was_used()]
-```
-
-#### MCP 服务器实现
-
-```python
-# backend/python-ai/mcp/dootask_mcp_server.py
-from mcp import Server
-from mcp import types
-from dootask_tools import DooTaskClient
-import os
-import asyncio
-
-class DooTaskMCPServer:
-    def __init__(self):
-        self.client = DooTaskClient(
-            base_url=os.getenv("DOOTASK_API_URL"),
-            token="xxxxxxx" # 来自 DooTask 的用户的 Token
-        )
-
-async def serve_dootask_mcp():
-    """启动 DooTask MCP 服务器"""
-    server = Server("dootask-internal")
-    dootask_server = DooTaskMCPServer()
-
-    @server.list_tools()
-    async def handle_list_tools() -> list[types.Tool]:
-        """注册可用的工具"""
-        return [
-            types.Tool(
-                name="get_chat_messages",
-                description="获取指定聊天的消息记录",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "chat_id": {"type": "string", "description": "聊天ID"},
-                        "limit": {"type": "integer", "description": "消息数量限制", "default": 50}
-                    },
-                    "required": ["chat_id"]
-                }
-            ),
-            types.Tool(
-                name="create_task",
-                description="创建新任务",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "title": {"type": "string", "description": "任务标题"},
-                        "project_id": {"type": "string", "description": "所属项目ID"},
-                        "assignee_id": {"type": "string", "description": "执行人ID"}
-                    },
-                    "required": ["title", "project_id", "assignee_id"]
-                }
-            )
-            # 更多工具定义...
-        ]
-
-    @server.call_tool()
-    async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-        """处理工具调用"""
-        try:
-            if name == "get_chat_messages":
-                result = await dootask_server.client.chat.get_messages(**arguments)
-                return [types.TextContent(type="text", text=f"聊天记录: {result}")]
-            elif name == "create_task":
-                result = await dootask_server.client.task.create(**arguments)
-                return [types.TextContent(type="text", text=f"任务创建成功: {result}")]
-            else:
-                raise ValueError(f"Unknown tool: {name}")
-        except Exception as e:
-            return [types.TextContent(type="text", text=f"工具调用失败: {str(e)}")]
-
-    return server
-
-# 启动脚本
-if __name__ == "__main__":
-    import asyncio
-    from mcp.server.stdio import stdio_server
-
-    async def main():
-        server = await serve_dootask_mcp()
-        async with stdio_server() as (read_stream, write_stream):
-            await server.run(read_stream, write_stream)
-
-    asyncio.run(main())
-```
-
-### 3. 前端组件开发
-
-#### 智能体管理页面
+#### 资产管理页面
 
 ```typescript
-// app/agents/page.tsx
+// app/assets/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Agent, agentApi } from '@/lib/api'
+import { Asset } from '@/lib/types'
+import { assetsApi } from '@/lib/api'
 
-export default function AgentsPage() {
-  const [agents, setAgents] = useState<Agent[]>([])
+export default function AssetsPage() {
+  const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadAgents()
+    loadAssets()
   }, [])
 
-  const loadAgents = async () => {
+  const loadAssets = async () => {
     try {
       setLoading(true)
-      const data = await agentApi.list()
-      setAgents(data)
+      const data = await assetsApi.list()
+      setAssets(data)
     } catch (error) {
-      console.error('加载智能体失败:', error)
+      console.error('加载资产失败:', error)
     } finally {
       setLoading(false)
     }
@@ -511,26 +205,26 @@ export default function AgentsPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">AI 智能体管理</h1>
-        <Button onClick={() => router.push('/agents/create')}>
-          创建智能体
+        <h1 className="text-3xl font-bold">资产管理</h1>
+        <Button onClick={() => router.push('/assets/new')}>
+          新增资产
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {agents.map((agent) => (
-          <Card key={agent.id} className="cursor-pointer hover:shadow-lg">
+        {assets.map((asset) => (
+          <Card key={asset.id} className="cursor-pointer hover:shadow-lg">
             <CardHeader>
-              <CardTitle>{agent.name}</CardTitle>
-              <CardDescription>{agent.description}</CardDescription>
+              <CardTitle>{asset.name}</CardTitle>
+              <CardDescription>编号: {asset.asset_no}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <div className="text-sm text-gray-600">
-                  模型: {agent.model}
+                  状态: {asset.status}
                 </div>
                 <div className="text-sm text-gray-600">
-                  工具: {agent.tools.join(', ')}
+                  分类: {asset.category_name}
                 </div>
               </div>
             </CardContent>
@@ -542,15 +236,93 @@ export default function AgentsPage() {
 }
 ```
 
+#### 资产表单组件
+
+```typescript
+// components/assets/AssetForm.tsx
+'use client'
+
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+interface AssetFormData {
+  name: string
+  asset_no: string
+  category_id: number
+  brand?: string
+  model?: string
+  description?: string
+}
+
+interface AssetFormProps {
+  onSubmit: (data: AssetFormData) => void
+  onCancel: () => void
+  initialData?: Partial<AssetFormData>
+}
+
+export default function AssetForm({ onSubmit, onCancel, initialData }: AssetFormProps) {
+  const { register, handleSubmit, formState: { errors } } = useForm<AssetFormData>({
+    defaultValues: initialData
+  })
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <Label htmlFor="name">资产名称</Label>
+        <Input
+          id="name"
+          {...register('name', { required: '资产名称不能为空' })}
+        />
+        {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
+      </div>
+
+      <div>
+        <Label htmlFor="asset_no">资产编号</Label>
+        <Input
+          id="asset_no"
+          {...register('asset_no', { required: '资产编号不能为空' })}
+        />
+        {errors.asset_no && <p className="text-red-500 text-sm">{errors.asset_no.message}</p>}
+      </div>
+
+      <div>
+        <Label htmlFor="brand">品牌</Label>
+        <Input id="brand" {...register('brand')} />
+      </div>
+
+      <div>
+        <Label htmlFor="model">型号</Label>
+        <Input id="model" {...register('model')} />
+      </div>
+
+      <div>
+        <Label htmlFor="description">描述</Label>
+        <Textarea id="description" {...register('description')} />
+      </div>
+
+      <div className="flex space-x-2">
+        <Button type="submit">保存</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          取消
+        </Button>
+      </div>
+    </form>
+  )
+}
+```
+
 ## 🧪 测试指南
 
-### 单元测试
-
-#### Go 测试
+### Go 后端测试
 
 ```go
-// backend/go-service/handlers/webhook_test.go
-package handlers
+// server/routes/api/assets/routes_test.go
+package assets
 
 import (
     "bytes"
@@ -562,170 +334,163 @@ import (
     "github.com/stretchr/testify/assert"
 )
 
-func TestHandleWebhook(t *testing.T) {
+func TestCreateAsset(t *testing.T) {
     gin.SetMode(gin.TestMode)
     r := gin.Default()
-    r.POST("/webhook", HandleWebhook)
+    r.POST("/assets", CreateAsset)
 
-    payload := WebhookPayload{
-        ChatID:  "test-chat-123",
-        UserID:  "test-user-456",
-        Message: "Hello AI",
-        BotID:   "test-bot-789",
+    asset := Asset{
+        Name:    "测试资产",
+        AssetNo: "TEST001",
+        Status:  "available",
     }
 
-    jsonPayload, _ := json.Marshal(payload)
-    req, _ := http.NewRequest("POST", "/webhook", bytes.NewBuffer(jsonPayload))
+    jsonData, _ := json.Marshal(asset)
+    req, _ := http.NewRequest("POST", "/assets", bytes.NewBuffer(jsonData))
     req.Header.Set("Content-Type", "application/json")
 
     w := httptest.NewRecorder()
     r.ServeHTTP(w, req)
 
-    assert.Equal(t, 200, w.Code)
+    assert.Equal(t, 201, w.Code)
 
-    var response map[string]string
+    var response Asset
     json.Unmarshal(w.Body.Bytes(), &response)
-    assert.Contains(t, response, "sse_url")
-    assert.Contains(t, response, "message_id")
+    assert.Equal(t, "测试资产", response.Name)
 }
 ```
 
-#### Python 测试
+### 前端测试
 
-```python
-# backend/python-ai/tests/test_agent.py
-import pytest
-from unittest.mock import Mock, patch
-from agents.dootask_agent import DooTaskAgent
-from config.agent_config import AgentConfig
+```typescript
+// __tests__/assets/AssetForm.test.tsx
+import { render, screen, fireEvent } from '@testing-library/react'
+import AssetForm from '@/components/assets/AssetForm'
 
-def test_agent_initialization():
-    """测试智能体初始化"""
-    with patch('agents.dootask_agent.DooTaskClient') as mock_client:
-        config = AgentConfig(
-            model="gpt-3.5-turbo",
-            temperature=0.7,
-            openai_api_key="test-key"
-        )
+describe('AssetForm', () => {
+  it('应该正确提交表单数据', () => {
+    const mockSubmit = jest.fn()
+    const mockCancel = jest.fn()
 
-        agent = DooTaskAgent(config)
-        assert agent.config.model == "gpt-3.5-turbo"
-        assert len(agent.tools) == 5  # DooTask 工具数量
-        mock_client.assert_called_once()
+    render(<AssetForm onSubmit={mockSubmit} onCancel={mockCancel} />)
 
-def test_dootask_tools_creation():
-    """测试 DooTask 工具创建"""
-    with patch('agents.dootask_agent.DooTaskClient') as mock_client:
-        config = AgentConfig(model="gpt-3.5-turbo", temperature=0.7)
-        agent = DooTaskAgent(config)
+    fireEvent.change(screen.getByLabelText('资产名称'), {
+      target: { value: '测试资产' }
+    })
+    fireEvent.change(screen.getByLabelText('资产编号'), {
+      target: { value: 'TEST001' }
+    })
 
-        tools = agent._create_dootask_tools()
-        tool_names = [tool.name for tool in tools]
+    fireEvent.click(screen.getByText('保存'))
 
-        expected_tools = [
-            "get_chat_messages", "create_project", "create_task",
-            "search_tasks", "send_message"
-        ]
-        assert all(tool_name in tool_names for tool_name in expected_tools)
-
-@pytest.mark.asyncio
-async def test_mcp_server():
-    """测试 MCP 服务器"""
-    from mcp.dootask_mcp_server import serve_dootask_mcp
-
-    with patch('mcp.dootask_mcp_server.DooTaskClient') as mock_client:
-        server = await serve_dootask_mcp()
-        assert server.name == "dootask-internal"
-
-def test_process_message():
-    """测试消息处理"""
-    with patch('agents.dootask_agent.DooTaskClient'), \
-         patch('agents.dootask_agent.ChatOpenAI') as mock_llm:
-
-        # 模拟 LangChain 智能体
-        mock_agent = Mock()
-        mock_agent.run.return_value = "AI response"
-
-        config = AgentConfig(model="gpt-3.5-turbo", temperature=0.7)
-        agent = DooTaskAgent(config)
-        agent.agent = mock_agent
-
-        response = agent.process_message("Hello")
-        assert response == "AI response"
-        mock_agent.run.assert_called_once()
+    expect(mockSubmit).toHaveBeenCalledWith({
+      name: '测试资产',
+      asset_no: 'TEST001'
+    })
+  })
+})
 ```
 
 ## 📖 API 文档
 
-### Webhook API
+### 资产管理 API
 
-#### 接收消息
+#### 获取资产列表
 
 ```http
-POST /api/webhook/message
-Content-Type: application/json
-Authorization: Bearer <token>
-
-{
-  "chat_id": "chat-123",
-  "user_id": "user-456",
-  "message": "Hello AI",
-  "bot_id": "bot-789",
-  "timestamp": 1703123456
-}
+GET /api/assets
 ```
 
-#### 响应
+#### 创建资产
 
 ```http
-HTTP/1.1 200 OK
+POST /api/assets
 Content-Type: application/json
 
 {
-  "sse_url": "/api/sse/chat/msg-abc123",
-  "message_id": "msg-abc123"
+  "name": "笔记本电脑",
+  "asset_no": "NB001",
+  "category_id": 1,
+  "brand": "Dell",
+  "model": "Latitude 5520"
 }
 ```
 
-### 智能体管理 API
-
-#### 获取智能体列表
+#### 更新资产
 
 ```http
-GET /api/agents
-Authorization: Bearer <token>
-```
-
-#### 创建智能体
-
-```http
-POST /api/agents
+PUT /api/assets/:id
 Content-Type: application/json
-Authorization: Bearer <token>
 
 {
-  "name": "客服助手",
-  "description": "专业的客服AI助手",
-  "prompt": "你是一个专业的客服代表...",
-  "model": "gpt-3.5-turbo",
-  "temperature": 0.7,
-  "tools": ["search", "email"],
-  "knowledge_bases": ["kb-1", "kb-2"]
+  "name": "笔记本电脑",
+  "status": "maintenance"
 }
 ```
 
-### 常见问题解决
+### 借用管理 API
 
-1. **数据库连接失败**
-   - 检查 PostgreSQL 服务状态
-   - 确认数据库配置正确
+#### 创建借用记录
 
-2. **AI 服务调用失败**
-   - 检查 OpenAI API Key 配置
-   - 确认网络连接正常
+```http
+POST /api/borrow-records
+Content-Type: application/json
 
-3. **SSE 连接问题**
-   - 检查 CORS 配置
-   - 确认防火墙设置
+{
+  "asset_id": 1,
+  "borrower_name": "张三",
+  "borrower_contact": "13800138000",
+  "expected_return_date": "2024-02-01T00:00:00Z"
+}
+```
 
-这个开发指南为团队提供了完整的开发环境设置、代码规范、核心模块实现和测试部署等指导，确保项目能够高效、规范地进行开发。
+## 🚀 部署指南
+
+### 开发环境
+
+```bash
+# 启动前端
+npm run dev
+
+# 启动后端
+cd server
+go run main.go
+```
+
+### 生产环境
+
+```bash
+# 构建前端
+npm run build
+
+# 构建后端
+cd server
+go build -o asset-management
+
+# 启动服务
+./asset-management
+```
+
+### Docker 部署
+
+```dockerfile
+FROM node:18-alpine AS frontend
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM golang:1.21-alpine AS backend
+WORKDIR /app
+COPY server/ .
+RUN go build -o asset-management
+
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=backend /app/asset-management .
+COPY --from=frontend /app/.next ./.next
+CMD ["./asset-management"]
+```
+
+这个开发指南为团队提供了完整的开发环境设置、代码规范、核心模块实现和测试部署等指导，确保资产管理系统能够高效、规范地进行开发。

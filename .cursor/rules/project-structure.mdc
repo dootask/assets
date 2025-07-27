@@ -1,18 +1,17 @@
 ---
 alwaysApply: true
-description: "DooTask AI项目结构和架构指南"
+description: "企业固定资产管理系统项目结构和架构指南"
 ---
 
-# DooTask AI 项目结构指南
+# 企业固定资产管理系统项目结构指南
 
-这是一个集成AI能力的任务管理系统，包含多个组件：
+这是一个轻量级的企业固定资产管理系统，包含以下组件：
 
 ## 核心架构
 - **前端**: Next.js应用位于[app/](mdc:app/)目录，使用App Router
-- **后端服务**: 
-  - Go微服务: [backend/go-service/](mdc:backend/go-service/)
-  - Python AI服务: [backend/python-ai/](mdc:backend/python-ai/)
-- **MCP工具**: 模型上下文协议工具在[mcp-tools/](mdc:mcp-tools/)
+- **后端服务**: Go HTTP服务位于[server/](mdc:server/)目录
+- **数据库**: SQLite轻量级数据库
+- **文件存储**: 本地文件系统存储
 
 ## 重要配置文件
 - 项目配置: [package.json](mdc:package.json)
@@ -21,10 +20,11 @@ description: "DooTask AI项目结构和架构指南"
 - 环境配置示例: [config.example.env](mdc:config.example.env)
 
 ## 文档
-- 架构文档: [ARCHITECTURE.md](mdc:ARCHITECTURE.md)
-- 开发指南: [DEVELOPMENT.md](mdc:DEVELOPMENT.md)
-- 项目计划: [PROJECT_PLAN.md](mdc:PROJECT_PLAN.md)
+- 架构文档: [docs/ARCHITECTURE.md](mdc:docs/ARCHITECTURE.md)
+- 开发指南: [docs/DEVELOPMENT.md](mdc:docs/DEVELOPMENT.md)
+- API标准: [docs/API_STANDARDS.md](mdc:docs/API_STANDARDS.md)
 
 ## 开发流程
-- 使用Docker进行开发: [docker/docker-compose.dev.yml](mdc:docker/docker-compose.dev.yml)
-- 快速启动脚本: [scripts/quick-start.sh](mdc:scripts/quick-start.sh)
+- 前端开发: `npm run dev`
+- 后端开发: `cd server && go run main.go`
+- 开发脚本: [scripts/dev.sh](mdc:scripts/dev.sh)

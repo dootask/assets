@@ -496,3 +496,314 @@ export interface KnowledgeBaseDocument {
   updated_at: string; // 后端字段名
   chunks_count?: number; // 后端字段名
 }
+
+// 资产管理相关类型
+
+// 资产状态枚举
+export type AssetStatus = 'available' | 'borrowed' | 'maintenance' | 'scrapped';
+
+// 资产类型
+export interface Asset {
+  id: number;
+  asset_no: string;
+  name: string;
+  category_id: number;
+  department_id?: number;
+  brand: string;
+  model: string;
+  serial_number: string;
+  purchase_date?: string;
+  purchase_price?: number;
+  supplier: string;
+  warranty_period?: number;
+  status: AssetStatus;
+  location: string;
+  responsible_person: string;
+  description: string;
+  image_url: string;
+  custom_attributes?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  
+  // 关联数据
+  category?: Category;
+  department?: Department;
+  borrow_records?: BorrowRecord[];
+}
+
+// 资产响应类型（包含计算字段）
+export interface AssetResponse extends Asset {
+  warranty_end_date?: string;
+  is_under_warranty: boolean;
+}
+
+// 分类类型
+export interface Category {
+  id: number;
+  name: string;
+  code: string;
+  parent_id?: number;
+  description: string;
+  attributes?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  
+  // 关联数据
+  parent?: Category;
+  children?: Category[];
+  assets?: Asset[];
+}
+
+// 部门类型
+export interface Department {
+  id: number;
+  name: string;
+  code: string;
+  manager: string;
+  contact: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  
+  // 关联数据
+  assets?: Asset[];
+  borrow_records?: BorrowRecord[];
+}
+
+// 借用记录类型
+export type BorrowStatus = 'borrowed' | 'returned' | 'overdue';
+
+export interface BorrowRecord {
+  id: number;
+  asset_id: number;
+  borrower_name: string;
+  borrower_contact: string;
+  department_id?: number;
+  borrow_date: string;
+  expected_return_date?: string;
+  actual_return_date?: string;
+  status: BorrowStatus;
+  purpose: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  
+  // 关联数据
+  asset?: Asset;
+  department?: Department;
+}
+
+// 资产筛选条件
+export interface AssetFilters {
+  name?: string;
+  asset_no?: string;
+  category_id?: number;
+  department_id?: number;
+  status?: AssetStatus;
+  brand?: string;
+  model?: string;
+  location?: string;
+  responsible_person?: string;
+  purchase_date_from?: string;
+  purchase_date_to?: string;
+  price_low?: number;
+  price_high?: number;
+}
+
+// 创建资产请求
+export interface CreateAssetRequest {
+  asset_no: string;
+  name: string;
+  category_id: number;
+  department_id?: number;
+  brand?: string;
+  model?: string;
+  serial_number?: string;
+  purchase_date?: string;
+  purchase_price?: number;
+  supplier?: string;
+  warranty_period?: number;
+  status?: AssetStatus;
+  location?: string;
+  responsible_person?: string;
+  description?: string;
+  image_url?: string;
+  custom_attributes?: Record<string, unknown>;
+}
+
+// 更新资产请求
+export interface UpdateAssetRequest {
+  asset_no?: string;
+  name?: string;
+  category_id?: number;
+  department_id?: number;
+  brand?: string;
+  model?: string;
+  serial_number?: string;
+  purchase_date?: string;
+  purchase_price?: number;
+  supplier?: string;
+  warranty_period?: number;
+  status?: AssetStatus;
+  location?: string;
+  responsible_person?: string;
+  description?: string;
+  image_url?: string;
+  custom_attributes?: Record<string, unknown>;
+}
+
+// 批量导入资产请求
+export interface ImportAssetRequest {
+  assets: CreateAssetRequest[];
+}
+
+// 批量导入资产响应
+export interface ImportAssetResponse {
+  success_count: number;
+  failed_count: number;
+  errors: ImportAssetError[];
+  assets: Asset[];
+}
+
+// 导入错误详情
+export interface ImportAssetError {
+  index: number;
+  asset_no: string;
+  error: string;
+}
+
+// 检查资产编号响应
+export interface CheckAssetNoResponse {
+  exists: boolean;
+}
+
+// 部门管理相关类型
+
+// 部门响应类型（包含统计信息）
+export interface DepartmentResponse extends Department {
+  asset_count: number;
+}
+
+// 部门筛选条件
+export interface DepartmentFilters {
+  name?: string;
+  code?: string;
+  manager?: string;
+}
+
+// 创建部门请求
+export interface CreateDepartmentRequest {
+  name: string;
+  code: string;
+  manager?: string;
+  contact?: string;
+  description?: string;
+}
+
+// 更新部门请求
+export interface UpdateDepartmentRequest {
+  name?: string;
+  code?: string;
+  manager?: string;
+  contact?: string;
+  description?: string;
+}
+
+// 部门统计响应
+export interface DepartmentStatsResponse {
+  total_assets: number;
+  assets_by_status: Record<string, number>;
+  assets_by_category: Record<string, number>;
+  recent_assets: Asset[];
+}
+
+// 借用管理相关类型
+
+// 借用记录响应类型（包含计算字段）
+export interface BorrowResponse extends BorrowRecord {
+  is_overdue: boolean;
+  overdue_days: number;
+  can_return: boolean;
+}
+
+// 借用记录筛选条件
+export interface BorrowFilters {
+  asset_id?: number;
+  borrower_name?: string;
+  department_id?: number;
+  status?: BorrowStatus;
+  borrow_date_from?: string;
+  borrow_date_to?: string;
+  expected_date_from?: string;
+  expected_date_to?: string;
+  overdue_only?: boolean;
+}
+
+// 创建借用记录请求
+export interface CreateBorrowRequest {
+  asset_id: number;
+  borrower_name: string;
+  borrower_contact?: string;
+  department_id?: number;
+  borrow_date: string;
+  expected_return_date?: string;
+  purpose?: string;
+  notes?: string;
+}
+
+// 更新借用记录请求
+export interface UpdateBorrowRequest {
+  borrower_name?: string;
+  borrower_contact?: string;
+  department_id?: number;
+  borrow_date?: string;
+  expected_return_date?: string;
+  purpose?: string;
+  notes?: string;
+}
+
+// 归还资产请求
+export interface ReturnAssetRequest {
+  actual_return_date?: string;
+  notes?: string;
+}
+
+// 借用统计响应
+export interface BorrowStatsResponse {
+  total_borrows: number;
+  active_borrows: number;
+  overdue_borrows: number;
+  returned_borrows: number;
+  borrows_by_status: Record<string, number>;
+  borrows_by_month: MonthlyBorrowStats[];
+  top_borrowers: BorrowerStats[];
+  top_assets: AssetBorrowStats[];
+}
+
+// 月度借用统计
+export interface MonthlyBorrowStats {
+  month: string;
+  count: number;
+  returns: number;
+}
+
+// 借用人统计
+export interface BorrowerStats {
+  borrower_name: string;
+  count: number;
+  active_count: number;
+}
+
+// 资产借用统计
+export interface AssetBorrowStats {
+  asset_id: number;
+  asset_name: string;
+  asset_no: string;
+  count: number;
+}
+
+// 可借用资产响应
+export interface AvailableAssetResponse extends Asset {
+  last_borrow_date?: string;
+  borrow_count: number;
+}

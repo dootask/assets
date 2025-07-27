@@ -1,399 +1,110 @@
-# DooTask AI 智能体插件 - 技术架构
+# 企业固定资产管理系统 - 技术架构
 
 ## 🏗️ 整体架构
 
 ```mermaid
 graph TB
-    subgraph "DooTask 主程序"
-        DT[DooTask 聊天系统]
-        BOT[机器人系统]
-        API_DT[(DooTask Tools)]
-        DB_DT[(DooTask 数据库)]
+    subgraph "前端层"
+        UI[Next.js 应用]
+        COMP[shadcn/ui 组件]
+        PAGES[页面路由]
     end
 
-    subgraph "AI 插件系统"
-        subgraph "前端层"
-            UI[Next.js 前端]
-            COMP[shadcn/ui 组件]
-            HTTP[Axios HTTP客户端]
-        end
-
-        subgraph "API 网关层"
-            GO[Go 主服务]
-            AUTH[认证中间件]
-            WEBHOOK[Webhook 处理器]
-        end
-
-        subgraph "AI 引擎层"
-            PY[Python AI 服务]
-            LC[LangChain]
-            AGENT[智能体引擎]
-        end
-
-        subgraph "MCP 协议层"
-            MCP_INT[内部 MCP]
-            MCP_EXT[外部 MCP]
-            TOOLS[工具注册中心]
-        end
-
-        subgraph "数据层"
-            PG[(PostgreSQL)]
-            REDIS[(Redis)]
-            VECTOR[(Vector DB)]
-        end
+    subgraph "API层"
+        GO[Go HTTP 服务]
+        ROUTER[路由处理]
+        MIDDLEWARE[中间件]
     end
 
-    DT -->|Webhook| WEBHOOK
-    BOT --> DT
-    UI --> HTTP
-    HTTP --> GO
-    GO --> PY
-    GO --> PG
-    PY --> LC
-    LC --> AGENT
-    AGENT --> MCP_INT
-    AGENT --> MCP_EXT
-    MCP_INT --> API_DT
-    API_DT --> DB_DT
-    GO --> REDIS
-    PY --> VECTOR
+    subgraph "业务层"
+        ASSET[资产服务]
+        CATEGORY[分类服务]
+        DEPT[部门服务]
+        BORROW[借用服务]
+        INVENTORY[盘点服务]
+        REPORT[报表服务]
+    end
+
+    subgraph "数据层"
+        SQLITE[(SQLite 数据库)]
+        FILES[文件存储]
+    end
+
+    UI --> GO
+    GO --> ASSET
+    GO --> CATEGORY
+    GO --> DEPT
+    GO --> BORROW
+    GO --> INVENTORY
+    GO --> REPORT
+    ASSET --> SQLITE
+    CATEGORY --> SQLITE
+    DEPT --> SQLITE
+    BORROW --> SQLITE
+    INVENTORY --> SQLITE
+    REPORT --> SQLITE
+    GO --> FILES
 ```
 
 ## 🔧 核心服务架构
 
-### 1. Go 主服务 (API Gateway)
+### 1. Go HTTP 服务
 
 ```go
 // 主要职责
 - HTTP API 路由
-- WebSocket/SSE 连接管理
-- 认证和授权
-- DooTask Webhook 处理
-- MCP 协议实现
+- 业务逻辑处理
 - 数据库操作
+- 文件上传管理
+- 报表生成
 ```
 
 #### 目录结构
 
 ```
-go-service/
+server/
 ├── main.go              # 主入口
-├── config/              # 配置管理
-├── handlers/            # HTTP 处理器
-│   ├── auth.go         # 认证处理
-│   ├── webhook.go      # Webhook 处理
-│   ├── agent.go        # 智能体管理
-│   ├── knowledge.go    # 知识库管理
-│   ├── chat.go         # 聊天处理
-│   └── sse.go          # SSE 通信
-├── models/              # 数据模型
+├── cmd/                 # 命令行工具
+├── database/            # 数据库连接
+├── global/              # 全局变量
 ├── middleware/          # 中间件
-├── mcp/                 # MCP 协议实现
-├── services/            # 业务服务
-└── utils/               # 工具函数
+├── migrations/          # 数据库迁移
+├── pkg/                 # 工具包
+│   ├── jwt/            # JWT 认证
+│   └── utils/          # 工具函数
+└── routes/             # 路由处理
+    ├── api/            # API 路由
+    │   ├── dashboard/  # 仪表板
+    │   └── test/       # 测试
+    └── health/         # 健康检查
 ```
 
 #### 核心处理流程
 
 ```go
-// Webhook 处理流程
-type WebhookHandler struct {
-    aiService *AIService
-    sseManager *SSEManager
-    chatService *ChatService
+// 资产管理处理流程
+type AssetHandler struct {
+    db *gorm.DB
 }
 
-func (h *WebhookHandler) HandleMessage(c *gin.Context) {
-    // 1. 接收 DooTask webhook
-    var payload WebhookPayload
-    c.ShouldBindJSON(&payload)
+func (h *AssetHandler) CreateAsset(c *gin.Context) {
+    var asset Asset
+    if err := c.ShouldBindJSON(&asset); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
 
-    // 2. 创建占位消息
-    msgID := h.chatService.CreatePlaceholderMessage(
-        payload.ChatID,
-        "🤖 AI 正在思考..."
-    )
+    // 生成资产编号
+    asset.AssetNo = generateAssetNumber()
 
-    // 3. 异步调用 AI 服务
-    go func() {
-        response := h.aiService.ProcessMessage(payload)
-        h.sseManager.StreamResponse(msgID, response)
-    }()
+    // 保存到数据库
+    if err := h.db.Create(&asset).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
 
-    // 4. 返回 SSE 连接地址
-    c.JSON(200, gin.H{
-        "sse_url": fmt.Sprintf("/sse/chat/%s", msgID),
-        "message_id": msgID,
-    })
+    c.JSON(http.StatusOK, asset)
 }
-```
-
-### 2. Python AI 服务
-
-```python
-# 主要职责
-- AI 模型调用
-- LangChain 集成
-- 智能体逻辑处理
-- MCP 工具调用
-- 知识库向量检索
-```
-
-#### 目录结构
-
-```
-python-ai/
-├── main.py              # FastAPI 主入口
-├── config/              # 配置管理
-├── agents/              # 智能体实现
-│   ├── base_agent.py   # 基础智能体
-│   ├── chat_agent.py   # 聊天智能体
-│   └── task_agent.py   # 任务智能体
-├── tools/               # MCP 工具实现
-│   ├── dootask_tools.py # DooTask 工具
-│   ├── search_tools.py  # 搜索工具
-│   └── weather_tools.py # 天气工具
-├── knowledge/           # 知识库处理
-├── models/              # 数据模型
-├── services/            # 业务服务
-└── utils/               # 工具函数
-```
-
-#### 智能体实现
-
-```python
-from langchain.agents import initialize_agent
-from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
-
-class DooTaskAgent:
-    def __init__(self, agent_config):
-        self.llm = ChatOpenAI(
-            model=agent_config.model,
-            temperature=agent_config.temperature
-        )
-        self.memory = ConversationBufferMemory()
-        self.tools = self.load_tools(agent_config.tools)
-        self.agent = initialize_agent(
-            self.tools,
-            self.llm,
-            agent="chat-conversational-react-description",
-            memory=self.memory
-        )
-
-    def process_message(self, message, context):
-        # 添加上下文信息
-        enhanced_message = self.enhance_with_context(message, context)
-
-        # 调用智能体处理
-        response = self.agent.run(enhanced_message)
-
-        return response
-```
-
-### 3. MCP 协议实现
-
-#### MCP 协议定义
-
-```go
-type MCPRequest struct {
-    Jsonrpc string                 `json:"jsonrpc"`
-    Method  string                 `json:"method"`
-    Params  map[string]interface{} `json:"params"`
-    ID      string                 `json:"id"`
-}
-
-type MCPResponse struct {
-    Jsonrpc string      `json:"jsonrpc"`
-    Result  interface{} `json:"result,omitempty"`
-    Error   *MCPError   `json:"error,omitempty"`
-    ID      string      `json:"id"`
-}
-```
-
-#### 内部 MCP 工具
-
-使用官方 [dootask-tools](https://github.com/dootask/tools/blob/main/server/python/README.md) Python 包：
-
-```python
-# 安装依赖
-# pip install dootask-tools
-
-from mcp import Server
-from mcp import types
-from dootask_tools import DooTaskClient
-import os
-import asyncio
-
-class DooTaskMCPServer:
-    def __init__(self):
-        self.client = DooTaskClient(
-            base_url=os.getenv("DOOTASK_API_BASE_URL"),
-            token="xxxxxxx"    # 来自 DooTask 的用户的 Token
-        )
-
-    async def get_chat_messages(self, chat_id: str, limit: int = 50):
-        """获取聊天记录"""
-        return await self.client.chat.get_messages(chat_id, limit=limit)
-
-    async def create_project(self, name: str, description: str = "", owner_id: str = ""):
-        """创建项目"""
-        return await self.client.project.create(
-            name=name,
-            description=description,
-            owner_id=owner_id
-        )
-
-    async def create_task(self, title: str, project_id: str, assignee_id: str,
-                         description: str = "", priority: str = "medium"):
-        """创建任务"""
-        return await self.client.task.create(
-            title=title,
-            description=description,
-            project_id=project_id,
-            assignee_id=assignee_id,
-            priority=priority
-        )
-
-    async def get_user_info(self, user_id: str):
-        """获取用户信息"""
-        return await self.client.user.get(user_id)
-
-    async def search_tasks(self, query: str, project_id: str = "", status: str = ""):
-        """搜索任务"""
-        return await self.client.task.search(
-            query=query,
-            project_id=project_id,
-            status=status
-        )
-
-    async def send_message(self, chat_id: str, content: str, type: str = "text"):
-        """发送消息"""
-        return await self.client.chat.send_message(
-            chat_id=chat_id,
-            content=content,
-            type=type
-        )
-
-# MCP 服务器实现
-async def serve_dootask_mcp():
-    server = Server("dootask-internal")
-    dootask_server = DooTaskMCPServer()
-
-    @server.list_tools()
-    async def handle_list_tools() -> list[types.Tool]:
-        return [
-            types.Tool(
-                name="get_chat_messages",
-                description="获取指定聊天的消息记录",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "chat_id": {"type": "string", "description": "聊天ID"},
-                        "limit": {"type": "integer", "description": "消息数量限制", "default": 50}
-                    },
-                    "required": ["chat_id"]
-                }
-            ),
-            types.Tool(
-                name="create_project",
-                description="创建新项目",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "项目名称"},
-                        "description": {"type": "string", "description": "项目描述"},
-                        "owner_id": {"type": "string", "description": "项目负责人ID"}
-                    },
-                    "required": ["name"]
-                }
-            ),
-            types.Tool(
-                name="create_task",
-                description="创建新任务",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "title": {"type": "string", "description": "任务标题"},
-                        "description": {"type": "string", "description": "任务描述"},
-                        "project_id": {"type": "string", "description": "所属项目ID"},
-                        "assignee_id": {"type": "string", "description": "执行人ID"},
-                        "priority": {"type": "string", "enum": ["low", "medium", "high"], "default": "medium"}
-                    },
-                    "required": ["title", "project_id", "assignee_id"]
-                }
-            ),
-            types.Tool(
-                name="search_tasks",
-                description="搜索任务",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string", "description": "搜索关键词"},
-                        "project_id": {"type": "string", "description": "项目ID过滤"},
-                        "status": {"type": "string", "description": "任务状态过滤"}
-                    },
-                    "required": ["query"]
-                }
-            ),
-            types.Tool(
-                name="send_message",
-                description="发送消息到指定聊天",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "chat_id": {"type": "string", "description": "聊天ID"},
-                        "content": {"type": "string", "description": "消息内容"},
-                        "type": {"type": "string", "enum": ["text", "markdown"], "default": "text"}
-                    },
-                    "required": ["chat_id", "content"]
-                }
-            )
-        ]
-
-    @server.call_tool()
-    async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-        try:
-            if name == "get_chat_messages":
-                result = await dootask_server.get_chat_messages(**arguments)
-                return [types.TextContent(type="text", text=f"聊天记录: {result}")]
-            elif name == "create_project":
-                result = await dootask_server.create_project(**arguments)
-                return [types.TextContent(type="text", text=f"项目创建成功: {result}")]
-            elif name == "create_task":
-                result = await dootask_server.create_task(**arguments)
-                return [types.TextContent(type="text", text=f"任务创建成功: {result}")]
-            elif name == "search_tasks":
-                result = await dootask_server.search_tasks(**arguments)
-                return [types.TextContent(type="text", text=f"任务搜索结果: {result}")]
-            elif name == "send_message":
-                result = await dootask_server.send_message(**arguments)
-                return [types.TextContent(type="text", text=f"消息发送成功: {result}")]
-            else:
-                raise ValueError(f"Unknown tool: {name}")
-        except Exception as e:
-            return [types.TextContent(type="text", text=f"工具调用失败: {str(e)}")]
-
-    return server
-
-# 启动 MCP 服务器
-if __name__ == "__main__":
-    import asyncio
-    from mcp.server.stdio import stdio_server
-
-    async def main():
-        server = await serve_dootask_mcp()
-        async with stdio_server() as (read_stream, write_stream):
-            await server.run(
-                read_stream,
-                write_stream,
-                InitializationOptions(
-                    server_name="dootask-internal",
-                    server_version="1.0.0"
-                )
-            )
-
-    asyncio.run(main())
 ```
 
 ## 📊 数据架构
@@ -401,218 +112,238 @@ if __name__ == "__main__":
 ### 数据库设计
 
 ```sql
--- 智能体配置表
-CREATE TABLE agents (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+-- 资产分类表
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    parent_id INTEGER,
     description TEXT,
-    prompt TEXT NOT NULL,
-    model VARCHAR(100) DEFAULT 'gpt-3.5-turbo',
-    temperature DECIMAL(3,2) DEFAULT 0.7,
-    tools JSONB DEFAULT '[]',
-    knowledge_bases JSONB DEFAULT '[]',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    attributes JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES categories(id)
 );
 
--- 对话记录表
-CREATE TABLE conversations (
-    id BIGSERIAL PRIMARY KEY,
-    agent_id BIGINT REFERENCES agents(id),
-    dootask_chat_id VARCHAR(255),
-    dootask_user_id VARCHAR(255),
-    context JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- 消息记录表
-CREATE TABLE messages (
-    id BIGSERIAL PRIMARY KEY,
-    conversation_id BIGINT REFERENCES conversations(id),
-    role VARCHAR(20) NOT NULL, -- 'user', 'assistant', 'system'
-    content TEXT NOT NULL,
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- 知识库表
-CREATE TABLE knowledge_bases (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+-- 部门表
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    manager VARCHAR(100),
+    contact VARCHAR(100),
     description TEXT,
-    embedding_model VARCHAR(100) DEFAULT 'text-embedding-ada-002',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- 知识库文档表
-CREATE TABLE kb_documents (
-    id BIGSERIAL PRIMARY KEY,
-    knowledge_base_id BIGINT REFERENCES knowledge_bases(id),
-    title VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    file_path VARCHAR(500),
-    embedding VECTOR(1536), -- 使用 pgvector 扩展
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT NOW()
+-- 资产表
+CREATE TABLE assets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_no VARCHAR(100) UNIQUE NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    category_id INTEGER NOT NULL,
+    department_id INTEGER,
+    brand VARCHAR(100),
+    model VARCHAR(100),
+    serial_number VARCHAR(100),
+    purchase_date DATE,
+    purchase_price DECIMAL(12,2),
+    supplier VARCHAR(200),
+    warranty_period INTEGER,
+    status VARCHAR(20) DEFAULT 'available',
+    location VARCHAR(200),
+    responsible_person VARCHAR(100),
+    description TEXT,
+    image_url VARCHAR(500),
+    custom_attributes JSON,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id),
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+-- 借用记录表
+CREATE TABLE borrow_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id INTEGER NOT NULL,
+    borrower_name VARCHAR(100) NOT NULL,
+    borrower_contact VARCHAR(100),
+    department_id INTEGER,
+    borrow_date DATETIME NOT NULL,
+    expected_return_date DATETIME,
+    actual_return_date DATETIME,
+    status VARCHAR(20) DEFAULT 'borrowed',
+    purpose TEXT,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (asset_id) REFERENCES assets(id),
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+-- 盘点任务表
+CREATE TABLE inventory_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_name VARCHAR(200) NOT NULL,
+    task_type VARCHAR(50) DEFAULT 'full',
+    scope_filter JSON,
+    status VARCHAR(20) DEFAULT 'pending',
+    start_date DATETIME,
+    end_date DATETIME,
+    created_by VARCHAR(100),
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 盘点记录表
+CREATE TABLE inventory_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL,
+    asset_id INTEGER NOT NULL,
+    expected_status VARCHAR(20),
+    actual_status VARCHAR(20),
+    result VARCHAR(20),
+    notes TEXT,
+    checked_at DATETIME,
+    checked_by VARCHAR(100),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (task_id) REFERENCES inventory_tasks(id),
+    FOREIGN KEY (asset_id) REFERENCES assets(id)
 );
 ```
 
-### Redis 缓存设计
+## 🔄 业务流程
 
-```go
-// 缓存键设计
-const (
-    // 对话上下文缓存 (TTL: 1小时)
-    ConversationContextKey = "conversation:%s:context"
-
-    // 智能体配置缓存 (TTL: 30分钟)
-    AgentConfigKey = "agent:%d:config"
-
-    // SSE 连接管理
-    SSEConnectionKey = "sse:connection:%s"
-
-    // MCP 工具缓存 (TTL: 10分钟)
-    MCPToolsKey = "mcp:tools:%s"
-)
-```
-
-## 🔄 消息流处理
-
-### 完整的消息处理流程
+### 资产管理流程
 
 ```mermaid
 sequenceDiagram
     participant U as 用户
-    participant DT as DooTask
-    participant WH as Webhook Handler
-    participant AI as AI 服务
-    participant MCP as MCP 工具
-    participant KB as 知识库
-    participant SSE as SSE 服务
+    participant UI as 前端界面
+    participant API as Go API
+    participant DB as SQLite
 
-    U->>DT: 发送消息给机器人
-    DT->>WH: POST /webhook/message
-    WH->>DT: 创建占位消息
-    WH->>SSE: 创建 SSE 连接
-    WH-->>DT: 返回 SSE URL
+    U->>UI: 填写资产信息
+    UI->>API: POST /api/assets
+    API->>API: 验证数据
+    API->>API: 生成资产编号
+    API->>DB: 保存资产信息
+    DB-->>API: 返回保存结果
+    API-->>UI: 返回资产数据
+    UI-->>U: 显示成功消息
+```
 
-    par 异步处理
-        WH->>AI: 处理消息请求
-        AI->>KB: 检索相关知识
-        KB-->>AI: 返回匹配内容
-        AI->>MCP: 调用必要工具
-        MCP-->>AI: 返回工具结果
-        AI->>AI: 生成 AI 回复
-        AI->>SSE: 流式发送回复
-    end
+### 借用管理流程
 
-    SSE->>DT: 更新消息内容
-    DT->>U: 显示完整回复
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant UI as 前端界面
+    participant API as Go API
+    participant DB as SQLite
+
+    U->>UI: 申请借用资产
+    UI->>API: POST /api/borrow-records
+    API->>DB: 检查资产状态
+    DB-->>API: 返回资产信息
+    API->>API: 验证可借用性
+    API->>DB: 创建借用记录
+    API->>DB: 更新资产状态
+    DB-->>API: 返回操作结果
+    API-->>UI: 返回借用信息
+    UI-->>U: 显示借用成功
 ```
 
 ## 🔒 安全架构
 
-### 认证和授权
+### 简化认证
 
 ```go
-type AuthMiddleware struct {
-    jwtSecret string
-    redisClient *redis.Client
-}
-
-func (a *AuthMiddleware) ValidateToken(c *gin.Context) {
-    token := c.GetHeader("Authorization")
-
-    // 验证 JWT Token
-    claims, err := jwt.Parse(token, a.jwtSecret)
-    if err != nil {
-        c.JSON(http.StatusUnauthorized, APIError{
-            Code:    "AUTH_001",
-            Message: "Invalid token",
-            Data:    nil,
-        })
-        return
+// 简化的认证中间件（适合内部系统）
+func AuthMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // 资产管理系统暂时不需要复杂认证
+        c.Set("is_authenticated", true)
+        c.Next()
     }
-
-    // 检查用户权限
-    hasPermission := a.checkPermission(claims.UserID, c.Request.URL.Path)
-    if !hasPermission {
-        c.JSON(http.StatusForbidden, APIError{
-            Code:    "AUTH_003",
-            Message: "Insufficient permissions",
-            Data:    nil,
-        })
-        return
-    }
-
-    c.Set("user_id", claims.UserID)
-    c.Next()
 }
 ```
 
-### 数据加密
+### 数据验证
 
-- **传输加密**：HTTPS/TLS 1.3
-- **存储加密**：数据库字段级加密
-- **会话加密**：Redis 数据加密存储
+```go
+type AssetRequest struct {
+    Name        string  `json:"name" binding:"required"`
+    CategoryID  int     `json:"category_id" binding:"required"`
+    AssetNo     string  `json:"asset_no" binding:"required"`
+    Price       float64 `json:"price" binding:"min=0"`
+}
+
+func ValidateAssetData(c *gin.Context) {
+    var req AssetRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    // 继续处理...
+}
+```
 
 ## 📈 性能优化
 
-### 缓存策略
-
-1. **多级缓存**：Redis + 应用内存缓存
-2. **智能预热**：常用智能体配置预加载
-3. **过期策略**：LRU + TTL 组合策略
-
-### 并发处理
-
-1. **连接池**：数据库连接池优化
-2. **异步处理**：AI 调用异步化
-3. **限流控制**：用户级别的 QPS 限制
-
 ### 数据库优化
 
-1. **索引优化**：针对查询模式建立复合索引
-2. **分区表**：消息表按时间分区
-3. **读写分离**：主从数据库架构
+1. **索引策略**：为常用查询字段建立索引
+2. **查询优化**：使用 GORM 的预加载功能
+3. **分页查询**：大数据量列表使用分页
+
+### 文件存储优化
+
+1. **本地存储**：资产图片存储在本地文件系统
+2. **文件压缩**：上传时自动压缩图片
+3. **缓存策略**：静态文件缓存
 
 ## 🚀 部署架构
 
-### Docker 容器化
+### 单机部署
 
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  frontend:
-    build: ./frontend
-    ports:
-      - '3000:3000'
+```bash
+# 构建前端
+npm run build
 
-  go-service:
-    build: ./backend/go-service
-    ports:
-      - '8080:8080'
-    depends_on:
-      - postgres
-      - redis
+# 构建后端
+cd server
+go build -o asset-management
 
-  python-ai:
-    build: ./backend/python-ai
-    ports:
-      - '8001:8001'
-
-  postgres:
-    image: pgvector/pgvector:pg15
-    environment:
-      POSTGRES_DB: dootask_ai
-      POSTGRES_USER: dootask
-      POSTGRES_PASSWORD: password
-
-  redis:
-    image: redis:7-alpine
+# 启动服务
+./asset-management
 ```
 
-这个技术架构为 AI 智能体插件提供了强大、可扩展、安全的技术基础，支持企业级的高并发和高可用需求。
+### Docker 部署
+
+```dockerfile
+# Dockerfile
+FROM node:18-alpine AS frontend
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM golang:1.21-alpine AS backend
+WORKDIR /app
+COPY server/ .
+RUN go build -o asset-management
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=backend /app/asset-management .
+COPY --from=frontend /app/.next ./.next
+COPY --from=frontend /app/public ./public
+CMD ["./asset-management"]
+```
+
+这个技术架构为企业固定资产管理系统提供了简洁、高效、可维护的技术基础，适合中小企业的资产管理需求。

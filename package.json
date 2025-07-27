@@ -1,9 +1,9 @@
 {
-  "name": "dootask-ai",
+  "name": "asset-management-system",
   "version": "0.1.0",
   "private": true,
-  "description": "DooTask AI 智能体插件 - 基于 LangChain 和 MCP 协议的企业级 AI 助手系统",
-  "author": "DooTask Team",
+  "description": "企业固定资产管理系统 - 基于 Next.js 和 Go 的轻量级资产管理解决方案",
+  "author": "Asset Management Team",
   "license": "MIT",
   "scripts": {
     "dev": "next dev --turbopack",
@@ -21,7 +21,6 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "@dootask/tools": "^1.1.5",
     "@hookform/resolvers": "^5.1.1",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -91,17 +90,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dootask/ai"
+    "url": "https://github.com/asset-management/system"
   },
   "keywords": [
-    "dootask",
-    "ai-agent",
-    "langchain",
-    "mcp-protocol",
-    "chatbot",
-    "enterprise-ai",
+    "asset-management",
+    "fixed-assets",
+    "inventory",
+    "enterprise",
     "next.js",
     "golang",
-    "python"
+    "sqlite"
   ]
 }

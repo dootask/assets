@@ -5,31 +5,26 @@ description: "后端服务开发规范"
 
 # 后端开发规则
 
-## Go微服务开发 ([backend/go-service/](mdc:backend/go-service/))
+## Go服务开发 ([server/](mdc:server/))
 - 遵循Go标准项目布局
 - 使用context.Context进行请求跟踪
 - 错误处理使用errors包
 - API响应统一使用JSON格式
 - 日志记录使用结构化日志
 - 数据库操作使用事务
-
-## Python AI服务开发 ([backend/python-ai/](mdc:backend/python-ai/))
-- 使用异步编程 (asyncio)
-- 类型提示 (type hints) 必须添加
-- 错误处理使用try-except-finally模式
-- AI模型调用使用适当的错误重试机制
-- API文档使用FastAPI自动生成
+- 使用GORM进行数据库操作
+- SQLite作为轻量级数据库解决方案
 
 ## 通用规范
 - RESTful API设计原则
 - 使用环境变量进行配置管理
-- 数据库迁移脚本存放在[scripts/](mdc:scripts/)
-- Docker化部署配置
+- 数据库迁移脚本存放在[server/migrations/](mdc:server/migrations/)
+- 文件上传存储在本地文件系统
 
 ## 错误码规范
 - **统一错误码**: 所有API返回标准化的错误码格式
 - **错误码结构**: `{ "code": "ERROR_CODE", "message": "详细描述", "data": {} }`
-- **分类编码**: 按业务模块和错误类型进行编码 (如: AUTH_001, USER_002, TASK_003)
+- **分类编码**: 按业务模块和错误类型进行编码 (如: ASSET_001, CATEGORY_002, BORROW_003)
 - **前端翻译**: 后端只返回错误码，前端负责错误信息的国际化翻译
 - **文档维护**: 维护完整的错误码文档供前端参考
 
