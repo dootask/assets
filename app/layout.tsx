@@ -1,5 +1,4 @@
 import { AssetManagementLayout } from '@/components/layout/asset-management-layout';
-import { Toaster } from '@/components/ui/sonner';
 import { AppProvider } from '@/contexts/app-context';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -20,7 +19,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AssetManagementLayout>
             {children}
           </AssetManagementLayout>
-          <Toaster />
         </AppProvider>
       </body>
     </html>

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { useAppContext } from '@/contexts/app-context';
 import { CategoryTreeNode, deleteCategory, getCategories } from '@/lib/api/categories';
 import { Folder, Plus, Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function CategoriesPage() {
@@ -24,7 +24,7 @@ export default function CategoriesPage() {
 
   const { Confirm } = useAppContext();
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getCategories({ name: searchTerm || undefined });
@@ -35,11 +35,11 @@ export default function CategoriesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm]);
 
   useEffect(() => {
     loadCategories();
-  }, [searchTerm]);
+  }, [loadCategories]);
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
