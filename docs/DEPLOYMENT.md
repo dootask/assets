@@ -206,7 +206,7 @@ services:
     container_name: asset-management-system
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - '8000:8000'
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads
@@ -214,7 +214,7 @@ services:
     environment:
       - NODE_ENV=production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -224,8 +224,8 @@ services:
     container_name: asset-management-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -288,12 +288,12 @@ server {
 
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
-    
+
     # SSL 配置
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers off;
-    
+
     # 其他配置与 HTTP 相同...
 }
 

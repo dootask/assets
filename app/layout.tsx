@@ -16,9 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN">
       <body className={inter.className}>
         <AppProvider>
-          <AssetManagementLayout>
-            {children}
-          </AssetManagementLayout>
+          <AssetManagementLayout>{children}</AssetManagementLayout>
         </AppProvider>
       </body>
     </html>

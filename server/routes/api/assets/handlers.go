@@ -28,7 +28,7 @@ func GetAssets(c *gin.Context) {
 		req.Page = 1
 	}
 	if req.PageSize <= 0 {
-		req.PageSize = 12
+		req.PageSize = 10
 	}
 	if req.PageSize > 200 {
 		req.PageSize = 200
@@ -667,9 +667,9 @@ func BatchUpdateAssets(c *gin.Context) {
 	}
 
 	response := BatchUpdateAssetsResponse{
-		SuccessCount: 0,
-		FailedCount:  0,
-		Errors:       make([]BatchUpdateError, 0),
+		SuccessCount:  0,
+		FailedCount:   0,
+		Errors:        make([]BatchUpdateError, 0),
 		UpdatedAssets: make([]models.Asset, 0),
 	}
 
@@ -793,9 +793,9 @@ func BatchDeleteAssets(c *gin.Context) {
 	}
 
 	response := BatchDeleteAssetsResponse{
-		SuccessCount: 0,
-		FailedCount:  0,
-		Errors:       make([]BatchDeleteError, 0),
+		SuccessCount:    0,
+		FailedCount:     0,
+		Errors:          make([]BatchDeleteError, 0),
 		DeletedAssetIDs: make([]uint, 0),
 	}
 

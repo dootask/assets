@@ -3,21 +3,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { AttributeField, CategoryTreeNode, SaveCategoryAttributes, updateCategory } from '@/lib/api/categories';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
@@ -39,14 +28,9 @@ const FIELD_TYPES = [
   { value: 'boolean', label: '布尔值' },
 ] as const;
 
-type FieldType = typeof FIELD_TYPES[number]['value'];
+type FieldType = (typeof FIELD_TYPES)[number]['value'];
 
-export function CategoryAttributesDialog({
-  open,
-  onOpenChange,
-  category,
-  onSuccess,
-}: CategoryAttributesDialogProps) {
+export function CategoryAttributesDialog({ open, onOpenChange, category, onSuccess }: CategoryAttributesDialogProps) {
   const [loading, setLoading] = useState(false);
   const [fields, setFields] = useState<AttributeField[]>([]);
 
@@ -87,14 +71,12 @@ export function CategoryAttributesDialog({
   };
 
   const updateField = (id: string, updates: Partial<AttributeField>) => {
-    setFields(fields.map(field => 
-      field.id === id ? { ...field, ...updates } : field
-    ));
+    setFields(fields.map(field => (field.id === id ? { ...field, ...updates } : field)));
   };
 
   const addOption = (fieldId: string) => {
     updateField(fieldId, {
-      options: [...(fields.find(f => f.id === fieldId)?.options || []), '']
+      options: [...(fields.find(f => f.id === fieldId)?.options || []), ''],
     });
   };
 
@@ -145,7 +127,7 @@ export function CategoryAttributesDialog({
           required: field.required,
           options: field.type === 'select' ? field.options?.filter(opt => opt.trim()) : undefined,
           default_value: field.default_value,
-        }))
+        })),
       };
 
       await updateCategory(category.id, { attributes });
@@ -153,9 +135,10 @@ export function CategoryAttributesDialog({
       onSuccess();
     } catch (error: unknown) {
       console.error('Failed to save attributes:', error);
-      const message = error instanceof Error && 'response' in error 
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '保存失败'
-        : '保存失败';
+      const message =
+        error instanceof Error && 'response' in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '保存失败'
+          : '保存失败';
       toast.error(message);
     } finally {
       setLoading(false);
@@ -166,24 +149,24 @@ export function CategoryAttributesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>配置分类属性 - {category.name}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               为此分类定义自定义属性字段，这些字段将在创建该分类资产时显示。
             </p>
             <Button onClick={addField} size="sm">
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               添加字段
             </Button>
           </div>
 
           {fields.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-muted-foreground py-8 text-center">
               <p>暂无自定义字段</p>
               <p className="text-sm">点击&quot;添加字段&quot;开始配置</p>
             </div>
@@ -192,9 +175,9 @@ export function CategoryAttributesDialog({
               {fields.map((field, index) => (
                 <Card key={field.id}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="mb-4 flex items-start justify-between">
                       <div className="flex items-center space-x-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
+                        <GripVertical className="text-muted-foreground h-4 w-4" />
                         <Badge variant="outline">字段 {index + 1}</Badge>
                       </div>
                       <Button
@@ -212,7 +195,7 @@ export function CategoryAttributesDialog({
                         <Label>字段名称 *</Label>
                         <Input
                           value={field.name}
-                          onChange={(e) => updateField(field.id, { name: e.target.value })}
+                          onChange={e => updateField(field.id, { name: e.target.value })}
                           placeholder="字段名称（如：warranty_years）"
                           className="font-mono text-sm"
                         />
@@ -222,7 +205,7 @@ export function CategoryAttributesDialog({
                         <Label>显示标签 *</Label>
                         <Input
                           value={field.label}
-                          onChange={(e) => updateField(field.id, { label: e.target.value })}
+                          onChange={e => updateField(field.id, { label: e.target.value })}
                           placeholder="显示标签（如：保修年限）"
                         />
                       </div>
@@ -237,7 +220,7 @@ export function CategoryAttributesDialog({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {FIELD_TYPES.map((type) => (
+                            {FIELD_TYPES.map(type => (
                               <SelectItem key={type.value} value={type.value}>
                                 {type.label}
                               </SelectItem>
@@ -251,11 +234,9 @@ export function CategoryAttributesDialog({
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={field.required}
-                            onCheckedChange={(checked) => updateField(field.id, { required: checked })}
+                            onCheckedChange={checked => updateField(field.id, { required: checked })}
                           />
-                          <span className="text-sm text-muted-foreground">
-                            {field.required ? '必填' : '可选'}
-                          </span>
+                          <span className="text-muted-foreground text-sm">{field.required ? '必填' : '可选'}</span>
                         </div>
                       </div>
                     </div>
@@ -264,13 +245,8 @@ export function CategoryAttributesDialog({
                       <div className="mt-4 space-y-2">
                         <div className="flex items-center justify-between">
                           <Label>选项设置</Label>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addOption(field.id)}
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
+                          <Button type="button" variant="outline" size="sm" onClick={() => addOption(field.id)}>
+                            <Plus className="mr-1 h-3 w-3" />
                             添加选项
                           </Button>
                         </div>
@@ -279,7 +255,7 @@ export function CategoryAttributesDialog({
                             <div key={optionIndex} className="flex items-center space-x-2">
                               <Input
                                 value={option}
-                                onChange={(e) => updateOption(field.id, optionIndex, e.target.value)}
+                                onChange={e => updateOption(field.id, optionIndex, e.target.value)}
                                 placeholder={`选项 ${optionIndex + 1}`}
                                 className="flex-1"
                               />
@@ -303,12 +279,8 @@ export function CategoryAttributesDialog({
             </div>
           )}
 
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
+          <div className="flex justify-end space-x-2 border-t pt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               取消
             </Button>
             <Button onClick={handleSave} disabled={loading}>

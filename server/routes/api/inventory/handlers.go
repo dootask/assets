@@ -295,7 +295,7 @@ func GetInventoryRecords(c *gin.Context) {
 		query.Page = 1
 	}
 	if query.PageSize <= 0 {
-		query.PageSize = 20
+		query.PageSize = 10
 	}
 	if query.PageSize > 100 {
 		query.PageSize = 100

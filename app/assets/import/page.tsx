@@ -9,7 +9,7 @@ export default function ImportAssetsPage() {
   const router = useRouter();
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* 页面标题 */}
       <div className="flex items-center gap-4">
         <div className="flex flex-col gap-1">
@@ -22,52 +22,45 @@ export default function ImportAssetsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-muted-foreground" />
+            <Upload className="text-muted-foreground h-5 w-5" />
             导入功能
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-              <Upload className="h-8 w-8 text-muted-foreground" />
+          <div className="py-12 text-center">
+            <div className="bg-muted mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full">
+              <Upload className="text-muted-foreground h-8 w-8" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">功能开发中</h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            <h3 className="mb-2 text-lg font-semibold">功能开发中</h3>
+            <p className="text-muted-foreground mx-auto mb-6 max-w-md">
               资产批量导入功能正在开发中，敬请期待。您可以先使用新增资产功能逐个添加资产信息。
             </p>
             <div className="flex justify-center gap-4">
-              <Button 
-                variant="outline" 
-                onClick={() => router.push('/assets')}
-              >
+              <Button variant="outline" onClick={() => router.push('/assets')}>
                 返回资产列表
               </Button>
-              <Button 
-                onClick={() => router.push('/assets/new')}
-              >
-                新增资产
-              </Button>
+              <Button onClick={() => router.push('/assets/new')}>新增资产</Button>
             </div>
           </div>
-          
+
           {/* 功能说明 */}
           <div className="border-t pt-6">
-            <h4 className="font-medium mb-3">预计支持的功能：</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h4 className="mb-3 font-medium">预计支持的功能：</h4>
+            <ul className="text-muted-foreground space-y-2 text-sm">
               <li className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
                 支持 Excel (.xlsx, .xls) 和 CSV 格式文件导入
               </li>
               <li className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
                 提供标准模板下载，确保数据格式正确性
               </li>
               <li className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
                 数据验证和错误提示，确保导入质量
               </li>
               <li className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
                 支持批量图片上传和关联
               </li>
             </ul>
@@ -76,4 +69,4 @@ export default function ImportAssetsPage() {
       </Card>
     </div>
   );
-} 
+}

@@ -26,7 +26,7 @@ func GetOperationLogs(c *gin.Context) {
 		req.Page = 1
 	}
 	if req.PageSize <= 0 {
-		req.PageSize = 20
+		req.PageSize = 10
 	}
 	if req.PageSize > 200 {
 		req.PageSize = 200
@@ -79,8 +79,8 @@ func GetOperationLogs(c *gin.Context) {
 	logResponses := make([]OperationLogResponse, len(logs))
 	for i, log := range logs {
 		logResponses[i] = OperationLogResponse{
-			OperationLog: log,
-			TableLabel:   getTableLabel(log.Table),
+			OperationLog:   log,
+			TableLabel:     getTableLabel(log.Table),
 			OperationLabel: getOperationLabel(log.Operation),
 		}
 	}

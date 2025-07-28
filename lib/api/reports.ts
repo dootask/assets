@@ -308,23 +308,19 @@ export interface InventoryReportFilters {
 export type ReportFilters = AssetReportFilters | BorrowReportFilters | InventoryReportFilters | Record<string, unknown>;
 
 // 报表数据的具体类型定义
-export type ReportDataItem = 
-  | CategoryStats 
-  | DepartmentStats 
-  | StatusStats 
-  | BorrowDepartmentStats 
-  | BorrowAssetStats 
-  | InventoryTaskStats 
-  | InventoryDepartmentStats 
+export type ReportDataItem =
+  | CategoryStats
+  | DepartmentStats
+  | StatusStats
+  | BorrowDepartmentStats
+  | BorrowAssetStats
+  | InventoryTaskStats
+  | InventoryDepartmentStats
   | InventoryCategoryStats
   | Record<string, unknown>;
 
 // 报表汇总数据的联合类型
-export type ReportSummary = 
-  | AssetSummary 
-  | BorrowSummary 
-  | InventorySummary 
-  | Record<string, unknown>;
+export type ReportSummary = AssetSummary | BorrowSummary | InventorySummary | Record<string, unknown>;
 
 // 自定义报表请求接口
 export interface CustomReportRequest {

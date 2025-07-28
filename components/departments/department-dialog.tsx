@@ -1,20 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from '@/components/ui/form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { createDepartment, updateDepartment } from '@/lib/api/departments';
@@ -43,12 +31,7 @@ interface DepartmentDialogProps {
   onSuccess: () => void;
 }
 
-export function DepartmentDialog({
-  open,
-  onOpenChange,
-  department,
-  onSuccess,
-}: DepartmentDialogProps) {
+export function DepartmentDialog({ open, onOpenChange, department, onSuccess }: DepartmentDialogProps) {
   const [loading, setLoading] = useState(false);
   const isEditing = !!department;
 
@@ -100,7 +83,7 @@ export function DepartmentDialog({
         };
 
         const response = await updateDepartment(department.id, updateData);
-        
+
         if (response.code === 'SUCCESS') {
           toast.success('部门更新成功');
           onSuccess();
@@ -118,7 +101,7 @@ export function DepartmentDialog({
         };
 
         const response = await createDepartment(createData);
-        
+
         if (response.code === 'SUCCESS') {
           toast.success('部门创建成功');
           onSuccess();
@@ -146,9 +129,7 @@ export function DepartmentDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? '编辑部门' : '新增部门'}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? '编辑部门' : '新增部门'}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -161,11 +142,7 @@ export function DepartmentDialog({
                   <FormItem>
                     <FormLabel>部门名称 *</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="请输入部门名称"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <Input placeholder="请输入部门名称" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -179,11 +156,7 @@ export function DepartmentDialog({
                   <FormItem>
                     <FormLabel>部门编码 *</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="请输入部门编码"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <Input placeholder="请输入部门编码" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -199,11 +172,7 @@ export function DepartmentDialog({
                   <FormItem>
                     <FormLabel>负责人</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="请输入负责人"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <Input placeholder="请输入负责人" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -217,11 +186,7 @@ export function DepartmentDialog({
                   <FormItem>
                     <FormLabel>联系方式</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="请输入联系方式"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <Input placeholder="请输入联系方式" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -236,12 +201,7 @@ export function DepartmentDialog({
                 <FormItem>
                   <FormLabel>描述</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="请输入部门描述"
-                      rows={3}
-                      {...field}
-                      disabled={loading}
-                    />
+                    <Textarea placeholder="请输入部门描述" rows={3} {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -249,16 +209,11 @@ export function DepartmentDialog({
             />
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={loading}
-              >
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
                 取消
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? '提交中...' : (isEditing ? '更新' : '创建')}
+                {loading ? '提交中...' : isEditing ? '更新' : '创建'}
               </Button>
             </div>
           </form>

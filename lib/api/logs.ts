@@ -1,21 +1,21 @@
 import apiClient from '@/lib/axios';
 import type {
-    APIResponse,
-    OperationLogFilters,
-    OperationLogResponse,
-    OperationLogStats,
-    PaginationRequest,
-    PaginationResponse
+  APIResponse,
+  OperationLogFilters,
+  OperationLogResponse,
+  OperationLogStats,
+  PaginationRequest,
+  PaginationResponse,
 } from '@/lib/types';
 
 // 获取操作日志列表
 export const getOperationLogs = async (params: PaginationRequest & { filters?: OperationLogFilters }) => {
   const queryParams = new URLSearchParams();
-  
+
   // 添加分页参数
   queryParams.append('page', params.page.toString());
   queryParams.append('page_size', params.page_size.toString());
-  
+
   // 添加排序参数
   if (params.sorts && params.sorts.length > 0) {
     params.sorts.forEach((sort, index) => {
@@ -23,7 +23,7 @@ export const getOperationLogs = async (params: PaginationRequest & { filters?: O
       queryParams.append(`sorts[${index}][desc]`, sort.desc.toString());
     });
   }
-  
+
   // 添加筛选参数
   if (params.filters) {
     Object.entries(params.filters).forEach(([key, value]) => {
@@ -32,7 +32,7 @@ export const getOperationLogs = async (params: PaginationRequest & { filters?: O
       }
     });
   }
-  
+
   const response = await apiClient.get<APIResponse<PaginationResponse<OperationLogResponse[]>>>(
     `/logs?${queryParams.toString()}`
   );

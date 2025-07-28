@@ -3,26 +3,20 @@
 import { CommandSelect } from '@/components/command-select';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { createBorrowRecord, getAvailableAssets, updateBorrowRecord } from '@/lib/api/borrow';
 import { getDepartments } from '@/lib/api/departments';
-import type { AvailableAssetResponse, BorrowResponse, CreateBorrowRequest, DepartmentResponse, UpdateBorrowRequest } from '@/lib/types';
+import type {
+  AvailableAssetResponse,
+  BorrowResponse,
+  CreateBorrowRequest,
+  DepartmentResponse,
+  UpdateBorrowRequest,
+} from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
@@ -57,7 +51,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [availableAssets, setAvailableAssets] = useState<AvailableAssetResponse[]>([]);
-  
+
   const isEditing = borrow && borrow.id > 0;
 
   const form = useForm<BorrowFormData>({
@@ -82,7 +76,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
         page_size: 100,
         sorts: [{ key: 'name', desc: false }],
       });
-      
+
       if (response.code === 'SUCCESS') {
         setDepartments(response.data.data);
       }
@@ -127,9 +121,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
           borrower_contact: borrow.borrower_contact || '',
           department_id: borrow.department_id || undefined,
           borrow_date: new Date(borrow.borrow_date),
-          expected_return_date: borrow.expected_return_date 
-            ? new Date(borrow.expected_return_date)
-            : undefined,
+          expected_return_date: borrow.expected_return_date ? new Date(borrow.expected_return_date) : undefined,
           purpose: borrow.purpose || '',
           notes: borrow.notes || '',
         });
@@ -167,7 +159,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
         };
 
         const response = await updateBorrowRecord(borrow.id, updateData);
-        
+
         if (response.code === 'SUCCESS') {
           toast.success('借用记录更新成功');
           onSuccess();
@@ -188,7 +180,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
         };
 
         const response = await createBorrowRecord(createData);
-        
+
         if (response.code === 'SUCCESS') {
           toast.success('借用记录创建成功');
           onSuccess();
@@ -214,11 +206,9 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? '编辑借用记录' : '新增借用记录'}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? '编辑借用记录' : '新增借用记录'}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -235,7 +225,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                         options={availableAssets.map(asset => ({
                           value: asset.id.toString(),
                           label: asset.name,
-                          description: `${asset.asset_no} • ${asset.status} • ${asset.department?.name || ''}`
+                          description: `${asset.asset_no} • ${asset.status} • ${asset.department?.name || ''}`,
                         }))}
                         value={field.value?.toString() || ''}
                         onValueChange={(value: string) => field.onChange(value ? parseInt(value) : undefined)}
@@ -258,11 +248,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                   <FormItem>
                     <FormLabel>借用人姓名 *</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="请输入借用人姓名"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <Input placeholder="请输入借用人姓名" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -276,11 +262,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                   <FormItem>
                     <FormLabel>联系方式</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="请输入联系方式"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <Input placeholder="请输入联系方式" {...field} disabled={loading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -299,7 +281,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                       options={departments.map(dept => ({
                         value: dept.id.toString(),
                         label: dept.name,
-                        description: `${dept.code} • ${dept.asset_count || 0} 个资产`
+                        description: `${dept.code} • ${dept.asset_count || 0} 个资产`,
                       }))}
                       value={field.value?.toString() || ''}
                       onValueChange={(value: string) => field.onChange(value ? parseInt(value) : undefined)}
@@ -327,26 +309,17 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                             <Button
                               variant="outline"
                               className={cn(
-                                "w-[240px] justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
+                                'w-[240px] justify-start text-left font-normal',
+                                !field.value && 'text-muted-foreground'
                               )}
                             >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>选择借用时间</span>
-                              )}
+                              {field.value ? format(field.value, 'PPP') : <span>选择借用时间</span>}
                               <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                         </PopoverContent>
                       </Popover>
                     </FormControl>
@@ -368,26 +341,17 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                             <Button
                               variant="outline"
                               className={cn(
-                                "w-[240px] justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
+                                'w-[240px] justify-start text-left font-normal',
+                                !field.value && 'text-muted-foreground'
                               )}
                             >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>选择预期归还时间</span>
-                              )}
+                              {field.value ? format(field.value, 'PPP') : <span>选择预期归还时间</span>}
                               <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                         </PopoverContent>
                       </Popover>
                     </FormControl>
@@ -404,12 +368,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                 <FormItem>
                   <FormLabel>借用用途</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="请输入借用用途"
-                      rows={2}
-                      {...field}
-                      disabled={loading}
-                    />
+                    <Textarea placeholder="请输入借用用途" rows={2} {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -423,12 +382,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                 <FormItem>
                   <FormLabel>备注</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="请输入备注信息"
-                      rows={2}
-                      {...field}
-                      disabled={loading}
-                    />
+                    <Textarea placeholder="请输入备注信息" rows={2} {...field} disabled={loading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -436,16 +390,11 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
             />
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={loading}
-              >
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
                 取消
               </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? '提交中...' : (isEditing ? '更新' : '创建')}
+                {loading ? '提交中...' : isEditing ? '更新' : '创建'}
               </Button>
             </div>
           </form>

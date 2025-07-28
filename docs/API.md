@@ -38,6 +38,7 @@
 检查服务器健康状态
 
 **响应示例**:
+
 ```json
 {
   "success": true,
@@ -57,6 +58,7 @@
 获取资产列表
 
 **查询参数**:
+
 - `page` (int): 页码，默认 1
 - `limit` (int): 每页数量，默认 20
 - `search` (string): 搜索关键词
@@ -65,6 +67,7 @@
 - `status` (string): 资产状态
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -83,7 +86,7 @@
         "model": "ThinkPad X1",
         "serial_number": "SN123456",
         "purchase_date": "2024-01-01",
-        "purchase_price": 8000.00,
+        "purchase_price": 8000.0,
         "status": "available",
         "location": "办公室A-101",
         "responsible_person": "张三",
@@ -105,6 +108,7 @@
 创建新资产
 
 **请求体**:
+
 ```json
 {
   "name": "联想笔记本电脑",
@@ -114,7 +118,7 @@
   "model": "ThinkPad X1",
   "serial_number": "SN123456",
   "purchase_date": "2024-01-01",
-  "purchase_price": 8000.00,
+  "purchase_price": 8000.0,
   "supplier": "联想官方",
   "warranty_period": 36,
   "location": "办公室A-101",
@@ -124,6 +128,7 @@
 ```
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -131,7 +136,7 @@
   "data": {
     "id": 1,
     "asset_no": "A001",
-    "name": "联想笔记本电脑",
+    "name": "联想笔记本电脑"
     // ... 其他字段
   }
 }
@@ -142,9 +147,11 @@
 获取资产详情
 
 **路径参数**:
+
 - `id` (int): 资产ID
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -172,6 +179,7 @@
 更新资产信息
 
 **路径参数**:
+
 - `id` (int): 资产ID
 
 **请求体**: 与创建资产相同
@@ -181,6 +189,7 @@
 删除资产
 
 **路径参数**:
+
 - `id` (int): 资产ID
 
 ## 🏷️ 分类管理 API
@@ -190,6 +199,7 @@
 获取分类树
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -221,6 +231,7 @@
 创建分类
 
 **请求体**:
+
 ```json
 {
   "name": "电脑设备",
@@ -242,6 +253,7 @@
 获取部门列表
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -266,6 +278,7 @@
 创建部门
 
 **请求体**:
+
 ```json
 {
   "name": "技术部",
@@ -283,6 +296,7 @@
 获取借用记录
 
 **查询参数**:
+
 - `page` (int): 页码
 - `limit` (int): 每页数量
 - `status` (string): 借用状态 (borrowed, returned, overdue)
@@ -290,6 +304,7 @@
 - `asset_id` (int): 资产ID
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -325,6 +340,7 @@
 创建借用记录
 
 **请求体**:
+
 ```json
 {
   "asset_id": 1,
@@ -342,9 +358,11 @@
 归还资产
 
 **路径参数**:
+
 - `id` (int): 借用记录ID
 
 **请求体**:
+
 ```json
 {
   "notes": "设备状态良好"
@@ -356,6 +374,7 @@
 获取超期记录
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -380,6 +399,7 @@
 获取盘点任务列表
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -406,6 +426,7 @@
 创建盘点任务
 
 **请求体**:
+
 ```json
 {
   "task_name": "2024年第一季度盘点",
@@ -423,6 +444,7 @@
 提交盘点记录
 
 **请求体**:
+
 ```json
 {
   "task_id": 1,
@@ -441,6 +463,7 @@
 获取仪表板数据
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -462,12 +485,12 @@
     ],
     "charts": {
       "asset_by_category": [
-        {"name": "电脑设备", "value": 200},
-        {"name": "办公设备", "value": 150}
+        { "name": "电脑设备", "value": 200 },
+        { "name": "办公设备", "value": 150 }
       ],
       "asset_by_status": [
-        {"name": "可用", "value": 450},
-        {"name": "借用中", "value": 30}
+        { "name": "可用", "value": 450 },
+        { "name": "借用中", "value": 30 }
       ]
     }
   }
@@ -479,6 +502,7 @@
 获取资产统计报表
 
 **查询参数**:
+
 - `start_date` (string): 开始日期
 - `end_date` (string): 结束日期
 - `group_by` (string): 分组方式 (category, department, status)
@@ -498,10 +522,12 @@
 上传文件
 
 **请求**: multipart/form-data
+
 - `file`: 文件内容
 - `type`: 文件类型 (asset_image, document)
 
 **响应示例**:
+
 ```json
 {
   "code": "SUCCESS",
@@ -517,22 +543,22 @@
 
 ## 🚨 错误码说明
 
-| 错误码 | 描述 |
-|--------|------|
-| SUCCESS | 操作成功 |
-| INTERNAL_ERROR | 内部服务器错误 |
-| VALIDATION_ERROR | 数据验证失败 |
-| NOT_FOUND | 资源不存在 |
-| ASSET_NOT_FOUND | 资产不存在 |
-| ASSET_NO_EXISTS | 资产编号已存在 |
-| ASSET_IN_USE | 资产正在使用中 |
-| CATEGORY_NOT_FOUND | 分类不存在 |
-| CATEGORY_HAS_ASSETS | 分类下有资产，无法删除 |
-| DEPARTMENT_NOT_FOUND | 部门不存在 |
+| 错误码                | 描述                   |
+| --------------------- | ---------------------- |
+| SUCCESS               | 操作成功               |
+| INTERNAL_ERROR        | 内部服务器错误         |
+| VALIDATION_ERROR      | 数据验证失败           |
+| NOT_FOUND             | 资源不存在             |
+| ASSET_NOT_FOUND       | 资产不存在             |
+| ASSET_NO_EXISTS       | 资产编号已存在         |
+| ASSET_IN_USE          | 资产正在使用中         |
+| CATEGORY_NOT_FOUND    | 分类不存在             |
+| CATEGORY_HAS_ASSETS   | 分类下有资产，无法删除 |
+| DEPARTMENT_NOT_FOUND  | 部门不存在             |
 | DEPARTMENT_HAS_ASSETS | 部门下有资产，无法删除 |
-| ASSET_NOT_AVAILABLE | 资产不可借用 |
-| BORROW_NOT_FOUND | 借用记录不存在 |
-| ALREADY_RETURNED | 资产已归还 |
+| ASSET_NOT_AVAILABLE   | 资产不可借用           |
+| BORROW_NOT_FOUND      | 借用记录不存在         |
+| ALREADY_RETURNED      | 资产已归还             |
 
 ## 📝 使用示例
 

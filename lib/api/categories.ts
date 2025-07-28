@@ -116,7 +116,7 @@ export const updateCategoryAttributes = async (id: number, attributes: SaveCateg
 // 获取分类下的资产
 export const getCategoryAssets = async (id: number, page = 1, pageSize = 12) => {
   const response = await apiClient.get(`/categories/${id}/assets`, {
-    params: { page, page_size: pageSize }
+    params: { page, page_size: pageSize },
   });
   return response.data.data;
 };

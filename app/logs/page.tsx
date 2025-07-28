@@ -7,20 +7,25 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-import { Pagination } from '@/components/pagination';
+import { defaultPagination, Pagination } from '@/components/pagination';
 import { getOperationLogs, getOperationLogStats } from '@/lib/api/logs';
 import type {
   OperationLogFilters,
   OperationLogResponse,
   OperationLogStats,
   OperationType,
-  PaginationRequest
+  PaginationRequest,
 } from '@/lib/types';
 
 // 操作类型映射
@@ -43,12 +48,8 @@ const tableMap: Record<string, string> = {
 const OperationBadge = ({ operation, operationLabel }: { operation: OperationType; operationLabel: string }) => {
   const operationInfo = operationMap[operation];
   if (!operationInfo) return <span>{operationLabel}</span>;
-  
-  return (
-    <Badge variant={operationInfo.variant}>
-      {operationLabel}
-    </Badge>
-  );
+
+  return <Badge variant={operationInfo.variant}>{operationLabel}</Badge>;
 };
 
 export default function LogsPage() {
@@ -56,43 +57,41 @@ export default function LogsPage() {
   const [stats, setStats] = useState<OperationLogStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    page_size: 20,
-    total_items: 0,
-    total_pages: 0,
-  });
-  
+  const [pagination, setPagination] = useState(defaultPagination);
+
   // 筛选和搜索状态
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<OperationLogFilters>({});
   const [showFilters, setShowFilters] = useState(false);
 
   // 加载操作日志列表
-  const loadLogs = useCallback(async (page = 1, pageSize = 20) => {
-    try {
-      setLoading(true);
-      
-      const params: PaginationRequest & { filters?: OperationLogFilters } = {
-        page,
-        page_size: pageSize,
-        sorts: [{ key: 'created_at', desc: true }],
-        filters: {
-          ...filters,
-          ...(searchTerm && { operator: searchTerm }),
-        },
-      };
-      
-      const response = await getOperationLogs(params);
-      setLogs(response.data.data);
-      setPagination(response.data);
-    } catch (error) {
-      console.error('加载操作日志失败:', error);
-      toast.error('加载操作日志失败');
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, searchTerm]);
+  const loadLogs = useCallback(
+    async (page = 1, pageSize = 10) => {
+      try {
+        setLoading(true);
+
+        const params: PaginationRequest & { filters?: OperationLogFilters } = {
+          page,
+          page_size: pageSize,
+          sorts: [{ key: 'created_at', desc: true }],
+          filters: {
+            ...filters,
+            ...(searchTerm && { operator: searchTerm }),
+          },
+        };
+
+        const response = await getOperationLogs(params);
+        setLogs(response.data.data);
+        setPagination(response.data);
+      } catch (error) {
+        console.error('加载操作日志失败:', error);
+        toast.error('加载操作日志失败');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters, searchTerm]
+  );
 
   // 加载统计数据
   const loadStats = useCallback(async () => {
@@ -123,7 +122,7 @@ export default function LogsPage() {
   const handleFilterChange = (key: keyof OperationLogFilters, value: string | number | undefined) => {
     setFilters(prev => ({
       ...prev,
-      [key]: (value && value !== 'all') ? value : undefined,
+      [key]: value && value !== 'all' ? value : undefined,
     }));
   };
 
@@ -159,9 +158,9 @@ export default function LogsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* 页面标题 */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">操作日志</h1>
           <p className="text-muted-foreground">查看系统操作记录</p>
@@ -169,21 +168,17 @@ export default function LogsPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">总日志数</p>
+                <p className="text-muted-foreground text-sm font-medium">总日志数</p>
                 <div className="text-2xl font-bold">
-                  {statsLoading ? (
-                    <Skeleton className="h-8 w-16" />
-                  ) : (
-                    stats?.total_logs.toLocaleString() || 0
-                  )}
+                  {statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.total_logs.toLocaleString() || 0}
                 </div>
               </div>
-              <Database className="h-8 w-8 text-muted-foreground" />
+              <Database className="text-muted-foreground h-8 w-8" />
             </div>
           </CardContent>
         </Card>
@@ -192,16 +187,12 @@ export default function LogsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">今日日志</p>
+                <p className="text-muted-foreground text-sm font-medium">今日日志</p>
                 <div className="text-2xl font-bold">
-                  {statsLoading ? (
-                    <Skeleton className="h-8 w-16" />
-                  ) : (
-                    stats?.today_logs.toLocaleString() || 0
-                  )}
+                  {statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.today_logs.toLocaleString() || 0}
                 </div>
               </div>
-              <Calendar className="h-8 w-8 text-muted-foreground" />
+              <Calendar className="text-muted-foreground h-8 w-8" />
             </div>
           </CardContent>
         </Card>
@@ -210,16 +201,12 @@ export default function LogsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">活跃操作者</p>
+                <p className="text-muted-foreground text-sm font-medium">活跃操作者</p>
                 <div className="text-2xl font-bold">
-                  {statsLoading ? (
-                    <Skeleton className="h-8 w-16" />
-                  ) : (
-                    stats?.top_operators.length || 0
-                  )}
+                  {statsLoading ? <Skeleton className="h-8 w-16" /> : stats?.top_operators.length || 0}
                 </div>
               </div>
-              <User className="h-8 w-8 text-muted-foreground" />
+              <User className="text-muted-foreground h-8 w-8" />
             </div>
           </CardContent>
         </Card>
@@ -228,16 +215,12 @@ export default function LogsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">操作类型</p>
+                <p className="text-muted-foreground text-sm font-medium">操作类型</p>
                 <div className="text-2xl font-bold">
-                  {statsLoading ? (
-                    <Skeleton className="h-8 w-16" />
-                  ) : (
-                    Object.keys(stats?.operation_stats || {}).length
-                  )}
+                  {statsLoading ? <Skeleton className="h-8 w-16" /> : Object.keys(stats?.operation_stats || {}).length}
                 </div>
               </div>
-              <Activity className="h-8 w-8 text-muted-foreground" />
+              <Activity className="text-muted-foreground h-8 w-8" />
             </div>
           </CardContent>
         </Card>
@@ -246,13 +229,13 @@ export default function LogsPage() {
       {/* 搜索和筛选 */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 flex gap-2">
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="flex flex-1 gap-2">
               <Input
                 placeholder="搜索操作者..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                onChange={e => setSearchTerm(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 className="flex-1"
               />
               <Button onClick={handleSearch}>
@@ -260,11 +243,8 @@ export default function LogsPage() {
               </Button>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
+              <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+                <Filter className="mr-2 h-4 w-4" />
                 筛选
               </Button>
             </div>
@@ -272,14 +252,11 @@ export default function LogsPage() {
 
           {/* 筛选面板 */}
           {showFilters && (
-            <div className="mt-4 p-4 border rounded-lg bg-muted/50">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-muted/50 mt-4 rounded-lg border p-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">表名</label>
-                  <Select
-                    value={filters.table || ''}
-                    onValueChange={(value) => handleFilterChange('table', value)}
-                  >
+                  <label className="mb-1 block text-sm font-medium">表名</label>
+                  <Select value={filters.table || ''} onValueChange={value => handleFilterChange('table', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="选择表名" />
                     </SelectTrigger>
@@ -294,10 +271,10 @@ export default function LogsPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">操作类型</label>
+                  <label className="mb-1 block text-sm font-medium">操作类型</label>
                   <Select
                     value={filters.operation || ''}
-                    onValueChange={(value) => handleFilterChange('operation', value as OperationType)}
+                    onValueChange={value => handleFilterChange('operation', value as OperationType)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="选择操作类型" />
@@ -313,24 +290,26 @@ export default function LogsPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">记录ID</label>
+                  <label className="mb-1 block text-sm font-medium">记录ID</label>
                   <Input
                     type="number"
                     placeholder="输入记录ID"
                     value={filters.record_id || ''}
-                    onChange={(e) => handleFilterChange('record_id', e.target.value ? parseInt(e.target.value) : undefined)}
+                    onChange={e =>
+                      handleFilterChange('record_id', e.target.value ? parseInt(e.target.value) : undefined)
+                    }
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">IP地址</label>
+                  <label className="mb-1 block text-sm font-medium">IP地址</label>
                   <Input
                     placeholder="输入IP地址"
                     value={filters.ip_address || ''}
-                    onChange={(e) => handleFilterChange('ip_address', e.target.value)}
+                    onChange={e => handleFilterChange('ip_address', e.target.value)}
                   />
                 </div>
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="mt-4 flex gap-2">
                 <Button onClick={applyFilters}>应用筛选</Button>
                 <Button variant="outline" onClick={clearFilters}>
                   清除筛选
@@ -344,9 +323,7 @@ export default function LogsPage() {
       {/* 日志列表 */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            操作日志 ({pagination.total_items} 条)
-          </CardTitle>
+          <CardTitle>操作日志 ({pagination.total_items} 条)</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -354,7 +331,7 @@ export default function LogsPage() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="flex items-center space-x-4">
                   <Skeleton className="h-12 w-12 rounded" />
-                  <div className="space-y-2 flex-1">
+                  <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-[250px]" />
                     <Skeleton className="h-4 w-[200px]" />
                   </div>
@@ -362,7 +339,7 @@ export default function LogsPage() {
               ))}
             </div>
           ) : logs.length === 0 ? (
-            <div className="text-center py-8">
+            <div className="py-8 text-center">
               <p className="text-muted-foreground">暂无操作日志</p>
             </div>
           ) : (
@@ -380,17 +357,14 @@ export default function LogsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {logs.map((log) => (
+                {logs.map(log => (
                   <TableRow key={log.id}>
                     <TableCell className="font-mono text-sm">{log.id}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{log.table_label}</Badge>
                     </TableCell>
                     <TableCell>
-                      <OperationBadge 
-                        operation={log.operation as OperationType} 
-                        operationLabel={log.operation_label} 
-                      />
+                      <OperationBadge operation={log.operation as OperationType} operationLabel={log.operation_label} />
                     </TableCell>
                     <TableCell className="font-mono text-sm">{log.record_id}</TableCell>
                     <TableCell>{log.operator || '-'}</TableCell>
@@ -405,7 +379,7 @@ export default function LogsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleViewDetails(log)}>
-                            <Eye className="h-4 w-4 mr-2" />
+                            <Eye className="mr-2 h-4 w-4" />
                             查看详情
                           </DropdownMenuItem>
                         </DropdownMenuContent>

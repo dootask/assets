@@ -2,26 +2,26 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    InventoryCategoryStats,
-    InventoryDepartmentStats,
-    InventoryResultAnalysis,
-    InventoryTaskStats,
-    InventoryTrendStats
+  InventoryCategoryStats,
+  InventoryDepartmentStats,
+  InventoryResultAnalysis,
+  InventoryTaskStats,
+  InventoryTrendStats,
 } from '@/lib/api/reports';
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Legend,
-    Line,
-    LineChart,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 // 颜色配置
@@ -33,7 +33,7 @@ const COLORS = {
   warning: '#f97316',
   info: '#06b6d4',
   success: '#22c55e',
-  muted: '#6b7280'
+  muted: '#6b7280',
 };
 
 interface InventoryResultChartProps {
@@ -45,7 +45,7 @@ export function InventoryResultChart({ data }: InventoryResultChartProps) {
     { name: '正常', value: data.normal_count, rate: data.normal_rate, fill: COLORS.success },
     { name: '盘盈', value: data.surplus_count, rate: data.surplus_rate, fill: COLORS.info },
     { name: '盘亏', value: data.deficit_count, rate: data.deficit_rate, fill: COLORS.warning },
-    { name: '损坏', value: data.damaged_count, rate: data.damaged_rate, fill: COLORS.danger }
+    { name: '损坏', value: data.damaged_count, rate: data.damaged_rate, fill: COLORS.danger },
   ];
 
   return (
@@ -71,9 +71,7 @@ export function InventoryResultChart({ data }: InventoryResultChartProps) {
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
             </Pie>
-            <Tooltip 
-              formatter={(value: number) => [`${value} 个`, '资产数量']}
-            />
+            <Tooltip formatter={(value: number) => [`${value} 个`, '资产数量']} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
@@ -99,15 +97,10 @@ export function InventoryDepartmentChart({ data }: InventoryDepartmentChartProps
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="department_name" 
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
+            <XAxis dataKey="department_name" angle={-45} textAnchor="end" height={80} />
             <YAxis yAxisId="left" />
             <YAxis yAxisId="right" orientation="right" />
-            <Tooltip 
+            <Tooltip
               formatter={(value: number, name: string) => {
                 if (name === 'total_assets') return [`${value} 个`, '总资产'];
                 if (name === 'checked_assets') return [`${value} 个`, '已检查'];
@@ -143,15 +136,10 @@ export function InventoryCategoryChart({ data }: InventoryCategoryChartProps) {
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="category_name" 
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
+            <XAxis dataKey="category_name" angle={-45} textAnchor="end" height={80} />
             <YAxis yAxisId="left" />
             <YAxis yAxisId="right" orientation="right" />
-            <Tooltip 
+            <Tooltip
               formatter={(value: number, name: string) => {
                 if (name === 'total_assets') return [`${value} 个`, '总资产'];
                 if (name === 'checked_assets') return [`${value} 个`, '已检查'];
@@ -188,7 +176,7 @@ export function InventoryTrendChart({ data }: InventoryTrendChartProps) {
             <XAxis dataKey="month" />
             <YAxis yAxisId="left" />
             <YAxis yAxisId="right" orientation="right" />
-            <Tooltip 
+            <Tooltip
               formatter={(value: number, name: string) => {
                 if (name === 'task_count') return [`${value} 个`, '任务数量'];
                 if (name === 'accuracy_rate') return [`${value.toFixed(1)}%`, '准确率'];
@@ -197,11 +185,11 @@ export function InventoryTrendChart({ data }: InventoryTrendChartProps) {
             />
             <Legend />
             <Bar yAxisId="left" dataKey="task_count" fill={COLORS.primary} name="任务数量" />
-            <Line 
-              yAxisId="right" 
-              type="monotone" 
-              dataKey="accuracy_rate" 
-              stroke={COLORS.success} 
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="accuracy_rate"
+              stroke={COLORS.success}
               strokeWidth={2}
               name="准确率"
             />
@@ -229,14 +217,9 @@ export function InventoryTaskAnalysisChart({ data }: InventoryTaskAnalysisChartP
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="task_name" 
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
+            <XAxis dataKey="task_name" angle={-45} textAnchor="end" height={80} />
             <YAxis />
-            <Tooltip 
+            <Tooltip
               formatter={(value: number, name: string) => {
                 if (name === 'normal_count') return [`${value} 个`, '正常'];
                 if (name === 'surplus_count') return [`${value} 个`, '盘盈'];
@@ -275,21 +258,11 @@ export function InventoryAccuracyChart({ data }: InventoryAccuracyChartProps) {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart 
-            data={chartData} 
-            layout="horizontal"
-            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-          >
+          <BarChart data={chartData} layout="horizontal" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis type="number" domain={[0, 100]} />
-            <YAxis 
-              type="category" 
-              dataKey="department_name" 
-              width={120}
-            />
-            <Tooltip 
-              formatter={(value: number) => [`${value.toFixed(1)}%`, '准确率']}
-            />
+            <YAxis type="category" dataKey="department_name" width={120} />
+            <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`, '准确率']} />
             <Bar dataKey="accuracy_rate" fill={COLORS.success} />
           </BarChart>
         </ResponsiveContainer>

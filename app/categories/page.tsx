@@ -71,9 +71,10 @@ export default function CategoriesPage() {
       loadCategories();
     } catch (error: unknown) {
       console.error('Failed to delete category:', error);
-      const message = error instanceof Error && 'response' in error 
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '删除分类失败'
-        : '删除分类失败';
+      const message =
+        error instanceof Error && 'response' in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '删除分类失败'
+          : '删除分类失败';
       toast.error(message);
     }
   };
@@ -100,10 +101,10 @@ export default function CategoriesPage() {
 
   const handleAttributesDialogSuccess = () => {
     setAttributesDialogOpen(false);
-    
+
     // 重新加载分类列表
     loadCategories();
-    
+
     // 如果有选中的分类，重新获取最新的分类信息来更新详情
     if (selectedCategory) {
       // 等待列表加载完成后更新选中分类
@@ -137,18 +138,18 @@ export default function CategoriesPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">分类管理</h1>
           <p className="text-muted-foreground">管理资产分类和属性模板</p>
         </div>
         <Button onClick={handleCreateCategory}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           新增分类
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 分类树 */}
         <div className="lg:col-span-2">
           <Card>
@@ -157,12 +158,12 @@ export default function CategoriesPage() {
                 <CardTitle>分类结构</CardTitle>
                 <div className="flex items-center space-x-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
                     <Input
                       placeholder="搜索分类..."
                       value={searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      className="pl-10 w-64"
+                      onChange={e => handleSearch(e.target.value)}
+                      className="w-64 pl-10"
                     />
                   </div>
                 </div>
@@ -171,7 +172,7 @@ export default function CategoriesPage() {
             <CardContent>
               {loading ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
                 </div>
               ) : (
                 <CategoryTree
@@ -199,16 +200,16 @@ export default function CategoriesPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">分类名称</label>
-                    <p className="text-sm mt-1">{selectedCategory.name}</p>
+                    <p className="mt-1 text-sm">{selectedCategory.name}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">分类编码</label>
-                    <p className="text-sm mt-1 font-mono">{selectedCategory.code}</p>
+                    <p className="mt-1 font-mono text-sm">{selectedCategory.code}</p>
                   </div>
                   {selectedCategory.description && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">描述</label>
-                      <p className="text-sm mt-1">{selectedCategory.description}</p>
+                      <p className="mt-1 text-sm">{selectedCategory.description}</p>
                     </div>
                   )}
                   <div>
@@ -220,15 +221,15 @@ export default function CategoriesPage() {
                   {selectedCategory.attributes && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">属性模板</label>
-                      <div className="mt-1 text-xs bg-gray-50 p-2 rounded">
+                      <div className="mt-1 rounded bg-gray-50 p-2 text-xs">
                         <pre>{JSON.stringify(selectedCategory.attributes, null, 2)}</pre>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Folder className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <div className="py-8 text-center text-gray-500">
+                  <Folder className="mx-auto mb-4 h-12 w-12 opacity-50" />
                   <p>选择一个分类查看详情</p>
                 </div>
               )}

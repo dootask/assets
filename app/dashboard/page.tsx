@@ -17,7 +17,7 @@ import {
   Plus,
   RefreshCcw,
   TrendingUp,
-  Users
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -73,14 +73,14 @@ export default function Dashboard() {
       const [dashboardResponse] = await Promise.all([
         apiClient.get('/dashboard/stats'),
         apiClient.get('/categories'),
-        apiClient.get('/departments')
+        apiClient.get('/departments'),
       ]);
 
       const dashboardResult = dashboardResponse.data;
-      
+
       if (dashboardResult.code === 'SUCCESS' && dashboardResult.data) {
         const data = dashboardResult.data;
-        
+
         // 转换后端数据格式为前端期望的格式
         const recentBorrows: Array<{
           id: number;
@@ -257,25 +257,25 @@ export default function Dashboard() {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Link href="/assets/new">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                  <Button variant="outline" className="flex h-20 w-full flex-col gap-2">
                     <Plus className="h-6 w-6" />
                     <span>新增资产</span>
                   </Button>
                 </Link>
                 <Link href="/borrow">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                  <Button variant="outline" className="flex h-20 w-full flex-col gap-2">
                     <ClipboardList className="h-6 w-6" />
                     <span>资产借用</span>
                   </Button>
                 </Link>
                 <Link href="/inventory/new">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                  <Button variant="outline" className="flex h-20 w-full flex-col gap-2">
                     <CheckCircle className="h-6 w-6" />
                     <span>创建盘点</span>
                   </Button>
                 </Link>
                 <Link href="/reports">
-                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                  <Button variant="outline" className="flex h-20 w-full flex-col gap-2">
                     <TrendingUp className="h-6 w-6" />
                     <span>查看报表</span>
                   </Button>
@@ -301,7 +301,7 @@ export default function Dashboard() {
               <CardContent className="space-y-3">
                 {stats.recentAssets.length > 0 ? (
                   stats.recentAssets.map(asset => (
-                    <div key={asset.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <div key={asset.id} className="bg-muted/50 flex items-center gap-3 rounded-lg p-3">
                       <Package className="h-4 w-4 text-blue-500" />
                       <div className="flex-1 space-y-1">
                         <p className="text-sm font-medium">{asset.name}</p>
@@ -309,7 +309,7 @@ export default function Dashboard() {
                           {asset.asset_no} • {asset.category_name}
                         </p>
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-muted-foreground text-xs">
                         {new Date(asset.created_at).toLocaleDateString()}
                       </div>
                     </div>
@@ -337,7 +337,7 @@ export default function Dashboard() {
               <CardContent className="space-y-3">
                 {stats.recentBorrows.length > 0 ? (
                   stats.recentBorrows.map(borrow => (
-                    <div key={borrow.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <div key={borrow.id} className="bg-muted/50 flex items-center gap-3 rounded-lg p-3">
                       {borrow.is_overdue ? (
                         <AlertTriangle className="h-4 w-4 text-red-500" />
                       ) : (

@@ -18,17 +18,21 @@ import { getCategoryById } from '@/lib/api/categories';
 import type { AssetResponse, AssetStatus } from '@/lib/types';
 
 // 资产状态映射
-const statusMap: Record<AssetStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  available: { label: '可用', variant: 'default' },
-  borrowed: { label: '借用中', variant: 'secondary' },
-  maintenance: { label: '维护中', variant: 'outline' },
-  scrapped: { label: '已报废', variant: 'destructive' },
-};
+const statusMap: Record<AssetStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> =
+  {
+    available: { label: '可用', variant: 'default' },
+    borrowed: { label: '借用中', variant: 'secondary' },
+    maintenance: { label: '维护中', variant: 'outline' },
+    scrapped: { label: '已报废', variant: 'destructive' },
+  };
 
 // 分类属性显示组件
-const CategoryAttributesCard = ({ asset, categoryAttributes }: { 
-  asset: AssetResponse; 
-  categoryAttributes: AttributeField[] 
+const CategoryAttributesCard = ({
+  asset,
+  categoryAttributes,
+}: {
+  asset: AssetResponse;
+  categoryAttributes: AttributeField[];
 }) => {
   if (!categoryAttributes.length || !asset.custom_attributes) {
     return null;
@@ -60,15 +64,13 @@ const CategoryAttributesCard = ({ asset, categoryAttributes }: {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {categoryAttributes.map((attribute) => {
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {categoryAttributes.map(attribute => {
             const value = asset.custom_attributes?.[attribute.name];
             return (
               <div key={attribute.name} className="flex justify-between">
                 <span className="text-muted-foreground">{attribute.label}:</span>
-                <span className="font-medium">
-                  {renderAttributeValue(attribute, value)}
-                </span>
+                <span className="font-medium">{renderAttributeValue(attribute, value)}</span>
               </div>
             );
           })}
@@ -94,7 +96,7 @@ export default function AssetDetailPage() {
   const loadCategoryAttributes = async (categoryId: number) => {
     try {
       const category = await getCategoryById(categoryId);
-      
+
       if (category.attributes && typeof category.attributes === 'object' && 'fields' in category.attributes) {
         const attributes = category.attributes as { fields: AttributeField[] };
         setCategoryAttributes(attributes.fields || []);
@@ -115,7 +117,7 @@ export default function AssetDetailPage() {
         const response = await getAsset(assetId);
         const assetData = response.data;
         setAsset(assetData);
-        
+
         // 如果资产有分类，加载分类属性模板
         if (assetData.category_id) {
           await loadCategoryAttributes(assetData.category_id);
@@ -160,7 +162,7 @@ export default function AssetDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto space-y-6 p-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-8 w-8" />
           <div className="space-y-2">
@@ -168,8 +170,8 @@ export default function AssetDetailPage() {
             <Skeleton className="h-4 w-32" />
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardHeader>
                 <Skeleton className="h-6 w-24" />
@@ -202,7 +204,7 @@ export default function AssetDetailPage() {
   if (!asset) {
     return (
       <div className="container mx-auto p-6">
-        <div className="text-center py-8">
+        <div className="py-8 text-center">
           <p className="text-muted-foreground">资产不存在</p>
           <Button className="mt-4" onClick={() => router.push('/assets')}>
             返回资产列表
@@ -213,9 +215,9 @@ export default function AssetDetailPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* 页面标题和操作按钮 */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-bold tracking-tight">{asset.name}</h1>
@@ -224,30 +226,26 @@ export default function AssetDetailPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => router.push(`/assets/${asset.id}/edit`)}>
-            <Edit className="h-4 w-4 mr-2" />
+            <Edit className="mr-2 h-4 w-4" />
             编辑
           </Button>
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={deleting}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
+          <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            <Trash2 className="mr-2 h-4 w-4" />
             {deleting ? '删除中...' : '删除'}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* 主要信息 */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* 基本信息 */}
           <Card>
             <CardHeader>
               <CardTitle>基本信息</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">资产编号:</span>
                   <span className="font-medium">{asset.asset_no}</span>
@@ -266,9 +264,7 @@ export default function AssetDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">状态:</span>
-                  <Badge variant={statusMap[asset.status].variant}>
-                    {statusMap[asset.status].label}
-                  </Badge>
+                  <Badge variant={statusMap[asset.status].variant}>{statusMap[asset.status].label}</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">品牌:</span>
@@ -298,7 +294,7 @@ export default function AssetDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">采购日期:</span>
                   <span className="font-medium">
@@ -317,9 +313,7 @@ export default function AssetDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">保修期:</span>
-                  <span className="font-medium">
-                    {asset.warranty_period ? `${asset.warranty_period}个月` : '-'}
-                  </span>
+                  <span className="font-medium">{asset.warranty_period ? `${asset.warranty_period}个月` : '-'}</span>
                 </div>
                 {asset.warranty_end_date && (
                   <div className="flex justify-between">
@@ -343,7 +337,7 @@ export default function AssetDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">位置:</span>
                   <span className="font-medium">{asset.location || '-'}</span>
@@ -373,11 +367,11 @@ export default function AssetDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {asset.borrow_records.slice(0, 5).map((record) => (
-                    <div key={record.id} className="flex justify-between items-center p-3 border rounded-lg">
+                  {asset.borrow_records.slice(0, 5).map(record => (
+                    <div key={record.id} className="flex items-center justify-between rounded-lg border p-3">
                       <div>
                         <div className="font-medium">{record.borrower_name}</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-muted-foreground text-sm">
                           {new Date(record.borrow_date).toLocaleDateString()}
                           {record.actual_return_date && (
                             <> - {new Date(record.actual_return_date).toLocaleDateString()}</>
@@ -385,8 +379,7 @@ export default function AssetDetailPage() {
                         </div>
                       </div>
                       <Badge variant={record.status === 'returned' ? 'default' : 'secondary'}>
-                        {record.status === 'borrowed' ? '借用中' : 
-                         record.status === 'returned' ? '已归还' : '超期'}
+                        {record.status === 'borrowed' ? '借用中' : record.status === 'returned' ? '已归还' : '超期'}
                       </Badge>
                     </div>
                   ))}
@@ -406,11 +399,7 @@ export default function AssetDetailPage() {
               </CardHeader>
               <CardContent>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={asset.image_url}
-                  alt={asset.name}
-                  className="w-full h-48 object-cover rounded-lg"
-                />
+                <img src={asset.image_url} alt={asset.name} className="h-48 w-full rounded-lg object-cover" />
               </CardContent>
             </Card>
           )}
@@ -422,39 +411,35 @@ export default function AssetDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
-                <Package className="h-4 w-4 text-muted-foreground" />
+                <Package className="text-muted-foreground h-4 w-4" />
                 <div>
-                  <div className="text-sm text-muted-foreground">状态</div>
-                  <Badge variant={statusMap[asset.status].variant}>
-                    {statusMap[asset.status].label}
-                  </Badge>
+                  <div className="text-muted-foreground text-sm">状态</div>
+                  <Badge variant={statusMap[asset.status].variant}>{statusMap[asset.status].label}</Badge>
                 </div>
               </div>
               {asset.location && (
                 <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <MapPin className="text-muted-foreground h-4 w-4" />
                   <div>
-                    <div className="text-sm text-muted-foreground">位置</div>
+                    <div className="text-muted-foreground text-sm">位置</div>
                     <div className="font-medium">{asset.location}</div>
                   </div>
                 </div>
               )}
               {asset.responsible_person && (
                 <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 text-muted-foreground" />
+                  <User className="text-muted-foreground h-4 w-4" />
                   <div>
-                    <div className="text-sm text-muted-foreground">责任人</div>
+                    <div className="text-muted-foreground text-sm">责任人</div>
                     <div className="font-medium">{asset.responsible_person}</div>
                   </div>
                 </div>
               )}
               <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Calendar className="text-muted-foreground h-4 w-4" />
                 <div>
-                  <div className="text-sm text-muted-foreground">创建时间</div>
-                  <div className="font-medium">
-                    {new Date(asset.created_at).toLocaleDateString()}
-                  </div>
+                  <div className="text-muted-foreground text-sm">创建时间</div>
+                  <div className="font-medium">{new Date(asset.created_at).toLocaleDateString()}</div>
                 </div>
               </div>
             </CardContent>

@@ -3,19 +3,19 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CategoryStats, DepartmentStats, PurchaseYearStats, StatusStats, ValueAnalysis } from '@/lib/api/reports';
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Legend,
-    Line,
-    LineChart,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 // 颜色配置
@@ -27,13 +27,10 @@ const COLORS = {
   warning: '#f97316',
   info: '#06b6d4',
   success: '#22c55e',
-  muted: '#6b7280'
+  muted: '#6b7280',
 };
 
-const PIE_COLORS = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
-  '#8b5cf6', '#06b6d4', '#f97316', '#22c55e'
-];
+const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#22c55e'];
 
 interface AssetCategoryChartProps {
   data: CategoryStats[];
@@ -42,7 +39,7 @@ interface AssetCategoryChartProps {
 export function AssetCategoryChart({ data }: AssetCategoryChartProps) {
   const chartData = data.map((item, index) => ({
     ...item,
-    fill: PIE_COLORS[index % PIE_COLORS.length]
+    fill: PIE_COLORS[index % PIE_COLORS.length],
   }));
 
   return (
@@ -68,11 +65,8 @@ export function AssetCategoryChart({ data }: AssetCategoryChartProps) {
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
             </Pie>
-            <Tooltip 
-              formatter={(value: number, name: string) => [
-                `${value} 个资产`, 
-                name === 'asset_count' ? '数量' : name
-              ]}
+            <Tooltip
+              formatter={(value: number, name: string) => [`${value} 个资产`, name === 'asset_count' ? '数量' : name]}
             />
             <Legend />
           </PieChart>
@@ -99,15 +93,10 @@ export function AssetDepartmentChart({ data }: AssetDepartmentChartProps) {
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="department_name" 
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
+            <XAxis dataKey="department_name" angle={-45} textAnchor="end" height={80} />
             <YAxis yAxisId="left" />
             <YAxis yAxisId="right" orientation="right" />
-            <Tooltip 
+            <Tooltip
               formatter={(value: number, name: string) => {
                 if (name === 'asset_count') return [`${value} 个`, '资产数量'];
                 if (name === 'total_value') return [`¥${value.toLocaleString()}`, '总价值'];
@@ -129,22 +118,32 @@ interface AssetStatusChartProps {
 }
 
 export function AssetStatusChart({ data }: AssetStatusChartProps) {
-  const chartData = data.map((item) => ({
+  const chartData = data.map(item => ({
     ...item,
-    status_name: 
-      item.status === 'available' ? '可用' :
-      item.status === 'borrowed' ? '借用中' :
-      item.status === 'maintenance' ? '维护中' :
-      item.status === 'scrapped' ? '已报废' : item.status
+    status_name:
+      item.status === 'available'
+        ? '可用'
+        : item.status === 'borrowed'
+          ? '借用中'
+          : item.status === 'maintenance'
+            ? '维护中'
+            : item.status === 'scrapped'
+              ? '已报废'
+              : item.status,
   }));
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'available': return COLORS.success;
-      case 'borrowed': return COLORS.warning;
-      case 'maintenance': return COLORS.info;
-      case 'scrapped': return COLORS.danger;
-      default: return COLORS.muted;
+      case 'available':
+        return COLORS.success;
+      case 'borrowed':
+        return COLORS.warning;
+      case 'maintenance':
+        return COLORS.info;
+      case 'scrapped':
+        return COLORS.danger;
+      default:
+        return COLORS.muted;
     }
   };
 
@@ -171,9 +170,7 @@ export function AssetStatusChart({ data }: AssetStatusChartProps) {
                 <Cell key={`cell-${index}`} fill={getStatusColor(entry.status)} />
               ))}
             </Pie>
-            <Tooltip 
-              formatter={(value: number) => [`${value} 个资产`, '数量']}
-            />
+            <Tooltip formatter={(value: number) => [`${value} 个资产`, '数量']} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
@@ -202,7 +199,7 @@ export function AssetPurchaseTrendChart({ data }: AssetPurchaseTrendChartProps) 
             <XAxis dataKey="year" />
             <YAxis yAxisId="left" />
             <YAxis yAxisId="right" orientation="right" />
-            <Tooltip 
+            <Tooltip
               formatter={(value: number, name: string) => {
                 if (name === 'count') return [`${value} 个`, '采购数量'];
                 if (name === 'total_value') return [`¥${value.toLocaleString()}`, '采购价值'];
@@ -210,19 +207,19 @@ export function AssetPurchaseTrendChart({ data }: AssetPurchaseTrendChartProps) 
               }}
             />
             <Legend />
-            <Line 
-              yAxisId="left" 
-              type="monotone" 
-              dataKey="count" 
-              stroke={COLORS.primary} 
+            <Line
+              yAxisId="left"
+              type="monotone"
+              dataKey="count"
+              stroke={COLORS.primary}
               strokeWidth={2}
               name="采购数量"
             />
-            <Line 
-              yAxisId="right" 
-              type="monotone" 
-              dataKey="total_value" 
-              stroke={COLORS.secondary} 
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="total_value"
+              stroke={COLORS.secondary}
               strokeWidth={2}
               name="采购价值"
             />
@@ -242,7 +239,7 @@ export function AssetValueAnalysisChart({ data }: AssetValueAnalysisChartProps) 
     { name: '高价值 (>¥10,000)', value: data.high_value, fill: COLORS.danger },
     { name: '中等价值 (¥1,000-¥10,000)', value: data.medium_value, fill: COLORS.warning },
     { name: '低价值 (<¥1,000)', value: data.low_value, fill: COLORS.success },
-    { name: '无价值信息', value: data.no_value, fill: COLORS.muted }
+    { name: '无价值信息', value: data.no_value, fill: COLORS.muted },
   ];
 
   return (
@@ -255,16 +252,9 @@ export function AssetValueAnalysisChart({ data }: AssetValueAnalysisChartProps) 
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="name" 
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
+            <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
             <YAxis />
-            <Tooltip 
-              formatter={(value: number) => [`${value} 个资产`, '数量']}
-            />
+            <Tooltip formatter={(value: number) => [`${value} 个资产`, '数量']} />
             <Bar dataKey="value" fill={COLORS.primary}>
               {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />

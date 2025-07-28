@@ -111,7 +111,7 @@ export function Pagination({
       )}
 
       {/* 分页控件 */}
-      <div className="flex flex-col items-center gap-4 sm:flex-row flex-wrap">
+      <div className="flex flex-col flex-wrap items-center gap-4 sm:flex-row">
         {/* 每页条数选择器 */}
         {showSizeChanger && (
           <div className="flex items-center gap-2 text-sm">

@@ -4,19 +4,12 @@ import { BorrowDialog } from '@/components/borrow/borrow-dialog';
 import { ReturnDialog } from '@/components/borrow/return-dialog';
 import { CommandSelect } from '@/components/command-select';
 import { Loading } from '@/components/loading';
-import { Pagination } from '@/components/pagination';
+import { Pagination, defaultPagination } from '@/components/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppContext } from '@/contexts/app-context';
 import { deleteBorrowRecord, getBorrowRecords } from '@/lib/api/borrow';
 import type { BorrowFilters, BorrowResponse, BorrowStatus, PaginationRequest } from '@/lib/types';
@@ -26,27 +19,23 @@ import { toast } from 'sonner';
 
 export default function BorrowPage() {
   const { Confirm } = useAppContext();
-  
+
   const [borrowRecords, setBorrowRecords] = useState<BorrowResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<BorrowStatus | 'all'>('all');
   const [overdueFilter, setOverdueFilter] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
+  const [pagination, setPagination] = useState(defaultPagination);
   const [borrowDialogOpen, setBorrowDialogOpen] = useState(false);
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [editingBorrow, setEditingBorrow] = useState<BorrowResponse | null>(null);
   const [returningBorrow, setReturningBorrow] = useState<BorrowResponse | null>(null);
 
-  const pageSize = 20;
-
   // 加载借用记录列表
   const loadBorrowRecords = async (page = 1, search = '', status: BorrowStatus | 'all' = 'all', overdue = false) => {
     try {
       setLoading(true);
-      
+
       const filters: BorrowFilters = {};
       if (search.trim()) {
         filters.borrower_name = search.trim();
@@ -60,18 +49,16 @@ export default function BorrowPage() {
 
       const params: PaginationRequest & { filters?: BorrowFilters } = {
         page,
-        page_size: pageSize,
+        page_size: pagination.page_size,
         sorts: [{ key: 'created_at', desc: true }],
         filters,
       };
 
       const response = await getBorrowRecords(params);
-      
+
       if (response.code === 'SUCCESS') {
         setBorrowRecords(response.data.data);
-        setCurrentPage(response.data.current_page);
-        setTotalPages(response.data.total_pages);
-        setTotalItems(response.data.total_items);
+        setPagination(response.data);
       } else {
         toast.error(response.message || '加载借用记录失败');
       }
@@ -86,11 +73,11 @@ export default function BorrowPage() {
   // 初始加载
   useEffect(() => {
     loadBorrowRecords(1, '', 'all', false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 搜索处理
   const handleSearch = () => {
-    setCurrentPage(1);
     loadBorrowRecords(1, searchTerm, statusFilter, overdueFilter);
   };
 
@@ -98,13 +85,11 @@ export default function BorrowPage() {
   const handleFilter = (newStatus: BorrowStatus | 'all', newOverdue: boolean) => {
     setStatusFilter(newStatus);
     setOverdueFilter(newOverdue);
-    setCurrentPage(1);
     loadBorrowRecords(1, searchTerm, newStatus, newOverdue);
   };
 
   // 分页处理
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
     loadBorrowRecords(page, searchTerm, statusFilter, overdueFilter);
   };
 
@@ -134,7 +119,7 @@ export default function BorrowPage() {
         title: '无法删除',
         message: '该记录状态为借用中，无法删除。请先归还资产。',
         confirmText: '知道了',
-        variant: 'destructive'
+        variant: 'destructive',
       });
       return;
     }
@@ -148,10 +133,10 @@ export default function BorrowPage() {
 
     try {
       const response = await deleteBorrowRecord(borrow.id);
-      
+
       if (response.code === 'SUCCESS') {
         toast.success('借用记录删除成功');
-        loadBorrowRecords(currentPage, searchTerm, statusFilter, overdueFilter);
+        loadBorrowRecords(pagination.current_page, searchTerm, statusFilter, overdueFilter);
       } else {
         toast.error(response.message || '删除借用记录失败');
       }
@@ -167,7 +152,7 @@ export default function BorrowPage() {
     setReturnDialogOpen(false);
     setEditingBorrow(null);
     setReturningBorrow(null);
-    loadBorrowRecords(currentPage, searchTerm, statusFilter, overdueFilter);
+    loadBorrowRecords(pagination.current_page, searchTerm, statusFilter, overdueFilter);
   };
 
   // 获取状态徽章
@@ -175,7 +160,7 @@ export default function BorrowPage() {
     if (borrow.is_overdue) {
       return <Badge variant="destructive">超期 ({borrow.overdue_days}天)</Badge>;
     }
-    
+
     switch (borrow.status) {
       case 'borrowed':
         return <Badge variant="default">借用中</Badge>;
@@ -193,7 +178,7 @@ export default function BorrowPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
@@ -201,31 +186,29 @@ export default function BorrowPage() {
           <p className="text-muted-foreground">管理企业资产借用记录</p>
         </div>
         <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           新增借用
         </Button>
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">总借用数</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalItems}</div>
+            <div className="text-2xl font-bold">{pagination.total_items}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">借用中</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <AlertTriangle className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {borrowRecords.filter(b => b.status === 'borrowed').length}
-            </div>
+            <div className="text-2xl font-bold">{borrowRecords.filter(b => b.status === 'borrowed').length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -234,9 +217,7 @@ export default function BorrowPage() {
             <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {borrowRecords.filter(b => b.is_overdue).length}
-            </div>
+            <div className="text-2xl font-bold text-red-600">{borrowRecords.filter(b => b.is_overdue).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -258,12 +239,12 @@ export default function BorrowPage() {
           <div className="flex items-center space-x-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
                 <Input
                   placeholder="搜索借用人..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && handleSearch()}
                   className="pl-10"
                 />
               </div>
@@ -276,11 +257,11 @@ export default function BorrowPage() {
                 { value: 'overdue', label: '超期' },
               ]}
               value={statusFilter}
-              onValueChange={(value) => handleFilter(value as BorrowStatus | 'all', overdueFilter)}
+              onValueChange={value => handleFilter(value as BorrowStatus | 'all', overdueFilter)}
               placeholder="状态"
             />
             <Button
-              variant={overdueFilter ? "default" : "outline"}
+              variant={overdueFilter ? 'default' : 'outline'}
               onClick={() => handleFilter(statusFilter, !overdueFilter)}
             >
               仅超期
@@ -301,9 +282,7 @@ export default function BorrowPage() {
           {loading ? (
             <Loading />
           ) : borrowRecords.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              暂无借用记录
-            </div>
+            <div className="py-8 text-center text-gray-500">暂无借用记录</div>
           ) : (
             <>
               <Table>
@@ -320,55 +299,35 @@ export default function BorrowPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {borrowRecords.map((borrow) => (
+                  {borrowRecords.map(borrow => (
                     <TableRow key={borrow.id}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{borrow.asset?.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {borrow.asset?.asset_no}
-                          </div>
+                          <div className="text-muted-foreground text-sm">{borrow.asset?.asset_no}</div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{borrow.borrower_name}</div>
                           {borrow.borrower_contact && (
-                            <div className="text-sm text-muted-foreground">
-                              {borrow.borrower_contact}
-                            </div>
+                            <div className="text-muted-foreground text-sm">{borrow.borrower_contact}</div>
                           )}
                         </div>
                       </TableCell>
+                      <TableCell>{borrow.department?.name || '-'}</TableCell>
+                      <TableCell>{new Date(borrow.borrow_date).toLocaleDateString()}</TableCell>
                       <TableCell>
-                        {borrow.department?.name || '-'}
+                        {borrow.expected_return_date ? new Date(borrow.expected_return_date).toLocaleDateString() : '-'}
                       </TableCell>
                       <TableCell>
-                        {new Date(borrow.borrow_date).toLocaleDateString()}
+                        {borrow.actual_return_date ? new Date(borrow.actual_return_date).toLocaleDateString() : '-'}
                       </TableCell>
-                      <TableCell>
-                        {borrow.expected_return_date 
-                          ? new Date(borrow.expected_return_date).toLocaleDateString()
-                          : '-'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {borrow.actual_return_date 
-                          ? new Date(borrow.actual_return_date).toLocaleDateString()
-                          : '-'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(borrow)}
-                      </TableCell>
+                      <TableCell>{getStatusBadge(borrow)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-2">
                           {borrow.can_return && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleReturn(borrow)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleReturn(borrow)}>
                               <RotateCcw className="h-4 w-4" />
                             </Button>
                           )}
@@ -398,10 +357,10 @@ export default function BorrowPage() {
               {/* 分页 */}
               <div className="mt-6">
                 <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  pageSize={10}
-                  totalItems={totalItems}
+                  currentPage={pagination.current_page}
+                  totalPages={pagination.total_pages}
+                  pageSize={pagination.page_size}
+                  totalItems={pagination.total_items}
                   onPageChange={handlePageChange}
                   onPageSizeChange={() => {
                     // 默认不支持修改每页大小

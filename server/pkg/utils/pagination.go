@@ -18,7 +18,7 @@ type SortField struct {
 // PaginationRequest 统一分页请求结构
 type PaginationRequest struct {
 	Page     int                    `json:"page" form:"page,default=1" validate:"min=1"`                    // 页码
-	PageSize int                    `json:"page_size" form:"page_size,default=12" validate:"min=1,max=200"` // 每页条数，默认12
+	PageSize int                    `json:"page_size" form:"page_size,default=10" validate:"min=1,max=200"` // 每页条数，默认10
 	Sorts    []SortField            `json:"sorts" form:"sorts"`                                             // 排序字段数组
 	Filters  map[string]interface{} `json:"filters" form:"filters"`                                         // 筛选条件，每个接口可定义不同结构
 }

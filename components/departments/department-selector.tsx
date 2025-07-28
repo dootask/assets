@@ -1,18 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-} from '@/components/ui/command';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getDepartments } from '@/lib/api/departments';
 import type { DepartmentResponse } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -47,7 +37,7 @@ export function DepartmentSelector({
         page_size: 100, // 获取所有部门
         sorts: [{ key: 'name', desc: false }],
       });
-      
+
       if (response.code === 'SUCCESS') {
         setDepartments(response.data.data);
       }
@@ -81,9 +71,7 @@ export function DepartmentSelector({
       <PopoverContent className="w-[300px] p-0">
         <Command>
           <CommandInput placeholder="搜索部门..." />
-          <CommandEmpty>
-            {loading ? '加载中...' : '未找到部门'}
-          </CommandEmpty>
+          <CommandEmpty>{loading ? '加载中...' : '未找到部门'}</CommandEmpty>
           <CommandGroup>
             {/* 清空选择选项 */}
             <CommandItem
@@ -93,16 +81,11 @@ export function DepartmentSelector({
                 setOpen(false);
               }}
             >
-              <Check
-                className={cn(
-                  'mr-2 h-4 w-4',
-                  !value ? 'opacity-100' : 'opacity-0'
-                )}
-              />
+              <Check className={cn('mr-2 h-4 w-4', !value ? 'opacity-100' : 'opacity-0')} />
               不选择部门
             </CommandItem>
-            
-            {departments.map((department) => (
+
+            {departments.map(department => (
               <CommandItem
                 key={department.id}
                 value={`${department.name}-${department.code}`}
@@ -111,15 +94,10 @@ export function DepartmentSelector({
                   setOpen(false);
                 }}
               >
-                <Check
-                  className={cn(
-                    'mr-2 h-4 w-4',
-                    value === department.id ? 'opacity-100' : 'opacity-0'
-                  )}
-                />
+                <Check className={cn('mr-2 h-4 w-4', value === department.id ? 'opacity-100' : 'opacity-0')} />
                 <div className="flex flex-col">
                   <span>{department.name}</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-muted-foreground text-xs">
                     {department.code} • {department.asset_count} 个资产
                   </span>
                 </div>

@@ -1,29 +1,29 @@
 import apiClient from '@/lib/axios';
 import type {
-    APIResponse,
-    AssetFilters,
-    AssetResponse,
-    BatchDeleteAssetsRequest,
-    BatchDeleteAssetsResponse,
-    BatchUpdateAssetsRequest,
-    BatchUpdateAssetsResponse,
-    CheckAssetNoResponse,
-    CreateAssetRequest,
-    ImportAssetRequest,
-    ImportAssetResponse,
-    PaginationRequest,
-    PaginationResponse,
-    UpdateAssetRequest
+  APIResponse,
+  AssetFilters,
+  AssetResponse,
+  BatchDeleteAssetsRequest,
+  BatchDeleteAssetsResponse,
+  BatchUpdateAssetsRequest,
+  BatchUpdateAssetsResponse,
+  CheckAssetNoResponse,
+  CreateAssetRequest,
+  ImportAssetRequest,
+  ImportAssetResponse,
+  PaginationRequest,
+  PaginationResponse,
+  UpdateAssetRequest,
 } from '@/lib/types';
 
 // 获取资产列表
 export const getAssets = async (params: PaginationRequest & { filters?: AssetFilters }) => {
   const queryParams = new URLSearchParams();
-  
+
   // 添加分页参数
   queryParams.append('page', params.page.toString());
   queryParams.append('page_size', params.page_size.toString());
-  
+
   // 添加排序参数
   if (params.sorts && params.sorts.length > 0) {
     params.sorts.forEach((sort, index) => {
@@ -31,7 +31,7 @@ export const getAssets = async (params: PaginationRequest & { filters?: AssetFil
       queryParams.append(`sorts[${index}][desc]`, sort.desc.toString());
     });
   }
-  
+
   // 添加筛选参数
   if (params.filters) {
     Object.entries(params.filters).forEach(([key, value]) => {
@@ -40,7 +40,7 @@ export const getAssets = async (params: PaginationRequest & { filters?: AssetFil
       }
     });
   }
-  
+
   const response = await apiClient.get<APIResponse<PaginationResponse<AssetResponse[]>>>(
     `/assets?${queryParams.toString()}`
   );
@@ -86,7 +86,7 @@ export const importAssets = async (data: ImportAssetRequest) => {
 // 导出资产
 export const exportAssets = async (filters?: AssetFilters) => {
   const queryParams = new URLSearchParams();
-  
+
   // 添加筛选参数
   if (filters) {
     Object.entries(filters).forEach(([key, value]) => {
@@ -95,10 +95,8 @@ export const exportAssets = async (filters?: AssetFilters) => {
       }
     });
   }
-  
-  const response = await apiClient.get<APIResponse<AssetResponse[]>>(
-    `/assets/export?${queryParams.toString()}`
-  );
+
+  const response = await apiClient.get<APIResponse<AssetResponse[]>>(`/assets/export?${queryParams.toString()}`);
   return response.data;
 };
 

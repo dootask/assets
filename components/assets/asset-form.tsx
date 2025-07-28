@@ -22,7 +22,13 @@ import type { AttributeField, Category } from '@/lib/api/categories';
 import { getCategories, getCategoryById } from '@/lib/api/categories';
 import { getDepartments } from '@/lib/api/departments';
 import { showError, showSuccess } from '@/lib/notifications';
-import type { AssetResponse, AssetStatus, CreateAssetRequest, DepartmentResponse, UpdateAssetRequest } from '@/lib/types';
+import type {
+  AssetResponse,
+  AssetStatus,
+  CreateAssetRequest,
+  DepartmentResponse,
+  UpdateAssetRequest,
+} from '@/lib/types';
 
 // 表单验证模式 - 添加自定义属性支持
 const assetFormSchema = z.object({
@@ -67,7 +73,14 @@ const statusOptions: { value: AssetStatus; label: string }[] = [
   { value: 'scrapped', label: '已报废' },
 ];
 
-export function AssetForm({ initialData, onSubmit, onCancel, loading = false, isEdit = false, hideButtons = false }: AssetFormProps) {
+export function AssetForm({
+  initialData,
+  onSubmit,
+  onCancel,
+  loading = false,
+  isEdit = false,
+  hideButtons = false,
+}: AssetFormProps) {
   const [assetNoChecking, setAssetNoChecking] = useState(false);
   const [assetNoValid, setAssetNoValid] = useState<boolean | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.image_url || null);
@@ -115,7 +128,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
       const response = await getDepartments({
         page: 1,
         page_size: 100, // 获取所有部门
-        sorts: [{ key: 'name', desc: false }]
+        sorts: [{ key: 'name', desc: false }],
       });
       setDepartments(response.data.data);
     } catch (error) {
@@ -132,7 +145,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
       setLoadingCategoryDetails(true);
       const category = await getCategoryById(categoryId);
       setSelectedCategory(category);
-      
+
       // 处理分类属性
       if (category.attributes && typeof category.attributes === 'object' && 'fields' in category.attributes) {
         const attributes = category.attributes as { fields: AttributeField[] };
@@ -153,7 +166,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
     try {
       setLoadingCategories(true);
       const categoriesData = await getCategories();
-      
+
       // 扁平化分类树为简单列表
       const flattenCategories = (cats: Category[]): Category[] => {
         const result: Category[] = [];
@@ -165,10 +178,10 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
         }
         return result;
       };
-      
+
       const flatCategories = flattenCategories(categoriesData);
       setCategories(flatCategories);
-      
+
       // 如果有初始数据，加载对应分类的属性模板
       if (initialData?.category_id) {
         await loadCategoryAttributes(initialData.category_id);
@@ -253,10 +266,10 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
 
       // 上传图片（这里应该调用实际的上传API）
       // const response = await uploadFile(formData);
-      
+
       // 模拟上传成功，实际应该使用返回的URL
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         const imageUrl = e.target?.result as string;
         setImagePreview(imageUrl);
         form.setValue('image_url', imageUrl);
@@ -299,11 +312,11 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                   <Input
                     {...field}
                     value={(field.value || currentValue || '') as string}
-                    onChange={(e) => {
+                    onChange={e => {
                       const customAttributes = form.getValues('custom_attributes') || {};
                       form.setValue('custom_attributes', {
                         ...customAttributes,
-                        [attribute.name]: e.target.value
+                        [attribute.name]: e.target.value,
                       });
                     }}
                     placeholder={`请输入${attribute.label}`}
@@ -332,12 +345,12 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                     {...field}
                     type="number"
                     value={(field.value || currentValue || '') as string}
-                    onChange={(e) => {
+                    onChange={e => {
                       const customAttributes = form.getValues('custom_attributes') || {};
                       const value = e.target.value ? parseFloat(e.target.value) : undefined;
                       form.setValue('custom_attributes', {
                         ...customAttributes,
-                        [attribute.name]: value
+                        [attribute.name]: value,
                       });
                     }}
                     placeholder={`请输入${attribute.label}`}
@@ -364,12 +377,11 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between font-normal"
-                      >
-                        {currentValue ? new Date(currentValue as string).toLocaleDateString() : `请选择${attribute.label}`}
-                        <ChevronDownIcon className="w-4 h-4" />
+                      <Button variant="outline" className="w-full justify-between font-normal">
+                        {currentValue
+                          ? new Date(currentValue as string).toLocaleDateString()
+                          : `请选择${attribute.label}`}
+                        <ChevronDownIcon className="h-4 w-4" />
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
@@ -378,11 +390,11 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                       mode="single"
                       selected={currentValue ? new Date(currentValue as string) : undefined}
                       captionLayout="dropdown"
-                      onSelect={(date) => {
+                      onSelect={date => {
                         const customAttributes = form.getValues('custom_attributes') || {};
                         form.setValue('custom_attributes', {
                           ...customAttributes,
-                          [attribute.name]: date?.toISOString().split('T')[0]
+                          [attribute.name]: date?.toISOString().split('T')[0],
                         });
                       }}
                     />
@@ -407,12 +419,12 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                   {attribute.required && ' *'}
                 </FormLabel>
                 <Select
-                  value={currentValue as string || ''}
-                  onValueChange={(value) => {
+                  value={(currentValue as string) || ''}
+                  onValueChange={value => {
                     const customAttributes = form.getValues('custom_attributes') || {};
                     form.setValue('custom_attributes', {
                       ...customAttributes,
-                      [attribute.name]: value
+                      [attribute.name]: value,
                     });
                   }}
                 >
@@ -422,7 +434,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {attribute.options?.map((option) => (
+                    {attribute.options?.map(option => (
                       <SelectItem key={option} value={option}>
                         {option}
                       </SelectItem>
@@ -442,15 +454,15 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
             control={form.control}
             name={fieldName as keyof AssetFormData}
             render={() => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+              <FormItem className="flex flex-row items-start space-y-0 space-x-3">
                 <FormControl>
                   <Checkbox
-                    checked={currentValue as boolean || false}
-                    onCheckedChange={(checked) => {
+                    checked={(currentValue as boolean) || false}
+                    onCheckedChange={checked => {
                       const customAttributes = form.getValues('custom_attributes') || {};
                       form.setValue('custom_attributes', {
                         ...customAttributes,
-                        [attribute.name]: checked
+                        [attribute.name]: checked,
                       });
                     }}
                   />
@@ -507,9 +519,8 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
       responsible_person: data.responsible_person || undefined,
       description: data.description || undefined,
       image_url: data.image_url || undefined,
-      custom_attributes: data.custom_attributes && Object.keys(data.custom_attributes).length > 0 
-        ? data.custom_attributes 
-        : undefined,
+      custom_attributes:
+        data.custom_attributes && Object.keys(data.custom_attributes).length > 0 ? data.custom_attributes : undefined,
     };
 
     onSubmit(submitData);
@@ -524,7 +535,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
             <CardTitle>基本信息</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* 资产编号 */}
               <FormField
                 control={form.control}
@@ -537,15 +548,15 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                         <Input {...field} placeholder="请输入资产编号" />
                       </FormControl>
                       {assetNoChecking && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                        <div className="absolute top-1/2 right-3 -translate-y-1/2">
+                          <div className="border-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
                         </div>
                       )}
                       {!assetNoChecking && assetNoValid === true && (
-                        <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                        <Check className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-green-500" />
                       )}
                       {!assetNoChecking && assetNoValid === false && (
-                        <X className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+                        <X className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-red-500" />
                       )}
                     </div>
                     {assetNoValid === false && (
@@ -583,16 +594,16 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                     <FormLabel>资产分类 *</FormLabel>
                     <Select
                       value={field.value?.toString() || ''}
-                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      onValueChange={value => field.onChange(parseInt(value))}
                       disabled={loadingCategories}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={loadingCategories ? "加载中..." : "请选择资产分类"} />
+                          <SelectValue placeholder={loadingCategories ? '加载中...' : '请选择资产分类'} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categories.map((category) => (
+                        {categories.map(category => (
                           <SelectItem key={category.id} value={category.id.toString()}>
                             {category.name}
                           </SelectItem>
@@ -613,17 +624,17 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                     <FormLabel>所属部门</FormLabel>
                     <Select
                       value={field.value?.toString() || 'none'}
-                      onValueChange={(value) => field.onChange(value === 'none' ? undefined : parseInt(value))}
+                      onValueChange={value => field.onChange(value === 'none' ? undefined : parseInt(value))}
                       disabled={loadingDepartments}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={loadingDepartments ? "加载中..." : "请选择所属部门"} />
+                          <SelectValue placeholder={loadingDepartments ? '加载中...' : '请选择所属部门'} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">不选择</SelectItem>
-                        {departments.map((department) => (
+                        {departments.map(department => (
                           <SelectItem key={department.id} value={department.id.toString()}>
                             {department.name}
                           </SelectItem>
@@ -649,7 +660,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {statusOptions.map((option) => (
+                        {statusOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
@@ -715,14 +726,12 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
             <CardHeader>
               <CardTitle>
                 分类属性
-                {loadingCategoryDetails && (
-                  <span className="ml-2 text-sm text-muted-foreground">加载中...</span>
-                )}
+                {loadingCategoryDetails && <span className="text-muted-foreground ml-2 text-sm">加载中...</span>}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {categoryAttributes.map((attribute) => renderCustomAttributeField(attribute))}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {categoryAttributes.map(attribute => renderCustomAttributeField(attribute))}
               </div>
             </CardContent>
           </Card>
@@ -734,7 +743,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
             <CardTitle>采购信息</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* 采购日期 */}
               <FormField
                 control={form.control}
@@ -745,12 +754,9 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-between font-normal"
-                          >
-                            {field.value ? field.value.toLocaleDateString() : "请选择采购日期"}
-                            <ChevronDownIcon className="w-4 h-4" />
+                          <Button variant="outline" className="w-full justify-between font-normal">
+                            {field.value ? field.value.toLocaleDateString() : '请选择采购日期'}
+                            <ChevronDownIcon className="h-4 w-4" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -759,7 +765,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                           mode="single"
                           selected={field.value}
                           captionLayout="dropdown"
-                          onSelect={(date) => {
+                          onSelect={date => {
                             field.onChange(date);
                           }}
                         />
@@ -783,7 +789,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                         type="number"
                         step="0.01"
                         placeholder="请输入采购价格"
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                         value={field.value || ''}
                       />
                     </FormControl>
@@ -819,7 +825,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                         {...field}
                         type="number"
                         placeholder="请输入保修期"
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                         value={field.value || ''}
                       />
                     </FormControl>
@@ -837,7 +843,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
             <CardTitle>使用信息</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* 位置 */}
               <FormField
                 control={form.control}
@@ -895,11 +901,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
             {imagePreview ? (
               <div className="relative inline-block">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imagePreview}
-                  alt="资产图片预览"
-                  className="w-48 h-48 object-cover rounded-lg border"
-                />
+                <img src={imagePreview} alt="资产图片预览" className="h-48 w-48 rounded-lg border object-cover" />
                 <Button
                   type="button"
                   variant="destructive"
@@ -911,14 +913,14 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                 </Button>
               </div>
             ) : (
-              <div 
-                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
+              <div
+                className="border-muted-foreground/25 hover:border-muted-foreground/50 cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <Upload className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
                 <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">点击上传资产图片</p>
-                  <p className="text-xs text-muted-foreground">支持 JPG、PNG 格式，大小不超过 5MB</p>
+                  <p className="text-muted-foreground text-sm">点击上传资产图片</p>
+                  <p className="text-muted-foreground text-xs">支持 JPG、PNG 格式，大小不超过 5MB</p>
                 </div>
               </div>
             )}
@@ -932,8 +934,8 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
               className="hidden"
             />
             {uploadingImage && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+              <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                <div className="border-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
                 上传中...
               </div>
             )}
@@ -942,18 +944,20 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
 
         {/* 操作按钮 */}
         {!hideButtons && (
-          <div className="flex gap-4 justify-end">
+          <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
               取消
             </Button>
             <Button type="submit" disabled={loading || assetNoValid === false}>
               {loading ? (
                 <>
-                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   {isEdit ? '更新中...' : '创建中...'}
                 </>
+              ) : isEdit ? (
+                '更新资产'
               ) : (
-                isEdit ? '更新资产' : '创建资产'
+                '创建资产'
               )}
             </Button>
           </div>

@@ -3,20 +3,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from '@/components/ui/form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { returnAsset } from '@/lib/api/borrow';
@@ -45,12 +33,7 @@ interface ReturnDialogProps {
   onSuccess: () => void;
 }
 
-export function ReturnDialog({
-  open,
-  onOpenChange,
-  borrow,
-  onSuccess,
-}: ReturnDialogProps) {
+export function ReturnDialog({ open, onOpenChange, borrow, onSuccess }: ReturnDialogProps) {
   const [loading, setLoading] = useState(false);
 
   const form = useForm<ReturnFormData>({
@@ -84,7 +67,7 @@ export function ReturnDialog({
       };
 
       const response = await returnAsset(borrow.id, returnData);
-      
+
       if (response.code === 'SUCCESS') {
         toast.success('资产归还成功');
         onSuccess();
@@ -118,15 +101,11 @@ export function ReturnDialog({
   // 获取状态徽章
   const getStatusInfo = () => {
     if (!borrow) return null;
-    
+
     if (borrow.is_overdue) {
-      return (
-        <Badge variant="destructive">
-          超期 {borrow.overdue_days} 天
-        </Badge>
-      );
+      return <Badge variant="destructive">超期 {borrow.overdue_days} 天</Badge>;
     }
-    
+
     return <Badge variant="default">正常借用</Badge>;
   };
 
@@ -140,7 +119,7 @@ export function ReturnDialog({
         </DialogHeader>
 
         {/* 借用信息展示 */}
-        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 rounded-lg bg-gray-50 p-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="font-medium">资产名称:</span>
@@ -161,10 +140,7 @@ export function ReturnDialog({
             <div>
               <span className="font-medium">预期归还:</span>
               <div>
-                {borrow.expected_return_date 
-                  ? new Date(borrow.expected_return_date).toLocaleDateString()
-                  : '未设置'
-                }
+                {borrow.expected_return_date ? new Date(borrow.expected_return_date).toLocaleDateString() : '未设置'}
               </div>
             </div>
             <div>
@@ -184,7 +160,7 @@ export function ReturnDialog({
               control={form.control}
               name="actual_return_date"
               render={({ field }) => (
-                <FormItem className="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0 sm:space-x-2">
+                <FormItem className="flex flex-col items-center justify-between space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
                   <FormLabel>实际归还时间</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -192,22 +168,17 @@ export function ReturnDialog({
                         <Button
                           variant="outline"
                           className={cn(
-                            "w-[240px] justify-start text-left font-normal",
-                            !field.value && "text-muted-foreground"
+                            'w-[240px] justify-start text-left font-normal',
+                            !field.value && 'text-muted-foreground'
                           )}
                         >
-                          {field.value ? format(field.value, "PPP") : <span>选择归还日期</span>}
+                          {field.value ? format(field.value, 'PPP') : <span>选择归还日期</span>}
                           <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
+                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                     </PopoverContent>
                   </Popover>
                   <FormMessage />
@@ -235,12 +206,7 @@ export function ReturnDialog({
             />
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={loading}
-              >
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
                 取消
               </Button>
               <Button type="submit" disabled={loading}>

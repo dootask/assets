@@ -45,7 +45,12 @@ export const showLoading = (message: string) => {
 };
 
 // 更新通知
-export const updateToast = (toastId: string | number, type: 'success' | 'error' | 'warning' | 'info', message: string, description?: string) => {
+export const updateToast = (
+  toastId: string | number,
+  type: 'success' | 'error' | 'warning' | 'info',
+  message: string,
+  description?: string
+) => {
   const options = {
     description,
     duration: type === 'error' ? 5000 : 3000,
@@ -78,10 +83,7 @@ export const showOperationResult = (
   if (success && failedCount === 0) {
     showSuccess(`${operation}成功`, successCount ? `成功处理 ${successCount} 项` : undefined);
   } else if (successCount && failedCount) {
-    showWarning(
-      `${operation}部分成功`,
-      `成功 ${successCount} 项，失败 ${failedCount} 项`
-    );
+    showWarning(`${operation}部分成功`, `成功 ${successCount} 项，失败 ${failedCount} 项`);
   } else {
     showError(`${operation}失败`, errors?.[0]?.error);
   }
@@ -90,19 +92,19 @@ export const showOperationResult = (
 // 确认操作通知
 export const showConfirmation = (message: string, onConfirm: () => void, onCancel?: () => void) => {
   toast.custom(
-    (t) => (
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-md">
+    t => (
+      <div className="max-w-md rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
         <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5" />
+          <AlertCircle className="mt-0.5 h-5 w-5 text-yellow-500" />
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">{message}</p>
-            <div className="flex gap-2 mt-3">
+            <div className="mt-3 flex gap-2">
               <button
                 onClick={() => {
                   onConfirm();
                   toast.dismiss(t);
                 }}
-                className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                className="rounded bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
               >
                 确认
               </button>
@@ -111,7 +113,7 @@ export const showConfirmation = (message: string, onConfirm: () => void, onCance
                   onCancel?.();
                   toast.dismiss(t);
                 }}
-                className="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm rounded hover:bg-gray-300"
+                className="rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-800 hover:bg-gray-300"
               >
                 取消
               </button>

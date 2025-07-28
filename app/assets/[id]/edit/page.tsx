@@ -62,7 +62,7 @@ export default function EditAssetPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto space-y-6 p-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-8 w-8" />
           <div className="space-y-2">
@@ -90,7 +90,7 @@ export default function EditAssetPage() {
   if (!asset) {
     return (
       <div className="container mx-auto p-6">
-        <div className="text-center py-8">
+        <div className="py-8 text-center">
           <p className="text-muted-foreground">资产不存在</p>
           <Button className="mt-4" onClick={() => router.push('/assets')}>
             返回资产列表
@@ -101,7 +101,7 @@ export default function EditAssetPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* 页面标题 */}
       <div className="flex items-center gap-4">
         <div className="flex flex-col gap-1">
@@ -116,13 +116,7 @@ export default function EditAssetPage() {
           <CardTitle>资产信息</CardTitle>
         </CardHeader>
         <CardContent>
-          <AssetForm
-            initialData={asset}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-            loading={submitting}
-            isEdit
-          />
+          <AssetForm initialData={asset} onSubmit={handleSubmit} onCancel={handleCancel} loading={submitting} isEdit />
         </CardContent>
       </Card>
     </div>

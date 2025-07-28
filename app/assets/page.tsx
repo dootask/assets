@@ -1,20 +1,19 @@
 'use client';
 
-import { Download, Edit, Eye, Filter, MoreHorizontal, Plus, Search, Settings, Trash2, Upload } from 'lucide-react';
+import { Download, Edit, Eye, Filter, Plus, Search, Settings, Trash2, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import { BatchOperationsDialog } from '@/components/assets/batch-operations-dialog';
 import { Loading } from '@/components/loading';
-import { Pagination } from '@/components/pagination';
+import { Pagination, defaultPagination } from '@/components/pagination';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/app-context';
 import { deleteAsset, exportAssets, getAssets } from '@/lib/api/assets';
@@ -22,12 +21,13 @@ import { showError, showSuccess } from '@/lib/notifications';
 import type { AssetFilters, AssetResponse, AssetStatus, PaginationRequest } from '@/lib/types';
 
 // 资产状态映射
-const statusMap: Record<AssetStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  available: { label: '可用', variant: 'default' },
-  borrowed: { label: '借用中', variant: 'secondary' },
-  maintenance: { label: '维护中', variant: 'outline' },
-  scrapped: { label: '已报废', variant: 'destructive' },
-};
+const statusMap: Record<AssetStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> =
+  {
+    available: { label: '可用', variant: 'default' },
+    borrowed: { label: '借用中', variant: 'secondary' },
+    maintenance: { label: '维护中', variant: 'outline' },
+    scrapped: { label: '已报废', variant: 'destructive' },
+  };
 
 // 货币格式化函数
 const formatCurrency = (amount: number) => {
@@ -41,61 +41,55 @@ const formatCurrency = (amount: number) => {
 const StatusBadge = ({ status }: { status: string }) => {
   const statusInfo = statusMap[status as AssetStatus];
   if (!statusInfo) return <span>{status}</span>;
-  
-  return (
-    <Badge variant={statusInfo.variant}>
-      {statusInfo.label}
-    </Badge>
-  );
+
+  return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
 };
 
 export default function AssetsPage() {
   const router = useRouter();
   const { Confirm } = useAppContext();
-  
+
   const [assets, setAssets] = useState<AssetResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    page_size: 12,
-    total_items: 0,
-    total_pages: 0,
-  });
-  
+  const [pagination, setPagination] = useState(defaultPagination);
+
   // 筛选和搜索状态
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<AssetFilters>({});
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // 批量操作状态
   const [selectedAssets, setSelectedAssets] = useState<AssetResponse[]>([]);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
 
   // 加载资产列表
-  const loadAssets = useCallback(async (page = 1, pageSize = 12) => {
-    try {
-      setLoading(true);
-      
-      const params: PaginationRequest & { filters?: AssetFilters } = {
-        page,
-        page_size: pageSize,
-        sorts: [{ key: 'created_at', desc: true }],
-        filters: {
-          ...filters,
-          ...(searchTerm && { name: searchTerm }),
-        },
-      };
-      
-      const response = await getAssets(params);
-      setAssets(response.data.data);
-      setPagination(response.data);
-    } catch (error) {
-      console.error('加载资产列表失败:', error);
-      showError('加载资产列表失败', '请检查网络连接或稍后重试');
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, searchTerm]);
+  const loadAssets = useCallback(
+    async (page = 1, pageSize = 10) => {
+      try {
+        setLoading(true);
+
+        const params: PaginationRequest & { filters?: AssetFilters } = {
+          page,
+          page_size: pageSize,
+          sorts: [{ key: 'created_at', desc: true }],
+          filters: {
+            ...filters,
+            ...(searchTerm && { name: searchTerm }),
+          },
+        };
+
+        const response = await getAssets(params);
+        setAssets(response.data.data);
+        setPagination(response.data);
+      } catch (error) {
+        console.error('加载资产列表失败:', error);
+        showError('加载资产列表失败', '请检查网络连接或稍后重试');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters, searchTerm]
+  );
 
   // 初始加载
   useEffect(() => {
@@ -111,7 +105,7 @@ export default function AssetsPage() {
   const handleFilterChange = (key: keyof AssetFilters, value: string | number | undefined) => {
     setFilters(prev => ({
       ...prev,
-      [key]: (value && value !== 'all') ? value : undefined,
+      [key]: value && value !== 'all' ? value : undefined,
     }));
   };
 
@@ -142,7 +136,7 @@ export default function AssetsPage() {
       variant: 'destructive',
     });
     if (!confirmed) return;
-    
+
     try {
       setLoading(true); // Use loading for deletion
       await deleteAsset(asset.id);
@@ -163,7 +157,7 @@ export default function AssetsPage() {
         ...filters,
         ...(searchTerm && { name: searchTerm }),
       });
-      
+
       // 创建下载链接
       const dataStr = JSON.stringify(response.data, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -175,7 +169,7 @@ export default function AssetsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       showSuccess('资产数据导出成功', '文件已保存到下载目录');
     } catch (error) {
       console.error('导出资产失败:', error);
@@ -211,33 +205,30 @@ export default function AssetsPage() {
   const { current_page: currentPage, total_pages: totalPages, total_items: totalItems } = pagination;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* 页面标题和操作按钮 */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">资产管理</h1>
           <p className="text-muted-foreground">管理企业固定资产信息</p>
         </div>
         <div className="flex gap-2">
           {selectedAssets.length > 0 && (
-            <Button 
-              variant="outline" 
-              onClick={() => setBatchDialogOpen(true)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={() => setBatchDialogOpen(true)}>
+              <Settings className="mr-2 h-4 w-4" />
               批量操作 ({selectedAssets.length})
             </Button>
           )}
           <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             导出
           </Button>
           <Button variant="outline" onClick={() => router.push('/assets/import')}>
-            <Upload className="h-4 w-4 mr-2" />
+            <Upload className="mr-2 h-4 w-4" />
             导入
           </Button>
           <Button onClick={() => router.push('/assets/new')}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             新增资产
           </Button>
         </div>
@@ -246,13 +237,13 @@ export default function AssetsPage() {
       {/* 搜索和筛选 */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 flex gap-2">
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="flex flex-1 gap-2">
               <Input
                 placeholder="搜索资产名称..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                onChange={e => setSearchTerm(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 className="flex-1"
               />
               <Button onClick={handleSearch}>
@@ -260,11 +251,8 @@ export default function AssetsPage() {
               </Button>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className="h-4 w-4 mr-2" />
+              <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+                <Filter className="mr-2 h-4 w-4" />
                 筛选
               </Button>
             </div>
@@ -272,15 +260,15 @@ export default function AssetsPage() {
 
           {/* 筛选面板 */}
           {showFilters && (
-            <div className="mt-4 p-4 border rounded-lg bg-muted/50">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-muted/50 mt-4 rounded-lg border p-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">状态</label>
+                  <label className="mb-1 block text-sm font-medium">状态</label>
                   <Select
                     value={filters.status || 'all'}
-                    onValueChange={(value) => handleFilterChange('status', value as AssetStatus)}
+                    onValueChange={value => handleFilterChange('status', value as AssetStatus)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="选择状态" />
                     </SelectTrigger>
                     <SelectContent>
@@ -294,31 +282,31 @@ export default function AssetsPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">品牌</label>
+                  <label className="mb-1 block text-sm font-medium">品牌</label>
                   <Input
                     placeholder="输入品牌"
                     value={filters.brand || ''}
-                    onChange={(e) => handleFilterChange('brand', e.target.value)}
+                    onChange={e => handleFilterChange('brand', e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">位置</label>
+                  <label className="mb-1 block text-sm font-medium">位置</label>
                   <Input
                     placeholder="输入位置"
                     value={filters.location || ''}
-                    onChange={(e) => handleFilterChange('location', e.target.value)}
+                    onChange={e => handleFilterChange('location', e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1 block">责任人</label>
+                  <label className="mb-1 block text-sm font-medium">责任人</label>
                   <Input
                     placeholder="输入责任人"
                     value={filters.responsible_person || ''}
-                    onChange={(e) => handleFilterChange('responsible_person', e.target.value)}
+                    onChange={e => handleFilterChange('responsible_person', e.target.value)}
                   />
                 </div>
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="mt-4 flex gap-2">
                 <Button onClick={applyFilters}>应用筛选</Button>
                 <Button variant="outline" onClick={clearFilters}>
                   清除筛选
@@ -340,10 +328,10 @@ export default function AssetsPage() {
           {loading ? (
             <Loading />
           ) : assets.length === 0 ? (
-            <div className="text-center py-8">
+            <div className="py-8 text-center">
               <p className="text-muted-foreground">暂无资产数据</p>
               <Button className="mt-4" onClick={() => router.push('/assets/new')}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 新增资产
               </Button>
             </div>
@@ -352,10 +340,7 @@ export default function AssetsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedAssets.length === assets.length}
-                      onCheckedChange={handleSelectAll}
-                    />
+                    <Checkbox checked={selectedAssets.length === assets.length} onCheckedChange={handleSelectAll} />
                   </TableHead>
                   <TableHead>资产编号</TableHead>
                   <TableHead>资产名称</TableHead>
@@ -368,12 +353,12 @@ export default function AssetsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assets.map((asset) => (
+                {assets.map(asset => (
                   <TableRow key={asset.id}>
                     <TableCell>
                       <Checkbox
                         checked={selectedAssets.some(a => a.id === asset.id)}
-                        onCheckedChange={(checked) => handleAssetSelect(asset, checked as boolean)}
+                        onCheckedChange={checked => handleAssetSelect(asset, checked as boolean)}
                       />
                     </TableCell>
                     <TableCell className="font-medium">{asset.asset_no}</TableCell>
@@ -386,38 +371,37 @@ export default function AssetsPage() {
                     </TableCell>
                     <TableCell>{asset.location}</TableCell>
                     <TableCell>{asset.responsible_person}</TableCell>
-                    <TableCell>
-                      {asset.purchase_price ? formatCurrency(asset.purchase_price) : '-'}
-                    </TableCell>
+                    <TableCell>{asset.purchase_price ? formatCurrency(asset.purchase_price) : '-'}</TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/assets/${asset.id}`)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            查看
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/assets/${asset.id}/edit`)}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            编辑
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(asset)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            删除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/assets/${asset.id}`)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">查看</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/assets/${asset.id}/edit`)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">编辑</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(asset)}
+                          className="text-destructive hover:text-destructive h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">删除</span>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

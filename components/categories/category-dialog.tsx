@@ -1,21 +1,10 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { CategoryTreeNode, createCategory, getCategories, updateCategory } from '@/lib/api/categories';
 import { useEffect, useState } from 'react';
@@ -37,13 +26,7 @@ interface FormData {
   description: string;
 }
 
-export function CategoryDialog({
-  open,
-  onOpenChange,
-  category,
-  parentCategory,
-  onSuccess,
-}: CategoryDialogProps) {
+export function CategoryDialog({ open, onOpenChange, category, parentCategory, onSuccess }: CategoryDialogProps) {
   const [loading, setLoading] = useState(false);
   const [allCategories, setAllCategories] = useState<CategoryTreeNode[]>([]);
   const isEditing = category && category.id > 0;
@@ -73,7 +56,7 @@ export function CategoryDialog({
   useEffect(() => {
     if (open) {
       loadAllCategories();
-      
+
       if (isEditing && category) {
         // 编辑模式：填充现有数据
         reset({
@@ -103,42 +86,45 @@ export function CategoryDialog({
   }, [open, category, parentCategory, isEditing, isCreatingSubCategory, reset]);
 
   // 递归获取所有分类的扁平列表（用于父分类选择）
-  const getFlatCategories = (categories: CategoryTreeNode[], level = 0): Array<{ category: CategoryTreeNode; level: number }> => {
+  const getFlatCategories = (
+    categories: CategoryTreeNode[],
+    level = 0
+  ): Array<{ category: CategoryTreeNode; level: number }> => {
     const result: Array<{ category: CategoryTreeNode; level: number }> = [];
-    
+
     for (const cat of categories) {
       // 如果是编辑模式，排除自己和自己的子分类
       if (isEditing && category && (cat.id === category.id || isChildOf(category, cat.id))) {
         continue;
       }
-      
+
       result.push({ category: cat, level });
-      
+
       if (cat.children && cat.children.length > 0) {
         result.push(...getFlatCategories(cat.children, level + 1));
       }
     }
-    
+
     return result;
   };
 
   // 检查第二个参数ID是否为第一个参数category的子分类（直接或间接）
   const isChildOf = (parentCategory: CategoryTreeNode, childId: number): boolean => {
     if (!parentCategory.children) return false;
-    
+
     for (const child of parentCategory.children) {
       if (child.id === childId || isChildOf(child, childId)) {
         return true;
       }
     }
-    
+
     return false;
   };
 
   const onSubmit = async (data: FormData) => {
     try {
       setLoading(true);
-      
+
       const payload = {
         name: data.name,
         code: data.code,
@@ -157,9 +143,10 @@ export function CategoryDialog({
       onSuccess();
     } catch (error: unknown) {
       console.error('Failed to save category:', error);
-      const message = error instanceof Error && 'response' in error 
-        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '操作失败'
-        : '操作失败';
+      const message =
+        error instanceof Error && 'response' in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '操作失败'
+          : '操作失败';
       toast.error(message);
     } finally {
       setLoading(false);
@@ -172,22 +159,14 @@ export function CategoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? '编辑分类' : isCreatingSubCategory ? '创建子分类' : '创建分类'}
-          </DialogTitle>
+          <DialogTitle>{isEditing ? '编辑分类' : isCreatingSubCategory ? '创建子分类' : '创建分类'}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">分类名称 *</Label>
-            <Input
-              id="name"
-              {...register('name', { required: '请输入分类名称' })}
-              placeholder="请输入分类名称"
-            />
-            {errors.name && (
-              <p className="text-sm text-red-600">{errors.name.message}</p>
-            )}
+            <Input id="name" {...register('name', { required: '请输入分类名称' })} placeholder="请输入分类名称" />
+            {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -198,16 +177,14 @@ export function CategoryDialog({
               placeholder="请输入分类编码（如：OFFICE）"
               className="font-mono"
             />
-            {errors.code && (
-              <p className="text-sm text-red-600">{errors.code.message}</p>
-            )}
+            {errors.code && <p className="text-sm text-red-600">{errors.code.message}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="parent_id">父分类</Label>
             <Select
               value={watchedParentId?.toString() || 'none'}
-              onValueChange={(value) => setValue('parent_id', value === 'none' ? undefined : parseInt(value))}
+              onValueChange={value => setValue('parent_id', value === 'none' ? undefined : parseInt(value))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="选择父分类（可选）" />
@@ -227,21 +204,11 @@ export function CategoryDialog({
 
           <div className="space-y-2">
             <Label htmlFor="description">描述</Label>
-            <Textarea
-              id="description"
-              {...register('description')}
-              placeholder="请输入分类描述（可选）"
-              rows={3}
-            />
+            <Textarea id="description" {...register('description')} placeholder="请输入分类描述（可选）" rows={3} />
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               取消
             </Button>
             <Button type="submit" disabled={loading}>

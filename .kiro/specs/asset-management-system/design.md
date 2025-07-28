@@ -55,6 +55,7 @@ graph TB
 ### 技术栈
 
 #### 前端技术
+
 - **Next.js 15** - React全栈框架，使用App Router
 - **shadcn/ui** - 现代化UI组件库
 - **Tailwind CSS** - 原子化CSS框架
@@ -63,6 +64,7 @@ graph TB
 - **Recharts** - 图表展示
 
 #### 后端技术
+
 - **Go 1.21+** - 高性能HTTP服务
 - **Gin** - Web框架
 - **GORM** - ORM框架
@@ -413,20 +415,20 @@ const (
     INTERNAL_ERROR    = "INTERNAL_ERROR"
     VALIDATION_ERROR  = "VALIDATION_ERROR"
     NOT_FOUND         = "NOT_FOUND"
-    
+
     // 资产相关错误码
     ASSET_NOT_FOUND   = "ASSET_001"
     ASSET_NO_EXISTS   = "ASSET_002"
     ASSET_IN_USE      = "ASSET_003"
-    
+
     // 分类相关错误码
     CATEGORY_NOT_FOUND = "CATEGORY_001"
     CATEGORY_HAS_ASSETS = "CATEGORY_002"
-    
+
     // 部门相关错误码
     DEPARTMENT_NOT_FOUND = "DEPARTMENT_001"
     DEPARTMENT_HAS_ASSETS = "DEPARTMENT_002"
-    
+
     // 借用相关错误码
     ASSET_NOT_AVAILABLE = "BORROW_001"
     BORROW_NOT_FOUND = "BORROW_002"
@@ -437,22 +439,26 @@ const (
 ## 测试策略
 
 ### 单元测试
+
 - Go服务的业务逻辑测试
 - 数据库操作测试
 - API端点测试
 
 ### 集成测试
+
 - 前后端API集成测试
 - 数据库事务测试
 - 文件上传功能测试
 
 ### 端到端测试
+
 - 关键业务流程测试
 - 用户界面交互测试
 
 ## 部署方案
 
 ### 开发环境
+
 ```bash
 # 前端开发服务器
 npm run dev
@@ -462,6 +468,7 @@ cd server && go run main.go
 ```
 
 ### 生产环境
+
 ```bash
 # 构建前端
 npm run build
@@ -474,6 +481,7 @@ cd server && go build -o asset-management
 ```
 
 ### 配置管理
+
 ```go
 type Config struct {
     Port        string `env:"PORT" envDefault:"8080"`

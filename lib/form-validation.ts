@@ -83,7 +83,10 @@ export function validateField(value: FormFieldValue, rules: ValidationRule, labe
 }
 
 // 验证整个表单
-export function validateForm(data: Record<string, FormFieldValue>, config: FieldValidation): {
+export function validateForm(
+  data: Record<string, FormFieldValue>,
+  config: FieldValidation
+): {
   isValid: boolean;
   errors: Record<string, string[]>;
   firstError?: string;
@@ -165,7 +168,11 @@ export function clearFieldError(errors: Record<string, string[]>, fieldName: str
 }
 
 // 设置字段错误
-export function setFieldError(errors: Record<string, string[]>, fieldName: string, error: string): Record<string, string[]> {
+export function setFieldError(
+  errors: Record<string, string[]>,
+  fieldName: string,
+  error: string
+): Record<string, string[]> {
   return {
     ...errors,
     [fieldName]: [error],

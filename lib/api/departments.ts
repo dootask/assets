@@ -1,23 +1,23 @@
 import apiClient from '@/lib/axios';
 import type {
-    APIResponse,
-    CreateDepartmentRequest,
-    DepartmentFilters,
-    DepartmentResponse,
-    DepartmentStatsResponse,
-    PaginationRequest,
-    PaginationResponse,
-    UpdateDepartmentRequest
+  APIResponse,
+  CreateDepartmentRequest,
+  DepartmentFilters,
+  DepartmentResponse,
+  DepartmentStatsResponse,
+  PaginationRequest,
+  PaginationResponse,
+  UpdateDepartmentRequest,
 } from '@/lib/types';
 
 // 获取部门列表
 export const getDepartments = async (params: PaginationRequest & { filters?: DepartmentFilters }) => {
   const queryParams = new URLSearchParams();
-  
+
   // 添加分页参数
   queryParams.append('page', params.page.toString());
   queryParams.append('page_size', params.page_size.toString());
-  
+
   // 添加排序参数
   if (params.sorts && params.sorts.length > 0) {
     params.sorts.forEach((sort, index) => {
@@ -25,7 +25,7 @@ export const getDepartments = async (params: PaginationRequest & { filters?: Dep
       queryParams.append(`sorts[${index}][desc]`, sort.desc.toString());
     });
   }
-  
+
   // 添加筛选参数
   if (params.filters) {
     Object.entries(params.filters).forEach(([key, value]) => {
@@ -34,7 +34,7 @@ export const getDepartments = async (params: PaginationRequest & { filters?: Dep
       }
     });
   }
-  
+
   const response = await apiClient.get<APIResponse<PaginationResponse<DepartmentResponse[]>>>(
     `/departments?${queryParams.toString()}`
   );

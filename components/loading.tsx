@@ -19,7 +19,7 @@ export function Loading({ size = 'md', text, className }: LoadingProps) {
   return (
     <div className={cn('flex items-center justify-center gap-2', className)}>
       <Loader2 className={cn('animate-spin', sizeClasses[size])} />
-      {text && <span className="text-sm text-muted-foreground">{text}</span>}
+      {text && <span className="text-muted-foreground text-sm">{text}</span>}
     </div>
   );
 }
@@ -27,7 +27,7 @@ export function Loading({ size = 'md', text, className }: LoadingProps) {
 // 页面级加载组件
 export function PageLoading({ text = '加载中...' }: { text?: string }) {
   return (
-    <div className="flex items-center justify-center min-h-[400px]">
+    <div className="flex min-h-[400px] items-center justify-center">
       <Loading size="lg" text={text} />
     </div>
   );
@@ -49,7 +49,7 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
     <div className="flex items-center space-x-4 p-4">
       {Array.from({ length: columns }).map((_, i) => (
         <div key={i} className="flex-1">
-          <div className="h-4 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 animate-pulse rounded bg-gray-200" />
         </div>
       ))}
     </div>
@@ -59,10 +59,10 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
 // 卡片加载骨架
 export function CardSkeleton() {
   return (
-    <div className="p-4 space-y-3">
-      <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
-      <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
-      <div className="h-4 bg-gray-200 rounded w-2/3 animate-pulse" />
+    <div className="space-y-3 p-4">
+      <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+      <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+      <div className="h-4 w-2/3 animate-pulse rounded bg-gray-200" />
     </div>
   );
 }
@@ -70,9 +70,9 @@ export function CardSkeleton() {
 // 统计卡片骨架
 export function StatCardSkeleton() {
   return (
-    <div className="p-4 space-y-2">
-      <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
-      <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+    <div className="space-y-2 p-4">
+      <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+      <div className="h-8 w-1/3 animate-pulse rounded bg-gray-200" />
     </div>
   );
 }
