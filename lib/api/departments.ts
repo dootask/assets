@@ -1,13 +1,13 @@
 import apiClient from '@/lib/axios';
 import type {
-  APIResponse,
-  CreateDepartmentRequest,
-  DepartmentFilters,
-  DepartmentResponse,
-  DepartmentStatsResponse,
-  PaginationRequest,
-  PaginationResponse,
-  UpdateDepartmentRequest,
+    APIResponse,
+    CreateDepartmentRequest,
+    DepartmentFilters,
+    DepartmentResponse,
+    DepartmentStatsResponse,
+    PaginationRequest,
+    PaginationResponse,
+    UpdateDepartmentRequest,
 } from '@/lib/types';
 
 // 获取部门列表
@@ -68,5 +68,11 @@ export const deleteDepartment = async (id: number) => {
 // 获取部门统计信息
 export const getDepartmentStats = async (id: number) => {
   const response = await apiClient.get<APIResponse<DepartmentStatsResponse>>(`/departments/${id}/stats`);
+  return response.data;
+};
+
+// 获取所有部门（无分页，用于仪表板和下拉选择）
+export const getAllDepartments = async () => {
+  const response = await apiClient.get('/departments');
   return response.data;
 };

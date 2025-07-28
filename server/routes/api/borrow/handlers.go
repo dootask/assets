@@ -42,7 +42,10 @@ func GetBorrowRecords(c *gin.Context) {
 	}
 
 	// 设置默认排序
-	req.SetDefaultSort("created_at", true)
+	req.SetDefaultSorts(map[string]bool{
+		"created_at": true,
+		"id":         true,
+	})
 
 	// 验证排序字段
 	allowedSortFields := []string{"id", "asset_id", "borrower_name", "department_id", "borrow_date", "expected_return_date", "actual_return_date", "status", "created_at", "updated_at"}
@@ -468,7 +471,10 @@ func GetAvailableAssets(c *gin.Context) {
 	}
 
 	// 设置默认排序
-	req.SetDefaultSort("name", false)
+	req.SetDefaultSorts(map[string]bool{
+		"name": false,
+		"id":   true,
+	})
 
 	// 构建查询 - 只查询可用状态的资产
 	query := global.DB.Model(&models.Asset{}).

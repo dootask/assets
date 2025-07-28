@@ -120,3 +120,9 @@ export const getCategoryAssets = async (id: number, page = 1, pageSize = 12) => 
   });
   return response.data.data;
 };
+
+// 获取所有分类（无分页，用于仪表板和下拉选择）
+export const getAllCategories = async (): Promise<CategoryTreeNode[]> => {
+  const response = await apiClient.get('/categories');
+  return response.data.data || [];
+};

@@ -10,9 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAppContext } from '@/contexts/app-context';
 import type { InventoryTask } from '@/lib/api/inventory';
-import { deleteInventoryTask, updateInventoryTask } from '@/lib/api/inventory';
-import apiClient from '@/lib/axios';
-import type { APIResponse, PaginationRequest, PaginationResponse, SortField } from '@/lib/types';
+import { deleteInventoryTask, getInventoryTasks, updateInventoryTask } from '@/lib/api/inventory';
 import { Eye, FileText, Play, Plus, Search, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -51,56 +49,36 @@ export default function InventoryPage() {
   const loadTasks = async (page = 1) => {
     try {
       setLoading(true);
-      const filters: Record<string, unknown> = {};
-
-      if (keyword.trim()) {
-        filters.keyword = keyword.trim();
-      }
-      if (statusFilter && statusFilter !== 'all') {
-        filters.status = statusFilter;
-      }
-      if (taskTypeFilter && taskTypeFilter !== 'all') {
-        filters.task_type = taskTypeFilter;
-      }
-
-      const params: PaginationRequest & { filters?: Record<string, unknown> } = {
+      
+      // 构建查询参数
+      const queryParams: {
+        page: number;
+        page_size: number;
+        status?: 'pending' | 'in_progress' | 'completed';
+        task_type?: 'full' | 'category' | 'department';
+        keyword?: string;
+      } = {
         page,
         page_size: pagination.page_size,
-        sorts: [{ key: 'created_at', desc: true }],
-        filters,
       };
 
-      // 构建查询参数
-      const queryParams = new URLSearchParams();
-      queryParams.append('page', params.page.toString());
-      queryParams.append('page_size', params.page_size.toString());
-
-      if (params.sorts) {
-        params.sorts.forEach((sort: SortField, index: number) => {
-          queryParams.append(`sorts[${index}][key]`, sort.key);
-          queryParams.append(`sorts[${index}][desc]`, sort.desc.toString());
-        });
+      if (keyword.trim()) {
+        queryParams.keyword = keyword.trim();
+      }
+      if (statusFilter && statusFilter !== 'all') {
+        queryParams.status = statusFilter as 'pending' | 'in_progress' | 'completed';
+      }
+      if (taskTypeFilter && taskTypeFilter !== 'all') {
+        queryParams.task_type = taskTypeFilter as 'full' | 'category' | 'department';
       }
 
-      if (filters.keyword) {
-        queryParams.append('keyword', filters.keyword as string);
-      }
-      if (filters.status) {
-        queryParams.append('status', filters.status as string);
-      }
-      if (filters.task_type) {
-        queryParams.append('task_type', filters.task_type as string);
-      }
+      const response = await getInventoryTasks(queryParams);
 
-      const response = await apiClient.get<APIResponse<PaginationResponse<InventoryTask[]>>>(
-        `/inventory/tasks?${queryParams.toString()}`
-      );
-
-      if (response.data.code === 'SUCCESS') {
-        setTasks(response.data.data.data || []);
-        setPagination(response.data.data);
+      if (response.code === 'SUCCESS') {
+        setTasks(response.data.data || []);
+        setPagination(response.data);
       } else {
-        toast.error(response.data.message || '获取盘点任务失败');
+        toast.error(response.message || '获取盘点任务失败');
       }
     } catch (error) {
       console.error('获取盘点任务失败:', error);

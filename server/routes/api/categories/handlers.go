@@ -386,7 +386,10 @@ func GetCategoryAssets(c *gin.Context) {
 	}
 
 	// 设置默认排序
-	req.SetDefaultSort("created_at", true)
+	req.SetDefaultSorts(map[string]bool{
+		"created_at": true,
+		"id":         true,
+	})
 
 	// 构建查询
 	query := global.DB.Model(&models.Asset{}).

@@ -42,7 +42,10 @@ func GetAssets(c *gin.Context) {
 	}
 
 	// 设置默认排序
-	req.SetDefaultSort("created_at", true)
+	req.SetDefaultSorts(map[string]bool{
+		"created_at": true,
+		"id":         true,
+	})
 
 	// 验证排序字段
 	allowedSortFields := []string{"id", "asset_no", "name", "category_id", "department_id", "status", "brand", "model", "purchase_date", "purchase_price", "created_at", "updated_at"}

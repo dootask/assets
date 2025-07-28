@@ -41,7 +41,10 @@ func GetDepartments(c *gin.Context) {
 	}
 
 	// 设置默认排序
-	req.SetDefaultSort("created_at", true)
+	req.SetDefaultSorts(map[string]bool{
+		"created_at": true,
+		"id":         true,
+	})
 
 	// 验证排序字段
 	allowedSortFields := []string{"id", "name", "code", "manager", "contact", "created_at", "updated_at"}

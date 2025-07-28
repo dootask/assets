@@ -3,7 +3,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import apiClient from '@/lib/axios';
+import { fetchDashboardStats } from '@/lib/api/dashboard';
+import type { AssetDashboardStats } from '@/lib/types';
 
 import {
   Activity,
@@ -22,44 +23,6 @@ import {
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-// 资产管理系统仪表板统计数据接口
-interface AssetDashboardStats {
-  assets: {
-    total: number;
-    available: number;
-    borrowed: number;
-    maintenance: number;
-    scrapped: number;
-  };
-  categories: {
-    total: number;
-  };
-  departments: {
-    total: number;
-  };
-  borrowRecords: {
-    total: number;
-    active: number;
-    overdue: number;
-    todayReturns: number;
-  };
-  recentAssets: Array<{
-    id: number;
-    asset_no: string;
-    name: string;
-    category_name: string;
-    created_at: string;
-  }>;
-  recentBorrows: Array<{
-    id: number;
-    asset_name: string;
-    asset_no: string;
-    borrower_name: string;
-    borrow_date: string;
-    is_overdue?: boolean;
-  }>;
-}
-
 export default function Dashboard() {
   const [stats, setStats] = useState<AssetDashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,54 +32,9 @@ export default function Dashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      // 并行获取多个API数据
-      const [dashboardResponse] = await Promise.all([
-        apiClient.get('/dashboard/stats'),
-        apiClient.get('/categories'),
-        apiClient.get('/departments'),
-      ]);
-
-      const dashboardResult = dashboardResponse.data;
-
-      if (dashboardResult.code === 'SUCCESS' && dashboardResult.data) {
-        const data = dashboardResult.data;
-
-        // 转换后端数据格式为前端期望的格式
-        const recentBorrows: Array<{
-          id: number;
-          asset_name: string;
-          asset_no: string;
-          borrower_name: string;
-          borrow_date: string;
-          is_overdue?: boolean;
-        }> = []; // 暂时设为空数组，因为后端还没有返回recent_activity数据
-
-        setStats({
-          assets: {
-            total: data.assets.total || 0,
-            available: data.assets.available || 0,
-            borrowed: data.assets.borrowed || 0,
-            maintenance: data.assets.maintenance || 0,
-            scrapped: data.assets.scrapped || 0,
-          },
-          categories: {
-            total: data.categories.total || 0,
-          },
-          departments: {
-            total: data.departments.total || 0,
-          },
-          borrowRecords: {
-            total: data.borrow.total || 0,
-            active: data.borrow.active || 0,
-            overdue: data.borrow.overdue || 0,
-            todayReturns: 0, // 后端暂未提供此数据
-          },
-          recentAssets: [], // 后端暂未提供此数据
-          recentBorrows: recentBorrows,
-        });
-      } else {
-        throw new Error(dashboardResult.message || 'Failed to load dashboard data');
-      }
+      // 使用API函数获取仪表板数据
+      const dashboardStats = await fetchDashboardStats();
+      setStats(dashboardStats);
     } catch (error) {
       console.error('加载仪表板数据失败:', error);
       setError('加载仪表板数据失败，请检查后端服务是否正常运行');

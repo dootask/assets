@@ -396,6 +396,44 @@ export interface GeneralSettings {
   autoCleanupDays: number;
 }
 
+// 仪表板统计类型 - 资产管理系统
+export interface AssetDashboardStats {
+  assets: {
+    total: number;
+    available: number;
+    borrowed: number;
+    maintenance: number;
+    scrapped: number;
+  };
+  categories: {
+    total: number;
+  };
+  departments: {
+    total: number;
+  };
+  borrowRecords: {
+    total: number;
+    active: number;
+    overdue: number;
+    todayReturns: number;
+  };
+  recentAssets: Array<{
+    id: number;
+    asset_no: string;
+    name: string;
+    category_name: string;
+    created_at: string;
+  }>;
+  recentBorrows: Array<{
+    id: number;
+    asset_name: string;
+    asset_no: string;
+    borrower_name: string;
+    borrow_date: string;
+    is_overdue?: boolean;
+  }>;
+}
+
 // 仪表板统计类型
 export interface DashboardStats {
   agents: {
