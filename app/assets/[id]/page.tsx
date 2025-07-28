@@ -15,6 +15,7 @@ import { useAppContext } from '@/contexts/app-context';
 import { deleteAsset, getAsset } from '@/lib/api/assets';
 import type { AttributeField } from '@/lib/api/categories';
 import { getCategoryById } from '@/lib/api/categories';
+import { buildImageUrl } from '@/lib/axios';
 import type { AssetResponse, AssetStatus } from '@/lib/types';
 
 // 资产状态映射
@@ -398,8 +399,14 @@ export default function AssetDetailPage() {
                 <CardTitle>资产图片</CardTitle>
               </CardHeader>
               <CardContent>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={asset.image_url} alt={asset.name} className="h-48 w-full rounded-lg object-cover" />
+                <a href={buildImageUrl(asset.image_url) || ''} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={buildImageUrl(asset.image_url) || ''} 
+                    alt={asset.name} 
+                    className="h-48 w-full rounded-lg object-contain" 
+                  />
+                </a>
               </CardContent>
             </Card>
           )}

@@ -49,5 +49,5 @@ temp/
 tmp/
 
 # dev data
-dev-data/
+uploads/
 assets.db

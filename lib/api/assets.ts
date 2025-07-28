@@ -111,3 +111,17 @@ export const batchDeleteAssets = async (data: BatchDeleteAssetsRequest) => {
   const response = await apiClient.delete<APIResponse<BatchDeleteAssetsResponse>>('/assets/batch', { data });
   return response.data;
 };
+
+// 上传资产图片
+export const uploadAssetImage = async (file: File): Promise<{ data: { filepath: string; filename: string; size: number } }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await apiClient.post('/upload/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  
+  return response.data;
+};

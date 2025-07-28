@@ -17,10 +17,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-import { checkAssetNo } from '@/lib/api/assets';
+import { checkAssetNo, uploadAssetImage } from '@/lib/api/assets';
 import type { AttributeField, Category } from '@/lib/api/categories';
 import { getCategories, getCategoryById } from '@/lib/api/categories';
 import { getDepartments } from '@/lib/api/departments';
+import { buildImageUrl } from '@/lib/axios';
 import { showError, showSuccess } from '@/lib/notifications';
 import type {
   AssetResponse,
@@ -83,8 +84,10 @@ export function AssetForm({
 }: AssetFormProps) {
   const [assetNoChecking, setAssetNoChecking] = useState(false);
   const [assetNoValid, setAssetNoValid] = useState<boolean | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(initialData?.image_url || null);
+  const [imagePreview, setImagePreview] = useState<string | null>(buildImageUrl(initialData?.image_url));
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 分类相关状态
@@ -200,6 +203,15 @@ export function AssetForm({
     loadDepartments();
   }, [loadCategories, loadDepartments]);
 
+  // 清理object URL以避免内存泄漏
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   // 监听分类选择变化
   const categoryId = form.watch('category_id');
   useEffect(() => {
@@ -240,60 +252,118 @@ export function AssetForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetNoValue, isEdit, initialData?.asset_no]);
 
-  // 处理图片上传
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  // 验证文件
+  const validateFile = (file: File): boolean => {
     // 验证文件类型
     if (!file.type.startsWith('image/')) {
       showError('请选择图片文件', '只能上传图片格式的文件');
-      return;
+      return false;
     }
 
     // 验证文件大小（5MB）
     if (file.size > 5 * 1024 * 1024) {
       showError('图片大小不能超过5MB', '请选择更小的图片文件');
-      return;
+      return false;
+    }
+
+    return true;
+  };
+
+  // 上传图片（仅在需要时调用）
+  const uploadImageIfNeeded = async (): Promise<string | undefined> => {
+    if (!selectedImageFile) {
+      return form.getValues('image_url') || undefined;
+    }
+
+    if (!validateFile(selectedImageFile)) {
+      throw new Error('图片文件验证失败');
     }
 
     try {
       setUploadingImage(true);
 
-      // 创建FormData
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // 上传图片（这里应该调用实际的上传API）
-      // const response = await uploadFile(formData);
-
-      // 模拟上传成功，实际应该使用返回的URL
-      const reader = new FileReader();
-      reader.onload = e => {
-        const imageUrl = e.target?.result as string;
-        setImagePreview(imageUrl);
-        form.setValue('image_url', imageUrl);
-        showSuccess('图片上传成功', '图片已成功上传并预览');
-      };
-      reader.readAsDataURL(file);
+      // 调用真实的上传API
+      const response = await uploadAssetImage(selectedImageFile);
+      
+      // 验证响应数据
+      if (!response.data || !response.data.filepath) {
+        throw new Error('服务器返回数据格式错误');
+      }
+      
+      // 使用服务器返回的文件路径，确保URL格式正确
+      const imageUrl = response.data.filepath.startsWith('/') 
+        ? response.data.filepath 
+        : `/${response.data.filepath}`;
+      
+      return imageUrl;
     } catch (error) {
       console.error('图片上传失败:', error);
-      showError('图片上传失败', '请稍后重试');
+      throw error;
     } finally {
       setUploadingImage(false);
     }
   };
 
+  // 处理图片上传（文件选择）
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    setSelectedImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    
+    // 清理文件输入框，允许重新选择相同文件
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // 处理拖拽事件
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      setSelectedImageFile(files[0]);
+      setImagePreview(URL.createObjectURL(files[0]));
+      
+      // 清理文件输入框
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // 移除图片
   const handleRemoveImage = () => {
+    // 清理object URL
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    
     setImagePreview(null);
+    setSelectedImageFile(null);
     form.setValue('image_url', '');
   };
+
+  // 监听自定义属性变化
+  const customAttributes = form.watch('custom_attributes');
 
   // 渲染自定义属性字段
   const renderCustomAttributeField = (attribute: AttributeField) => {
     const fieldName = `custom_attributes.${attribute.name}` as CustomAttributeFieldName;
-    const currentValue = form.getValues('custom_attributes')?.[attribute.name];
+    const currentValue = customAttributes?.[attribute.name];
 
     switch (attribute.type) {
       case 'text':
@@ -313,11 +383,11 @@ export function AssetForm({
                     {...field}
                     value={(field.value || currentValue || '') as string}
                     onChange={e => {
-                      const customAttributes = form.getValues('custom_attributes') || {};
+                      const currentCustomAttributes = form.getValues('custom_attributes') || {};
                       form.setValue('custom_attributes', {
-                        ...customAttributes,
+                        ...currentCustomAttributes,
                         [attribute.name]: e.target.value,
-                      });
+                      }, { shouldValidate: true, shouldDirty: true });
                     }}
                     placeholder={`请输入${attribute.label}`}
                   />
@@ -346,12 +416,12 @@ export function AssetForm({
                     type="number"
                     value={(field.value || currentValue || '') as string}
                     onChange={e => {
-                      const customAttributes = form.getValues('custom_attributes') || {};
+                      const currentCustomAttributes = form.getValues('custom_attributes') || {};
                       const value = e.target.value ? parseFloat(e.target.value) : undefined;
                       form.setValue('custom_attributes', {
-                        ...customAttributes,
+                        ...currentCustomAttributes,
                         [attribute.name]: value,
-                      });
+                      }, { shouldValidate: true, shouldDirty: true });
                     }}
                     placeholder={`请输入${attribute.label}`}
                   />
@@ -391,11 +461,11 @@ export function AssetForm({
                       selected={currentValue ? new Date(currentValue as string) : undefined}
                       captionLayout="dropdown"
                       onSelect={date => {
-                        const customAttributes = form.getValues('custom_attributes') || {};
+                        const currentCustomAttributes = form.getValues('custom_attributes') || {};
                         form.setValue('custom_attributes', {
-                          ...customAttributes,
+                          ...currentCustomAttributes,
                           [attribute.name]: date?.toISOString().split('T')[0],
-                        });
+                        }, { shouldValidate: true, shouldDirty: true });
                       }}
                     />
                   </PopoverContent>
@@ -421,15 +491,15 @@ export function AssetForm({
                 <Select
                   value={(currentValue as string) || ''}
                   onValueChange={value => {
-                    const customAttributes = form.getValues('custom_attributes') || {};
+                    const currentCustomAttributes = form.getValues('custom_attributes') || {};
                     form.setValue('custom_attributes', {
-                      ...customAttributes,
+                      ...currentCustomAttributes,
                       [attribute.name]: value,
-                    });
+                    }, { shouldValidate: true, shouldDirty: true });
                   }}
                 >
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder={`请选择${attribute.label}`} />
                     </SelectTrigger>
                   </FormControl>
@@ -459,11 +529,11 @@ export function AssetForm({
                   <Checkbox
                     checked={(currentValue as boolean) || false}
                     onCheckedChange={checked => {
-                      const customAttributes = form.getValues('custom_attributes') || {};
+                      const currentCustomAttributes = form.getValues('custom_attributes') || {};
                       form.setValue('custom_attributes', {
-                        ...customAttributes,
+                        ...currentCustomAttributes,
                         [attribute.name]: checked,
-                      });
+                      }, { shouldValidate: true, shouldDirty: true });
                     }}
                   />
                 </FormControl>
@@ -483,7 +553,7 @@ export function AssetForm({
   };
 
   // 表单提交
-  const handleSubmit = (data: AssetFormData) => {
+  const handleSubmit = async (data: AssetFormData) => {
     // 验证资产编号
     if (!isEdit && assetNoValid === false) {
       showError('资产编号已存在，请使用其他编号', '请更换一个唯一的资产编号');
@@ -503,27 +573,45 @@ export function AssetForm({
       }
     }
 
-    // 转换数据格式
-    const submitData = {
-      ...data,
-      category_id: data.category_id || undefined,
-      department_id: data.department_id || undefined,
-      purchase_date: data.purchase_date ? data.purchase_date.toISOString().split('T')[0] : undefined,
-      purchase_price: data.purchase_price || undefined,
-      warranty_period: data.warranty_period || undefined,
-      brand: data.brand || undefined,
-      model: data.model || undefined,
-      serial_number: data.serial_number || undefined,
-      supplier: data.supplier || undefined,
-      location: data.location || undefined,
-      responsible_person: data.responsible_person || undefined,
-      description: data.description || undefined,
-      image_url: data.image_url || undefined,
-      custom_attributes:
-        data.custom_attributes && Object.keys(data.custom_attributes).length > 0 ? data.custom_attributes : undefined,
-    };
+    try {
+      // 上传图片（如果有新选择的图片）
+      let finalImageUrl = data.image_url;
+      if (selectedImageFile) {
+        finalImageUrl = await uploadImageIfNeeded();
+        
+        // 更新图片预览为服务器URL
+        const fullImageUrl = buildImageUrl(finalImageUrl);
+        setImagePreview(fullImageUrl);
+        setSelectedImageFile(null); // 清除选中的文件
+        
+        showSuccess('图片上传成功', `文件大小: ${(selectedImageFile.size / 1024).toFixed(1)}KB`);
+      }
 
-    onSubmit(submitData);
+      // 转换数据格式
+      const submitData = {
+        ...data,
+        category_id: data.category_id || undefined,
+        department_id: data.department_id || undefined,
+        purchase_date: data.purchase_date ? data.purchase_date.toISOString().split('T')[0] : undefined,
+        purchase_price: data.purchase_price || undefined,
+        warranty_period: data.warranty_period || undefined,
+        brand: data.brand || undefined,
+        model: data.model || undefined,
+        serial_number: data.serial_number || undefined,
+        supplier: data.supplier || undefined,
+        location: data.location || undefined,
+        responsible_person: data.responsible_person || undefined,
+        description: data.description || undefined,
+        image_url: finalImageUrl,
+        custom_attributes:
+          data.custom_attributes && Object.keys(data.custom_attributes).length > 0 ? data.custom_attributes : undefined,
+      };
+
+      onSubmit(submitData);
+    } catch (error) {
+      console.error('提交失败:', error);
+      showError('提交失败', error instanceof Error ? error.message : '请稍后重试');
+    }
   };
 
   return (
@@ -598,7 +686,7 @@ export function AssetForm({
                       disabled={loadingCategories}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder={loadingCategories ? '加载中...' : '请选择资产分类'} />
                         </SelectTrigger>
                       </FormControl>
@@ -628,7 +716,7 @@ export function AssetForm({
                       disabled={loadingDepartments}
                     >
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder={loadingDepartments ? '加载中...' : '请选择所属部门'} />
                         </SelectTrigger>
                       </FormControl>
@@ -655,7 +743,7 @@ export function AssetForm({
                     <FormLabel>资产状态</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="请选择资产状态" />
                         </SelectTrigger>
                       </FormControl>
@@ -901,7 +989,7 @@ export function AssetForm({
             {imagePreview ? (
               <div className="relative inline-block">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imagePreview} alt="资产图片预览" className="h-48 w-48 rounded-lg border object-cover" />
+                <img src={imagePreview} alt="资产图片预览" className="h-48 w-48 rounded-lg object-contain" />
                 <Button
                   type="button"
                   variant="destructive"
@@ -914,12 +1002,19 @@ export function AssetForm({
               </div>
             ) : (
               <div
-                className="border-muted-foreground/25 hover:border-muted-foreground/50 cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors"
+                className={`border-muted-foreground/25 hover:border-muted-foreground/50 cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+                  isDragOver ? 'border-primary bg-primary/5' : ''
+                }`}
                 onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
-                <Upload className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+                <Upload className={`mx-auto mb-4 h-12 w-12 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-sm">点击上传资产图片</p>
+                  <p className="text-muted-foreground text-sm">
+                    {isDragOver ? '释放文件以选择' : '点击或拖拽选择资产图片'}
+                  </p>
                   <p className="text-muted-foreground text-xs">支持 JPG、PNG 格式，大小不超过 5MB</p>
                 </div>
               </div>
@@ -936,7 +1031,7 @@ export function AssetForm({
             {uploadingImage && (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                上传中...
+                上传图片中...
               </div>
             )}
           </CardContent>
@@ -948,11 +1043,11 @@ export function AssetForm({
             <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
               取消
             </Button>
-            <Button type="submit" disabled={loading || assetNoValid === false}>
-              {loading ? (
+            <Button type="submit" disabled={loading || uploadingImage || assetNoValid === false}>
+              {loading || uploadingImage ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isEdit ? '更新中...' : '创建中...'}
+                  {uploadingImage ? '上传图片中...' : isEdit ? '更新中...' : '创建中...'}
                 </>
               ) : isEdit ? (
                 '更新资产'

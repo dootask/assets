@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -75,7 +76,7 @@ func UploadFile(file *multipart.FileHeader, config FileUploadConfig) (string, er
 func generateUniqueFilename(originalFilename string) string {
 	ext := filepath.Ext(originalFilename)
 	name := strings.TrimSuffix(originalFilename, ext)
-	
+
 	// 清理文件名，只保留字母数字和部分特殊字符
 	name = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
@@ -83,11 +84,15 @@ func generateUniqueFilename(originalFilename string) string {
 		}
 		return '_'
 	}, name)
-	
+
+	// 正则删除连续的_
+	re := regexp.MustCompile(`_+`)
+	name = re.ReplaceAllString(name, "_")
+
 	// 生成时间戳和UUID
 	timestamp := time.Now().Format("20060102_150405")
 	uuid := uuid.New().String()[:8]
-	
+
 	return fmt.Sprintf("%s_%s_%s%s", name, timestamp, uuid, ext)
 }
 
@@ -96,16 +101,16 @@ func DeleteFile(filepath string) error {
 	if filepath == "" {
 		return nil
 	}
-	
+
 	// 添加当前目录前缀（如果不是绝对路径）
 	if !strings.HasPrefix(filepath, "/") {
 		filepath = "./" + filepath
 	}
-	
+
 	if IsFileExists(filepath) {
 		return os.Remove(filepath)
 	}
-	
+
 	return nil
 }
 

@@ -42,6 +42,11 @@ const translateErrorCode = (code: string): string => {
     WEBHOOK_001: 'Webhook配置错误',
     AI_001: 'AI服务暂不可用',
     AI_002: 'AI响应超时',
+    // 文件上传相关错误码
+    FILE_UPLOAD_FAILED: '文件上传失败',
+    FILE_SIZE_EXCEEDED: '文件大小超出限制',
+    FILE_TYPE_NOT_ALLOWED: '不支持的文件类型',
+    UPLOAD_DIR_ERROR: '上传目录创建失败',
     // AI模型管理相关错误码
     AI_MODEL_001: '查询AI模型失败',
     AI_MODEL_002: 'AI模型不存在',
@@ -127,3 +132,22 @@ apiClient.interceptors.response.use(
 
 export default apiClient;
 export { apiClient as axiosInstance };
+
+// 构建完整的图片URL
+export const buildImageUrl = (imagePath: string | null | undefined): string | null => {
+  if (!imagePath) return null;
+  
+  // 如果已经是完整URL或blob URL，直接返回
+  if (imagePath.startsWith('http') || imagePath.startsWith('blob:')) {
+    return imagePath;
+  }
+  
+  // 获取API基础URL，移除/api后缀
+  const apiBaseUrl = apiClient.getUri();
+  const baseURL = apiBaseUrl.replace('/api', '');
+  
+  // 确保路径以/开头
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  
+  return `${baseURL}${normalizedPath}`;
+};
