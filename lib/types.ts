@@ -532,7 +532,7 @@ export interface Asset {
 }
 
 // 资产响应类型（包含计算字段）
-export interface AssetResponse extends Asset {
+export interface AssetResponse extends Asset, Record<string, unknown> {
   warranty_end_date?: string;
   is_under_warranty: boolean;
 }
@@ -876,7 +876,7 @@ export interface OperationLog {
 }
 
 // 操作日志响应
-export interface OperationLogResponse extends OperationLog {
+export interface OperationLogResponse extends OperationLog, Record<string, unknown> {
   table_label: string;
   operation_label: string;
 }

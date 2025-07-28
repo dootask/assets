@@ -1,28 +1,28 @@
 'use client';
 
 import {
-    AssetCategoryChart,
-    AssetDepartmentChart,
-    AssetPurchaseTrendChart,
-    AssetStatusChart,
-    AssetValueAnalysisChart
+  AssetCategoryChart,
+  AssetDepartmentChart,
+  AssetPurchaseTrendChart,
+  AssetStatusChart,
+  AssetValueAnalysisChart
 } from '@/components/charts/asset-charts';
 import { ExportDialog, type ExportOptions } from '@/components/reports/export-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AssetReportData, downloadFile, exportAssetReports, fetchAssetReports } from '@/lib/api/reports';
+import { AssetReportData, downloadFile, exportAssetReports, fetchAssetReports, ReportQueryParams } from '@/lib/api/reports';
 import {
-    AlertCircle,
-    BarChart3,
-    Calendar,
-    DollarSign,
-    Download,
-    Filter,
-    Package,
-    PieChart,
-    TrendingUp
+  AlertCircle,
+  BarChart3,
+  Calendar,
+  DollarSign,
+  Download,
+  Filter,
+  Package,
+  PieChart,
+  TrendingUp
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -52,11 +52,18 @@ export default function AssetReportsPage() {
   const handleExport = async (options: ExportOptions) => {
     try {
       setExporting(true);
-      const blob = await exportAssetReports(options.format, {
+      
+      // 转换filters类型以匹配ReportQueryParams
+      const filters = options.filters as Record<string, unknown> || {};
+      const queryParams: ReportQueryParams = {
         start_date: options.dateRange?.start_date,
         end_date: options.dateRange?.end_date,
-        ...options.filters
-      });
+        category_id: filters.category_id ? String(filters.category_id) : undefined,
+        department_id: filters.department_id ? String(filters.department_id) : undefined,
+        status: filters.status as string,
+      };
+      
+      const blob = await exportAssetReports(options.format, queryParams);
       const filename = `资产统计报表_${new Date().toISOString().split('T')[0]}.${options.format === 'excel' ? 'xlsx' : 'csv'}`;
       downloadFile(blob, filename);
       toast.success('报表导出成功');

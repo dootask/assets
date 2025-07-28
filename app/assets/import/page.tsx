@@ -1,12 +1,11 @@
 'use client';
 
-import { ArrowLeft, Upload } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Upload } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-export default function AssetImportPage() {
+export default function ImportAssetsPage() {
   const router = useRouter();
 
   return (

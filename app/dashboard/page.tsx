@@ -81,20 +81,6 @@ export default function Dashboard() {
       if (dashboardResult.code === 'SUCCESS' && dashboardResult.data) {
         const data = dashboardResult.data;
         
-        // 获取分类和部门数量
-        let categoriesCount = 0;
-        let departmentsCount = 0;
-        
-        const categoriesResult = categoriesResponse.data;
-        if (categoriesResult.code === 'SUCCESS' && categoriesResult.data) {
-          categoriesCount = categoriesResult.data.length || 0;
-        }
-        
-        const departmentsResult = departmentsResponse.data;
-        if (departmentsResult.code === 'SUCCESS' && departmentsResult.data) {
-          departmentsCount = departmentsResult.data.data.length || 0;
-        }
-        
         // 转换后端数据格式为前端期望的格式
         const recentBorrows: Array<{
           id: number;

@@ -138,18 +138,14 @@ export default function LogsPage() {
     return new Date(dateTime).toLocaleString('zh-CN');
   };
 
-  // 格式化JSON数据
-  const formatJsonData = (data: Record<string, unknown> | undefined) => {
-    if (!data) return '-';
-    return JSON.stringify(data, null, 2);
-  };
-
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题 */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">操作日志</h1>
-        <p className="text-muted-foreground">查看系统操作记录和审计信息</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">操作日志</h1>
+          <p className="text-muted-foreground">查看系统操作记录</p>
+        </div>
       </div>
 
       {/* 统计卡片 */}
@@ -355,46 +351,46 @@ export default function LogsPage() {
                 {
                   key: 'id',
                   title: 'ID',
-                  render: (value) => <span className="font-mono text-sm">{value}</span>,
+                  render: (value) => <span className="font-mono text-sm">{value as string | number}</span>,
                   className: 'w-16'
                 },
                 {
                   key: 'table_label',
                   title: '表名',
-                  render: (value) => <Badge variant="outline">{value}</Badge>
+                  render: (value) => <Badge variant="outline">{value as string}</Badge>
                 },
                 {
                   key: 'operation_label',
                   title: '操作',
                   render: (_, record) => (
-                    <Badge variant={operationMap[record.operation as OperationType]?.variant || 'default'}>
-                      {record.operation_label}
+                    <Badge variant={operationMap[(record as OperationLogResponse).operation as OperationType]?.variant || 'default'}>
+                      {(record as OperationLogResponse).operation_label}
                     </Badge>
                   )
                 },
                 {
                   key: 'record_id',
                   title: '记录ID',
-                  render: (value) => <span className="font-mono text-sm">{value}</span>,
+                  render: (value) => <span className="font-mono text-sm">{value as string | number}</span>,
                   mobileHidden: true
                 },
                 {
                   key: 'operator',
                   title: '操作者',
-                  render: (value) => value || '-',
+                  render: (value) => (value as string) || '-',
                   mobileHidden: true
                 },
                 {
                   key: 'ip_address',
                   title: 'IP地址',
-                  render: (value) => <span className="font-mono text-sm">{value}</span>,
+                  render: (value) => <span className="font-mono text-sm">{value as string}</span>,
                   mobileHidden: true
                 },
                 {
                   key: 'created_at',
                   title: '操作时间',
                   render: (value) => (
-                    <span className="text-sm">{formatDateTime(value)}</span>
+                    <span className="text-sm">{formatDateTime(value as string)}</span>
                   )
                 }
               ]}

@@ -122,40 +122,32 @@ function CategoryNode({
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit?.(category);
-              }}
+              onClick={handleEdit}
+              title="编辑分类"
             >
               <Edit className="h-3 w-3" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateSub?.(category);
-              }}
+              onClick={handleCreateSub}
+              title="创建子分类"
             >
               <Plus className="h-3 w-3" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onConfigureAttributes?.(category);
-              }}
+              onClick={handleConfigureAttributes}
+              title="配置属性"
             >
               <Settings className="h-3 w-3" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.(category);
-              }}
+              onClick={handleDelete}
+              title="删除分类"
             >
               <Trash2 className="h-3 w-3" />
             </Button>
@@ -196,8 +188,7 @@ export function CategoryTree({
 }: CategoryTreeProps) {
   if (!categories || categories.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <Folder className="h-12 w-12 mx-auto mb-4 opacity-50" />
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
         <p>暂无分类数据</p>
       </div>
     );
@@ -206,18 +197,17 @@ export function CategoryTree({
   return (
     <div className="space-y-1">
       {categories.map((category) => (
-        <div key={category.id} className="group">
-          <CategoryNode
-            category={category}
-            level={0}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onCreateSub={onCreateSub}
-            onConfigureAttributes={onConfigureAttributes}
-          />
-        </div>
+        <CategoryNode
+          key={category.id}
+          category={category}
+          level={0}
+          selectedId={selectedId}
+          onSelect={onSelect}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onCreateSub={onCreateSub}
+          onConfigureAttributes={onConfigureAttributes}
+        />
       ))}
     </div>
   );

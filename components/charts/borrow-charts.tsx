@@ -7,6 +7,7 @@ import {
     OverdueAnalysis,
     PopularAssetStats
 } from '@/lib/api/reports';
+import { BorrowStatus } from '@/lib/types';
 import {
     Area,
     AreaChart,
@@ -15,6 +16,8 @@ import {
     CartesianGrid,
     Cell,
     Legend,
+    Line,
+    LineChart,
     Pie,
     PieChart,
     ResponsiveContainer,
@@ -24,21 +27,31 @@ import {
 } from 'recharts';
 
 // 颜色配置
-const COLORS = {
-  primary: '#3b82f6',
-  secondary: '#10b981',
-  accent: '#f59e0b',
-  danger: '#ef4444',
-  warning: '#f97316',
-  info: '#06b6d4',
-  success: '#22c55e',
-  muted: '#6b7280'
+const COLORS = [
+    '#0088fe', '#00c49f', '#ffbb28', '#ff8042',
+    '#8884d8', '#82ca9d', '#ffc658', '#ff7c7c',
+    '#8b5cf6', '#06b6d4', '#f97316', '#22c55e'
+];
+
+// 状态标签映射
+const getStatusLabel = (status: BorrowStatus): string => {
+  const labels = {
+    borrowed: '借用中',
+    returned: '已归还',
+    overdue: '已逾期'
+  };
+  return labels[status] || status;
 };
 
-const PIE_COLORS = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
-  '#8b5cf6', '#06b6d4', '#f97316', '#22c55e'
-];
+// 状态颜色映射
+const getStatusColor = (status: BorrowStatus): string => {
+  const colors = {
+    borrowed: '#8884d8',
+    returned: '#82ca9d', 
+    overdue: '#ff6b6b'
+  };
+  return colors[status] || '#8884d8';
+};
 
 interface BorrowDepartmentChartProps {
   data: BorrowDepartmentStats[];
@@ -73,9 +86,9 @@ export function BorrowDepartmentChart({ data }: BorrowDepartmentChartProps) {
               }}
             />
             <Legend />
-            <Bar dataKey="borrow_count" fill={COLORS.primary} name="总借用" />
-            <Bar dataKey="active_count" fill={COLORS.secondary} name="活跃借用" />
-            <Bar dataKey="overdue_count" fill={COLORS.danger} name="超期借用" />
+            <Bar dataKey="borrow_count" fill={COLORS[0]} name="总借用" />
+            <Bar dataKey="active_count" fill={COLORS[1]} name="活跃借用" />
+            <Bar dataKey="overdue_count" fill={COLORS[3]} name="超期借用" />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -105,7 +118,7 @@ export function OverdueAnalysisChart({ data }: OverdueAnalysisChartProps) {
             <Tooltip 
               formatter={(value: number) => [`${value} 次`, '超期借用']}
             />
-            <Bar dataKey="count" fill={COLORS.danger} />
+            <Bar dataKey="count" fill={COLORS[3]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -142,8 +155,8 @@ export function MonthlyBorrowTrendChart({ data }: MonthlyBorrowTrendChartProps) 
               type="monotone" 
               dataKey="borrow_count" 
               stackId="1" 
-              stroke={COLORS.primary} 
-              fill={COLORS.primary}
+              stroke={COLORS[0]} 
+              fill={COLORS[0]}
               fillOpacity={0.6}
               name="借用数量"
             />
@@ -151,8 +164,8 @@ export function MonthlyBorrowTrendChart({ data }: MonthlyBorrowTrendChartProps) 
               type="monotone" 
               dataKey="return_count" 
               stackId="2" 
-              stroke={COLORS.secondary} 
-              fill={COLORS.secondary}
+              stroke={COLORS[1]} 
+              fill={COLORS[1]}
               fillOpacity={0.6}
               name="归还数量"
             />
@@ -193,7 +206,7 @@ export function PopularAssetsChart({ data }: PopularAssetsChartProps) {
             <Tooltip 
               formatter={(value: number) => [`${value} 次`, '借用次数']}
             />
-            <Bar dataKey="borrow_count" fill={COLORS.accent} />
+            <Bar dataKey="borrow_count" fill={COLORS[2]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -215,9 +228,9 @@ export function BorrowSummaryChart({
   overdueBorrows 
 }: BorrowSummaryChartProps) {
   const chartData = [
-    { name: '已归还', value: returnedBorrows, fill: COLORS.success },
-    { name: '正常借用', value: activeBorrows - overdueBorrows, fill: COLORS.primary },
-    { name: '超期借用', value: overdueBorrows, fill: COLORS.danger }
+    { name: '已归还', value: returnedBorrows, fill: COLORS[4] },
+    { name: '正常借用', value: activeBorrows - overdueBorrows, fill: COLORS[0] },
+    { name: '超期借用', value: overdueBorrows, fill: COLORS[3] }
   ];
 
   return (
@@ -253,3 +266,44 @@ export function BorrowSummaryChart({
     </Card>
   );
 }
+
+const BorrowTrendChart = ({ data }: { data: MonthlyBorrowStats[] }) => (
+  <ResponsiveContainer width="100%" height="100%">
+    <LineChart data={data}>
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="month" />
+      <YAxis />
+      <Tooltip />
+      <Line type="monotone" dataKey="borrow_count" stroke={COLORS[0]} name="借用数量" />
+      <Line type="monotone" dataKey="return_count" stroke={COLORS[1]} name="归还数量" />
+    </LineChart>
+  </ResponsiveContainer>
+);
+
+const BorrowStatusChart = ({ data }: { data: Record<string, number> }) => {
+  const chartData = Object.entries(data).map(([key, value]) => ({
+    name: getStatusLabel(key as BorrowStatus),
+    value,
+    color: getStatusColor(key as BorrowStatus)
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie
+          data={chartData}
+          cx="50%"
+          cy="50%"
+          outerRadius={80}
+          dataKey="value"
+          label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
+        >
+          {chartData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={entry.color} />
+          ))}
+        </Pie>
+        <Tooltip />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+};

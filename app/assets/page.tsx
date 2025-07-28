@@ -46,9 +46,6 @@ export default function AssetsPage() {
   const [filters, setFilters] = useState<AssetFilters>({});
   const [showFilters, setShowFilters] = useState(false);
   
-  // 删除状态
-  const [deleting, setDeleting] = useState(false);
-
   // 批量操作状态
   const [selectedAssets, setSelectedAssets] = useState<AssetResponse[]>([]);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
@@ -126,7 +123,7 @@ export default function AssetsPage() {
     if (!confirmed) return;
     
     try {
-      setDeleting(true);
+      setLoading(true); // Use loading for deletion
       await deleteAsset(asset.id);
       showSuccess('资产删除成功', `资产 "${asset.name}" 已成功删除`);
       loadAssets(pagination.current_page);
@@ -134,7 +131,7 @@ export default function AssetsPage() {
       console.error('删除资产失败:', error);
       showError('删除资产失败', '请检查资产是否正在使用中或稍后重试');
     } finally {
-      setDeleting(false);
+      setLoading(false);
     }
   };
 
@@ -330,7 +327,7 @@ export default function AssetsPage() {
               </Button>
             </div>
           ) : (
-            <ResponsiveTable
+            <ResponsiveTable<AssetResponse>
               columns={[
                 {
                   key: 'select',
@@ -349,49 +346,42 @@ export default function AssetsPage() {
                 {
                   key: 'asset_no',
                   title: '资产编号',
-                  render: (value) => <span className="font-medium">{value}</span>
+                  render: (value) => <span className="font-medium">{value as string}</span>
                 },
                 {
                   key: 'name',
                   title: '资产名称',
-                  render: (value, record) => (
+                  render: (value) => (
                     <div>
-                      <div className="font-medium">{value}</div>
-                      {record.brand && record.model && (
-                        <div className="text-sm text-muted-foreground">
-                          {record.brand} {record.model}
-                        </div>
-                      )}
+                      <div className="font-medium">{value as string}</div>
                     </div>
                   )
                 },
                 {
-                  key: 'category',
+                  key: 'category_id',
                   title: '分类',
-                  render: (value) => value?.name || '-',
+                  render: (value, record) => (record as AssetResponse).category?.name || '-',
                   mobileHidden: true
                 },
                 {
                   key: 'status',
                   title: '状态',
-                  render: (value) => <StatusBadge status={value} statusMap={statusMap} />
+                  render: (value) => <StatusBadge status={value as string} statusMap={statusMap} />
                 },
                 {
                   key: 'location',
-                  title: '位置',
-                  render: (value) => value || '-',
+                  title: '存放位置',
                   mobileHidden: true
                 },
                 {
                   key: 'responsible_person',
                   title: '责任人',
-                  render: (value) => value || '-',
                   mobileHidden: true
                 },
                 {
                   key: 'purchase_price',
                   title: '采购价格',
-                  render: (value) => value ? <CurrencyRenderer amount={value} /> : '-',
+                  render: (value) => value ? <CurrencyRenderer amount={value as number} /> : '-',
                   mobileHidden: true
                 }
               ]}

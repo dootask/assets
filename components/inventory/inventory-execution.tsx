@@ -13,7 +13,7 @@ import { getAssets } from '@/lib/api/assets';
 import type { CreateInventoryRecordRequest, InventoryTask } from '@/lib/api/inventory';
 import { batchCreateInventoryRecords, createInventoryRecord } from '@/lib/api/inventory';
 import type { AssetResponse } from '@/lib/types';
-import { AlertCircle, CheckCircle, Eye, Plus, Scan, Search, XCircle } from 'lucide-react';
+import { CheckCircle, Eye, Plus, Scan, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -22,40 +22,18 @@ interface InventoryExecutionProps {
     onRecordCreated: () => void;
 }
 
-const resultLabels = {
-    normal: '正常',
-    surplus: '盘盈',
-    deficit: '盘亏',
-    damaged: '损坏'
-};
-
-const resultColors = {
-    normal: 'bg-green-100 text-green-800',
-    surplus: 'bg-orange-100 text-orange-800',
-    deficit: 'bg-red-100 text-red-800',
-    damaged: 'bg-purple-100 text-purple-800'
-};
-
-const resultIcons = {
-    normal: CheckCircle,
-    surplus: AlertCircle,
-    deficit: XCircle,
-    damaged: AlertCircle
-};
-
 // 定义CreateInventoryRecordRequest字段值的类型
 type InventoryRecordFieldValue = string | number | 'normal' | 'surplus' | 'deficit' | 'damaged';
 
 export function InventoryExecution({ task, onRecordCreated }: InventoryExecutionProps) {
     const [assets, setAssets] = useState<AssetResponse[]>([]);
     const [loading, setLoading] = useState(false);
-    const [searchKeyword, setSearchKeyword] = useState('');
-    const [selectedAssets, setSelectedAssets] = useState<AssetResponse[]>([]);
+    const [keyword, setKeyword] = useState('');
     const [batchRecords, setBatchRecords] = useState<CreateInventoryRecordRequest[]>([]);
+    const [mode, setMode] = useState<'single' | 'batch'>('single');
     const [showBatchDialog, setShowBatchDialog] = useState(false);
-    const [showAssetDialog, setShowAssetDialog] = useState(false);
     
-    // 单个记录表单
+    // 单个盘点记录状态
     const [singleRecord, setSingleRecord] = useState<CreateInventoryRecordRequest>({
         task_id: task.id,
         asset_id: 0,
@@ -66,10 +44,10 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
     });
 
     useEffect(() => {
-        if (showAssetDialog) {
+        if (mode === 'single') {
             loadAssets();
         }
-    }, [showAssetDialog, searchKeyword]);
+    }, [mode, keyword]);
 
     const loadAssets = async () => {
         try {
@@ -78,7 +56,7 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                 page: 1,
                 page_size: 50,
                 sorts: [{ key: 'asset_no', desc: false }],
-                filters: searchKeyword ? { keyword: searchKeyword } : undefined
+                filters: keyword ? { keyword: keyword } : undefined
             });
             
             if (response.code === 'SUCCESS') {
@@ -218,7 +196,7 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                                         }
                                     }}
                                 />
-                                <Dialog open={showAssetDialog} onOpenChange={setShowAssetDialog}>
+                                <Dialog open={mode === 'single'} onOpenChange={() => setMode('single')}>
                                     <DialogTrigger asChild>
                                         <Button variant="outline">
                                             <Search className="w-4 h-4" />
@@ -232,8 +210,8 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                                             <div className="flex gap-2">
                                                 <Input
                                                     placeholder="搜索资产编号或名称..."
-                                                    value={searchKeyword}
-                                                    onChange={(e) => setSearchKeyword(e.target.value)}
+                                                    value={keyword}
+                                                    onChange={(e) => setKeyword(e.target.value)}
                                                 />
                                                 <Button onClick={loadAssets}>搜索</Button>
                                             </div>
@@ -265,7 +243,7 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                                                                             asset_id: asset.id,
                                                                             actual_status: asset.status
                                                                         });
-                                                                        setShowAssetDialog(false);
+                                                                        setMode('single');
                                                                     }}
                                                                 >
                                                                     选择
@@ -377,7 +355,7 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                             已添加 {batchRecords.length} 条记录
                         </div>
                         <div className="flex gap-2">
-                            <Dialog open={showAssetDialog} onOpenChange={setShowAssetDialog}>
+                            <Dialog open={mode === 'batch'} onOpenChange={() => setMode('batch')}>
                                 <DialogTrigger asChild>
                                     <Button variant="outline">
                                         <Plus className="w-4 h-4 mr-2" />
@@ -392,8 +370,8 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                                         <div className="flex gap-2">
                                             <Input
                                                 placeholder="搜索资产编号或名称..."
-                                                value={searchKeyword}
-                                                onChange={(e) => setSearchKeyword(e.target.value)}
+                                                value={keyword}
+                                                onChange={(e) => setKeyword(e.target.value)}
                                             />
                                             <Button onClick={loadAssets}>搜索</Button>
                                         </div>
@@ -431,7 +409,7 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                                     </div>
                                 </DialogContent>
                             </Dialog>
-                            <Dialog open={showBatchDialog} onOpenChange={setShowBatchDialog}>
+                            <Dialog open={mode === 'batch'} onOpenChange={() => setMode('batch')}>
                                 <DialogTrigger asChild>
                                     <Button disabled={batchRecords.length === 0}>
                                         <Eye className="w-4 h-4 mr-2" />
@@ -527,7 +505,7 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                                             </TableBody>
                                         </Table>
                                         <div className="flex justify-end gap-2">
-                                            <Button variant="outline" onClick={() => setShowBatchDialog(false)}>
+                                            <Button variant="outline" onClick={() => setMode('single')}>
                                                 取消
                                             </Button>
                                             <Button onClick={handleBatchSubmit}>
