@@ -53,14 +53,14 @@ export default function InventoryPage() {
                 page: currentPage,
                 page_size: pageSize,
                 keyword: keyword || undefined,
-                status: (statusFilter && statusFilter !== 'all') ? statusFilter as any : undefined,
-                task_type: (taskTypeFilter && taskTypeFilter !== 'all') ? taskTypeFilter as any : undefined,
+                status: (statusFilter && statusFilter !== 'all') ? statusFilter as 'pending' | 'in_progress' | 'completed' : undefined,
+                task_type: (taskTypeFilter && taskTypeFilter !== 'all') ? taskTypeFilter as 'full' | 'category' | 'department' : undefined,
             };
 
             const response = await getInventoryTasks(params);
             if (response.code === 'SUCCESS') {
-                setTasks(response.data.data);
-                setTotal(response.data.total_items);
+                setTasks(response.data.data || []);
+                setTotal(response.data.total_items || 0);
             } else {
                 toast.error(response.message || '获取盘点任务失败');
             }

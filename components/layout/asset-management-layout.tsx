@@ -73,8 +73,6 @@ const breadcrumbConfig: Record<string, { name: string; parent?: string }> = {
   '/categories': { name: '分类管理' },
   '/departments': { name: '部门管理' },
   '/borrow': { name: '借用管理' },
-  '/borrow/new': { name: '新增借用', parent: '/borrow' },
-  '/borrow/return': { name: '归还处理', parent: '/borrow' },
   '/inventory': { name: '盘点管理' },
   '/inventory/new': { name: '创建盘点', parent: '/inventory' },
   '/reports': { name: '报表统计' },

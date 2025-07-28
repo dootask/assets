@@ -269,7 +269,7 @@ export default function Dashboard() {
                     <span>新增资产</span>
                   </Button>
                 </Link>
-                <Link href="/borrow/new">
+                <Link href="/borrow">
                   <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
                     <ClipboardList className="h-6 w-6" />
                     <span>资产借用</span>

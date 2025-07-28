@@ -114,7 +114,7 @@ export default function InventoryReportPage() {
         );
     }
 
-    const { task, summary, records, category_stats, department_stats } = report;
+    const { task, summary, records = [], category_stats = [], department_stats = [] } = report;
 
     return (
         <div className="container mx-auto p-6">
@@ -328,7 +328,7 @@ export default function InventoryReportPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {department_stats.map((stat) => {
+                                        {department_stats?.map((stat) => {
                                             const completionRate = stat.total_assets > 0 
                                                 ? (stat.checked_assets / stat.total_assets * 100).toFixed(1)
                                                 : '0.0';
