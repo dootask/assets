@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { useAppContext } from '@/contexts/app-context';
 import { CategoryTreeNode, deleteCategory, getCategories } from '@/lib/api/categories';
-import { Edit, Folder, FolderOpen, Plus, Search, Trash2 } from 'lucide-react';
+import { Folder, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -20,6 +21,8 @@ export default function CategoriesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [attributesDialogOpen, setAttributesDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryTreeNode | null>(null);
+
+  const { Confirm } = useAppContext();
 
   const loadCategories = async () => {
     try {
@@ -53,7 +56,12 @@ export default function CategoriesPage() {
   };
 
   const handleDeleteCategory = async (category: CategoryTreeNode) => {
-    if (!confirm(`确定要删除分类"${category.name}"吗？`)) {
+    const confirmed = await Confirm({
+      title: '确认删除',
+      message: `确定要删除分类"${category.name}"吗？此操作不可撤销。`,
+      variant: 'destructive',
+    });
+    if (!confirmed) {
       return;
     }
 

@@ -2,12 +2,12 @@
 
 import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAppContext } from '@/contexts/app-context';
 import type { InventoryTask, InventoryTaskListQuery } from '@/lib/api/inventory';
 import { deleteInventoryTask, getInventoryTasks, updateInventoryTask } from '@/lib/api/inventory';
 import { Eye, FileText, Play, Plus, Search, Trash2 } from 'lucide-react';
@@ -35,6 +35,7 @@ const taskTypeLabels = {
 
 export default function InventoryPage() {
     const router = useRouter();
+    const { Confirm } = useAppContext();
     const [tasks, setTasks] = useState<InventoryTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
@@ -97,6 +98,13 @@ export default function InventoryPage() {
     };
 
     const handleDeleteTask = async (task: InventoryTask) => {
+        const confirmed = await Confirm({
+            title: '确认删除',
+            message: `确定要删除盘点任务 "${task.task_name}" 吗？此操作不可撤销。`,
+            variant: 'destructive',
+        });
+        if (!confirmed) return;
+
         try {
             const response = await deleteInventoryTask(task.id);
             if (response.code === 'SUCCESS') {
@@ -239,28 +247,14 @@ export default function InventoryPage() {
                                         </Button>
                                     )}
                                     {task.status === 'pending' && (
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="outline" size="sm">
-                                                    <Trash2 className="w-4 h-4 mr-1" />
-                                                    删除
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>确认删除</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        确定要删除盘点任务 &quot;{task.task_name}&quot; 吗？此操作不可撤销。
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteTask(task)}>
-                                                        删除
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleDeleteTask(task)}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-1" />
+                                            删除
+                                        </Button>
                                     )}
                                 </div>
                             </div>

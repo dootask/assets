@@ -14,8 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BatchOperationsDialog } from '@/components/assets/batch-operations-dialog';
 import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CurrencyRenderer, ResponsiveTable, StatusBadge } from '@/components/ui/responsive-table';
+import { useAppContext } from '@/contexts/app-context';
 import { deleteAsset, exportAssets, getAssets } from '@/lib/api/assets';
 import { showError, showSuccess } from '@/lib/notifications';
 import type { AssetFilters, AssetResponse, AssetStatus, PaginationRequest } from '@/lib/types';
@@ -30,6 +30,8 @@ const statusMap: Record<AssetStatus, { label: string; variant: 'default' | 'seco
 
 export default function AssetsPage() {
   const router = useRouter();
+  const { Confirm } = useAppContext();
+  
   const [assets, setAssets] = useState<AssetResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -44,9 +46,7 @@ export default function AssetsPage() {
   const [filters, setFilters] = useState<AssetFilters>({});
   const [showFilters, setShowFilters] = useState(false);
   
-  // 删除确认对话框状态
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [assetToDelete, setAssetToDelete] = useState<AssetResponse | null>(null);
+  // 删除状态
   const [deleting, setDeleting] = useState(false);
 
   // 批量操作状态
@@ -117,15 +117,18 @@ export default function AssetsPage() {
   };
 
   // 删除资产
-  const handleDelete = async () => {
-    if (!assetToDelete) return;
+  const handleDelete = async (asset: AssetResponse) => {
+    const confirmed = await Confirm({
+      title: '确认删除',
+      message: `确定要删除资产 "${asset.name}" 吗？此操作不可撤销。`,
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     
     try {
       setDeleting(true);
-      await deleteAsset(assetToDelete.id);
-      showSuccess('资产删除成功', `资产 "${assetToDelete.name}" 已成功删除`);
-      setDeleteDialogOpen(false);
-      setAssetToDelete(null);
+      await deleteAsset(asset.id);
+      showSuccess('资产删除成功', `资产 "${asset.name}" 已成功删除`);
       loadAssets(pagination.current_page);
     } catch (error) {
       console.error('删除资产失败:', error);
@@ -411,10 +414,7 @@ export default function AssetsPage() {
                   label: '删除',
                   icon: Trash2,
                   variant: 'destructive',
-                  onClick: (record) => {
-                    setAssetToDelete(record);
-                    setDeleteDialogOpen(true);
-                  }
+                  onClick: (record) => handleDelete(record)
                 }
               ]}
               loading={loading}
@@ -439,24 +439,6 @@ export default function AssetsPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              你确定要删除资产 &quot;{assetToDelete?.name}&quot; 吗？此操作无法撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-              {deleting ? '删除中...' : '删除'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* 批量操作对话框 */}
       <BatchOperationsDialog

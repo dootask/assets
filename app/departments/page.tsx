@@ -3,28 +3,19 @@
 import { DepartmentDialog } from '@/components/departments/department-dialog';
 import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
+import { useAppContext } from '@/contexts/app-context';
 import { deleteDepartment, getDepartments } from '@/lib/api/departments';
 import type { DepartmentFilters, DepartmentResponse, PaginationRequest } from '@/lib/types';
 import { Building2, Edit, Plus, Search, Trash2, Users } from 'lucide-react';
@@ -32,6 +23,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function DepartmentsPage() {
+  const { Confirm } = useAppContext();
+  
   const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,8 +33,6 @@ export default function DepartmentsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<DepartmentResponse | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [departmentToDelete, setDepartmentToDelete] = useState<DepartmentResponse | null>(null);
 
   const pageSize = 20;
 
@@ -110,17 +101,27 @@ export default function DepartmentsPage() {
   };
 
   // 删除部门
-  const handleDelete = (department: DepartmentResponse) => {
-    setDepartmentToDelete(department);
-    setDeleteDialogOpen(true);
-  };
+  const handleDelete = async (department: DepartmentResponse) => {
+    // 检查是否可以删除
+    if (department.asset_count && department.asset_count > 0) {
+      await Confirm({
+        title: '无法删除',
+        message: `该部门下还有 ${department.asset_count} 个资产，无法删除。`,
+        confirmText: '知道了',
+        variant: 'destructive'
+      });
+      return;
+    }
 
-  // 确认删除
-  const confirmDelete = async () => {
-    if (!departmentToDelete) return;
+    const confirmed = await Confirm({
+      title: '确认删除',
+      message: `确定要删除部门 "${department.name}" 吗？此操作不可撤销。`,
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
 
     try {
-      const response = await deleteDepartment(departmentToDelete.id);
+      const response = await deleteDepartment(department.id);
       
       if (response.code === 'SUCCESS') {
         toast.success('部门删除成功');
@@ -131,9 +132,6 @@ export default function DepartmentsPage() {
     } catch (error) {
       console.error('删除部门失败:', error);
       toast.error('删除部门失败');
-    } finally {
-      setDeleteDialogOpen(false);
-      setDepartmentToDelete(null);
     }
   };
 
@@ -278,7 +276,6 @@ export default function DepartmentsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(department)}
-                            disabled={department.asset_count > 0}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -316,32 +313,6 @@ export default function DepartmentsPage() {
         department={editingDepartment}
         onSuccess={handleDialogSuccess}
       />
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除部门 &quot;{departmentToDelete?.name}&quot; 吗？此操作不可撤销。
-              {departmentToDelete?.asset_count && departmentToDelete.asset_count > 0 && (
-                <div className="mt-2 text-red-600">
-                  该部门下还有 {departmentToDelete.asset_count} 个资产，无法删除。
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={!!(departmentToDelete?.asset_count && departmentToDelete.asset_count > 0)}
-            >
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

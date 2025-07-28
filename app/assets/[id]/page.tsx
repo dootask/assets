@@ -5,13 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 
+import { useAppContext } from '@/contexts/app-context';
 import { deleteAsset, getAsset } from '@/lib/api/assets';
 import type { AssetResponse, AssetStatus } from '@/lib/types';
 
@@ -30,8 +30,9 @@ export default function AssetDetailPage() {
 
   const [asset, setAsset] = useState<AssetResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const { Confirm } = useAppContext();
 
   // 加载资产详情
   useEffect(() => {
@@ -57,6 +58,13 @@ export default function AssetDetailPage() {
   // 删除资产
   const handleDelete = async () => {
     if (!asset) return;
+
+    const confirmed = await Confirm({
+      title: '确认删除',
+      message: `确定要删除资产 "${asset.name}" 吗？此操作不可撤销。`,
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
 
     try {
       setDeleting(true);
@@ -142,10 +150,11 @@ export default function AssetDetailPage() {
           </Button>
           <Button
             variant="destructive"
-            onClick={() => setDeleteDialogOpen(true)}
+            onClick={handleDelete}
+            disabled={deleting}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            删除
+            {deleting ? '删除中...' : '删除'}
           </Button>
         </div>
       </div>
@@ -369,28 +378,6 @@ export default function AssetDetailPage() {
           </Card>
         </div>
       </div>
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除资产 &quot;{asset.name}&quot; 吗？此操作不可撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? '删除中...' : '确认删除'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

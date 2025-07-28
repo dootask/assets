@@ -5,16 +5,6 @@ import { ReturnDialog } from '@/components/borrow/return-dialog';
 import { CommandSelect } from '@/components/command-select';
 import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useAppContext } from '@/contexts/app-context';
 import { deleteBorrowRecord, getBorrowRecords } from '@/lib/api/borrow';
 import type { BorrowFilters, BorrowResponse, BorrowStatus, PaginationRequest } from '@/lib/types';
 import { AlertTriangle, CheckCircle, Clock, Edit, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
@@ -34,6 +25,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function BorrowPage() {
+  const { Confirm } = useAppContext();
+  
   const [borrowRecords, setBorrowRecords] = useState<BorrowResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,8 +39,6 @@ export default function BorrowPage() {
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [editingBorrow, setEditingBorrow] = useState<BorrowResponse | null>(null);
   const [returningBorrow, setReturningBorrow] = useState<BorrowResponse | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [borrowToDelete, setBorrowToDelete] = useState<BorrowResponse | null>(null);
 
   const pageSize = 20;
 
@@ -136,17 +127,27 @@ export default function BorrowPage() {
   };
 
   // 删除借用记录
-  const handleDelete = (borrow: BorrowResponse) => {
-    setBorrowToDelete(borrow);
-    setDeleteDialogOpen(true);
-  };
+  const handleDelete = async (borrow: BorrowResponse) => {
+    // 检查是否可以删除
+    if (borrow.status === 'borrowed') {
+      await Confirm({
+        title: '无法删除',
+        message: '该记录状态为借用中，无法删除。请先归还资产。',
+        confirmText: '知道了',
+        variant: 'destructive'
+      });
+      return;
+    }
 
-  // 确认删除
-  const confirmDelete = async () => {
-    if (!borrowToDelete) return;
+    const confirmed = await Confirm({
+      title: '确认删除',
+      message: '确定要删除这条借用记录吗？此操作不可撤销。',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
 
     try {
-      const response = await deleteBorrowRecord(borrowToDelete.id);
+      const response = await deleteBorrowRecord(borrow.id);
       
       if (response.code === 'SUCCESS') {
         toast.success('借用记录删除成功');
@@ -157,9 +158,6 @@ export default function BorrowPage() {
     } catch (error) {
       console.error('删除借用记录失败:', error);
       toast.error('删除借用记录失败');
-    } finally {
-      setDeleteDialogOpen(false);
-      setBorrowToDelete(null);
     }
   };
 
@@ -432,32 +430,6 @@ export default function BorrowPage() {
         borrow={returningBorrow}
         onSuccess={handleDialogSuccess}
       />
-
-      {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除这条借用记录吗？此操作不可撤销。
-              {borrowToDelete?.status === 'borrowed' && (
-                <div className="mt-2 text-red-600">
-                  该记录状态为借用中，无法删除。请先归还资产。
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={borrowToDelete?.status === 'borrowed'}
-            >
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
