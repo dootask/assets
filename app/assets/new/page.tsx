@@ -36,8 +36,8 @@ export default function NewAssetPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题 */}
       <div className="flex items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">新增资产</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">新增资产</h1>
           <p className="text-muted-foreground">添加新的固定资产信息</p>
         </div>
       </div>

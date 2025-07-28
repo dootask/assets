@@ -204,9 +204,9 @@ export default function BorrowPage() {
     <div className="container mx-auto py-6 space-y-6">
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Clock className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">借用管理</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">借用管理</h1>
+          <p className="text-muted-foreground">管理企业资产借用记录</p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />

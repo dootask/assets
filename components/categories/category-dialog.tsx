@@ -108,7 +108,7 @@ export function CategoryDialog({
     
     for (const cat of categories) {
       // 如果是编辑模式，排除自己和自己的子分类
-      if (isEditing && category && (cat.id === category.id || isDescendant(cat, category.id))) {
+      if (isEditing && category && (cat.id === category.id || isChildOf(category, cat.id))) {
         continue;
       }
       
@@ -122,12 +122,12 @@ export function CategoryDialog({
     return result;
   };
 
-  // 检查是否为指定分类的后代
-  const isDescendant = (category: CategoryTreeNode, ancestorId: number): boolean => {
-    if (!category.children) return false;
+  // 检查第二个参数ID是否为第一个参数category的子分类（直接或间接）
+  const isChildOf = (parentCategory: CategoryTreeNode, childId: number): boolean => {
+    if (!parentCategory.children) return false;
     
-    for (const child of category.children) {
-      if (child.id === ancestorId || isDescendant(child, ancestorId)) {
+    for (const child of parentCategory.children) {
+      if (child.id === childId || isChildOf(child, childId)) {
         return true;
       }
     }

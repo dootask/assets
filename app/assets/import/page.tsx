@@ -13,8 +13,8 @@ export default function AssetImportPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题 */}
       <div className="flex items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">资产导入</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">资产导入</h1>
           <p className="text-muted-foreground">批量导入资产数据</p>
         </div>
       </div>

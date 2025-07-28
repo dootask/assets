@@ -2,14 +2,8 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { CategoryTreeNode } from '@/lib/api/categories';
-import { ChevronDown, ChevronRight, Edit, Folder, FolderOpen, MoreHorizontal, Plus, Settings, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Folder, FolderOpen, Plus, Settings, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 interface CategoryTreeProps {
@@ -79,8 +73,8 @@ function CategoryNode({
   return (
     <div>
       <div
-        className={`flex items-center py-2 px-3 rounded-lg cursor-pointer hover:bg-gray-50 ${
-          isSelected ? 'bg-blue-50 border border-blue-200' : ''
+        className={`flex items-center p-2 pr-4 rounded-lg cursor-pointer hover:bg-gray-50 border border-transparent ${
+          isSelected ? 'bg-blue-50 border-blue-200' : ''
         }`}
         style={{ paddingLeft: `${level * 20 + 12}px` }}
         onClick={handleSelect}
@@ -117,51 +111,62 @@ function CategoryNode({
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium">{category.name}</span>
             <span className="text-xs text-gray-500 font-mono">({category.code})</span>
-            {category.asset_count > 0 && (
-              <Badge variant="secondary" className="text-xs">
+            {(category.asset_count ?? 0) > 0 && (
+              <Badge variant="secondary" className="ml-2 text-xs">
                 {category.asset_count}
               </Badge>
             )}
           </div>
 
-          {/* 操作菜单 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreHorizontal className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleEdit}>
-                <Edit className="h-4 w-4 mr-2" />
-                编辑
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCreateSub}>
-                <Plus className="h-4 w-4 mr-2" />
-                添加子分类
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleConfigureAttributes}>
-                <Settings className="h-4 w-4 mr-2" />
-                配置属性
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                删除
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(category);
+              }}
+            >
+              <Edit className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateSub?.(category);
+              }}
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onConfigureAttributes?.(category);
+              }}
+            >
+              <Settings className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(category);
+              }}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* 子分类 */}
       {hasChildren && expanded && (
         <div>
-          {category.children.map((child) => (
+          {category.children?.map((child) => (
             <CategoryNode
               key={child.id}
               category={child}

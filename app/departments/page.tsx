@@ -149,12 +149,12 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Building2 className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">部门管理</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">部门管理</h1>
+          <p className="text-muted-foreground">管理企业部门信息</p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />

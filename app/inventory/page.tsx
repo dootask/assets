@@ -123,9 +123,9 @@ export default function InventoryPage() {
     return (
         <div className="container mx-auto p-6">
             <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold">盘点管理</h1>
-                    <p className="text-gray-600 mt-1">管理资产盘点任务和记录</p>
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-2xl font-bold tracking-tight">盘点管理</h1>
+                    <p className="text-muted-foreground">管理资产盘点任务和记录</p>
                 </div>
                 <Button onClick={() => router.push('/inventory/new')}>
                     <Plus className="w-4 h-4 mr-2" />

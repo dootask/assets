@@ -150,7 +150,7 @@ export default function Dashboard() {
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-bold tracking-tight">仪表板</h1>
+            <h1 className="text-2xl font-bold tracking-tight">仪表板</h1>
             <p className="text-muted-foreground">企业固定资产管理系统概览</p>
           </div>
         </div>
@@ -175,10 +175,10 @@ export default function Dashboard() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">仪表板</h1>
+          <h1 className="text-2xl font-bold tracking-tight">仪表板</h1>
           <p className="text-muted-foreground">企业固定资产管理系统概览</p>
         </div>
-        <Button onClick={loadData} variant="outline" size="sm">
+        <Button onClick={loadData} variant="outline">
           <RefreshCcw className="mr-2 h-4 w-4" />
           刷新数据
         </Button>

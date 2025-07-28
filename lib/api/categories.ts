@@ -19,6 +19,7 @@ export interface CategoryTreeNode {
   parent_id?: number | null;
   description?: string;
   attributes?: any;
+  asset_count?: number;
   created_at: string;
   updated_at: string;
   children?: CategoryTreeNode[];

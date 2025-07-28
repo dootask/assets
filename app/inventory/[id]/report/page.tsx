@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { InventoryReportResponse } from '@/lib/api/inventory';
 import { getInventoryReport } from '@/lib/api/inventory';
-import { AlertCircle, ArrowLeft, CheckCircle, Download, Printer, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Download, Printer, XCircle } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -120,13 +120,9 @@ export default function InventoryReportPage() {
         <div className="container mx-auto p-6">
             <div className="flex items-center justify-between mb-6 print:hidden">
                 <div className="flex items-center gap-4">
-                    <Button variant="outline" onClick={() => router.back()}>
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        返回
-                    </Button>
-                    <div>
+                    <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold">盘点报告</h1>
+                            <h1 className="text-2xl font-bold tracking-tight">盘点报告</h1>
                             <Badge className={statusColors[task.status]}>
                                 {statusLabels[task.status]}
                             </Badge>

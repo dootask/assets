@@ -15,21 +15,13 @@ export default function NewBorrowPage() {
     router.push('/borrow');
   };
 
-  const handleBack = () => {
-    router.back();
-  };
-
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* 页面标题 */}
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          返回
-        </Button>
-        <div className="flex items-center space-x-2">
-          <Clock className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">新增借用申请</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">新增借用申请</h1>
+          <p className="text-muted-foreground">添加新的借用申请</p>
         </div>
       </div>
 

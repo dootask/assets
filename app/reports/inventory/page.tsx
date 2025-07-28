@@ -88,9 +88,9 @@ export default function InventoryReportsPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">盘点统计报表</h1>
-          <p className="text-muted-foreground mt-2">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">盘点统计报表</h1>
+          <p className="text-muted-foreground">
             查看盘点任务执行情况、准确率分析等信息
           </p>
         </div>

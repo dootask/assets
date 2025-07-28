@@ -101,9 +101,9 @@ export default function ReportsPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">报表统计</h1>
-          <p className="text-muted-foreground mt-2">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">报表统计</h1>
+          <p className="text-muted-foreground">
             查看和分析资产管理系统的各项统计数据
           </p>
         </div>

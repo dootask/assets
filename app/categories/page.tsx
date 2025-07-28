@@ -61,9 +61,11 @@ export default function CategoriesPage() {
       await deleteCategory(category.id);
       toast.success('分类删除成功');
       loadCategories();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to delete category:', error);
-      const message = error.response?.data?.message || '删除分类失败';
+      const message = error instanceof Error && 'response' in error 
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '删除分类失败'
+        : '删除分类失败';
       toast.error(message);
     }
   };
@@ -90,15 +92,47 @@ export default function CategoriesPage() {
 
   const handleAttributesDialogSuccess = () => {
     setAttributesDialogOpen(false);
+    
+    // 重新加载分类列表
     loadCategories();
+    
+    // 如果有选中的分类，重新获取最新的分类信息来更新详情
+    if (selectedCategory) {
+      // 等待列表加载完成后更新选中分类
+      setTimeout(async () => {
+        try {
+          const updatedCategories = await getCategories();
+          const updatedCategory = findCategoryById(updatedCategories, selectedCategory.id);
+          if (updatedCategory) {
+            setSelectedCategory(updatedCategory);
+          }
+        } catch (error) {
+          console.error('Failed to update selected category:', error);
+        }
+      }, 100);
+    }
+  };
+
+  // 辅助函数：在分类树中查找指定ID的分类
+  const findCategoryById = (categories: CategoryTreeNode[], id: number): CategoryTreeNode | null => {
+    for (const category of categories) {
+      if (category.id === id) {
+        return category;
+      }
+      if (category.children) {
+        const found = findCategoryById(category.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
   };
 
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">分类管理</h1>
-          <p className="text-muted-foreground mt-1">管理资产分类和属性模板</p>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">分类管理</h1>
+          <p className="text-muted-foreground">管理资产分类和属性模板</p>
         </div>
         <Button onClick={handleCreateCategory}>
           <Plus className="h-4 w-4 mr-2" />
@@ -183,40 +217,6 @@ export default function CategoriesPage() {
                       </div>
                     </div>
                   )}
-                  <div className="flex flex-col space-y-2 pt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditCategory(selectedCategory)}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      编辑分类
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCreateSubCategory(selectedCategory)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      添加子分类
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleConfigureAttributes(selectedCategory)}
-                    >
-                      <FolderOpen className="h-4 w-4 mr-2" />
-                      配置属性
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteCategory(selectedCategory)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      删除分类
-                    </Button>
-                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

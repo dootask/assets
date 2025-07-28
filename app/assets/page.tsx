@@ -193,8 +193,8 @@ export default function AssetsPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题和操作按钮 */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">资产管理</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">资产管理</h1>
           <p className="text-muted-foreground">管理企业固定资产信息</p>
         </div>
         <div className="flex gap-2">

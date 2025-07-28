@@ -147,8 +147,8 @@ export default function LogsPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题 */}
-      <div>
-        <h1 className="text-2xl font-bold">操作日志</h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold tracking-tight">操作日志</h1>
         <p className="text-muted-foreground">查看系统操作记录和审计信息</p>
       </div>
 

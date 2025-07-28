@@ -159,9 +159,11 @@ export function CategoryAttributesDialog({
       await updateCategory(category.id, { attributes });
       toast.success('属性模板保存成功');
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save attributes:', error);
-      const message = error.response?.data?.message || '保存失败';
+      const message = error instanceof Error && 'response' in error 
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '保存失败'
+        : '保存失败';
       toast.error(message);
     } finally {
       setLoading(false);

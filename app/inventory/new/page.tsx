@@ -7,11 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { getCategories } from '@/lib/api/categories';
+import { CategoryTreeNode, getCategories } from '@/lib/api/categories';
 import { getDepartments } from '@/lib/api/departments';
 import type { CreateInventoryTaskRequest, InventoryScopeFilter } from '@/lib/api/inventory';
 import { createInventoryTask } from '@/lib/api/inventory';
-import type { Category } from '@/lib/types';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -33,7 +32,7 @@ const assetStatuses = [
 export default function NewInventoryTaskPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [categories, setCategories] = useState<Category[]>([]);
+    const [categories, setCategories] = useState<CategoryTreeNode[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     
     // 表单数据
@@ -160,13 +159,9 @@ export default function NewInventoryTaskPage() {
     return (
         <div className="container mx-auto p-6">
             <div className="flex items-center gap-4 mb-6">
-                <Button variant="outline" onClick={() => router.back()}>
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    返回
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold">创建盘点任务</h1>
-                    <p className="text-gray-600 mt-1">创建新的资产盘点任务</p>
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-2xl font-bold tracking-tight">创建盘点任务</h1>
+                    <p className="text-muted-foreground">创建新的资产盘点任务</p>
                 </div>
             </div>
 
