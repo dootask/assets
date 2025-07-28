@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Check, ChevronDownIcon, Upload, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronDownIcon, Loader2, Upload, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -549,7 +549,7 @@ export function AssetForm({
                       </FormControl>
                       {assetNoChecking && (
                         <div className="absolute top-1/2 right-3 -translate-y-1/2">
-                          <div className="border-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         </div>
                       )}
                       {!assetNoChecking && assetNoValid === true && (
@@ -935,7 +935,7 @@ export function AssetForm({
             />
             {uploadingImage && (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <div className="border-primary h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 上传中...
               </div>
             )}
@@ -951,7 +951,7 @@ export function AssetForm({
             <Button type="submit" disabled={loading || assetNoValid === false}>
               {loading ? (
                 <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {isEdit ? '更新中...' : '创建中...'}
                 </>
               ) : isEdit ? (

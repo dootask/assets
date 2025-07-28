@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAppContext } from '@/contexts/app-context';
 import { CategoryTreeNode, deleteCategory, getCategories } from '@/lib/api/categories';
-import { Folder, Plus, Search } from 'lucide-react';
+import { Folder, Loader2, Plus, Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -172,7 +172,7 @@ export default function CategoriesPage() {
             <CardContent>
               {loading ? (
                 <div className="flex justify-center py-8">
-                  <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
               ) : (
                 <CategoryTree

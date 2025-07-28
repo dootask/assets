@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BorrowReportData, downloadFile, exportBorrowReports, fetchBorrowReports } from '@/lib/api/reports';
-import { Activity, AlertTriangle, BarChart3, Calendar, Clock, Download, Filter, TrendingUp, Users } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Calendar, Clock, Download, Filter, Loader2, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -51,7 +51,7 @@ export default function BorrowReportsPage() {
       <div className="container mx-auto p-6">
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
-            <div className="border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2"></div>
+            <Loader2 className="h-4 w-4 animate-spin" />
             <p className="text-muted-foreground mt-2">加载中...</p>
           </div>
         </div>

@@ -30,15 +30,15 @@ type DepartmentResponse struct {
 
 // DepartmentFilters 部门筛选条件
 type DepartmentFilters struct {
-	Name    *string `form:"name"`
-	Code    *string `form:"code"`
-	Manager *string `form:"manager"`
+	Name    *string `json:"name" form:"name"`
+	Code    *string `json:"code" form:"code"`
+	Manager *string `json:"manager" form:"manager"`
 }
 
 // DepartmentStatsResponse 部门统计响应
 type DepartmentStatsResponse struct {
-	TotalAssets      int64                    `json:"total_assets"`
-	AssetsByStatus   map[string]int64         `json:"assets_by_status"`
-	AssetsByCategory map[string]int64         `json:"assets_by_category"`
-	RecentAssets     []models.Asset           `json:"recent_assets"`
+	TotalAssets      int64            `json:"total_assets"`
+	AssetsByStatus   map[string]int64 `json:"assets_by_status"`
+	AssetsByCategory map[string]int64 `json:"assets_by_category"`
+	RecentAssets     []models.Asset   `json:"recent_assets"`
 }

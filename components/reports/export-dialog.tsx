@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ReportFilters } from '@/lib/api/reports';
-import { Calendar, Download, FileSpreadsheet, FileText, Filter, Printer, Settings } from 'lucide-react';
+import { Calendar, Download, FileSpreadsheet, FileText, Filter, Loader2, Printer, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -318,7 +318,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
           <Button onClick={handleExport} disabled={exporting}>
             {exporting ? (
               <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 导出中...
               </>
             ) : (

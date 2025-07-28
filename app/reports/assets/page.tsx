@@ -26,6 +26,7 @@ import {
   DollarSign,
   Download,
   Filter,
+  Loader2,
   Package,
   PieChart,
   TrendingUp,
@@ -86,7 +87,7 @@ export default function AssetReportsPage() {
       <div className="container mx-auto p-6">
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
-            <div className="border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2"></div>
+            <Loader2 className="h-4 w-4 animate-spin" />
             <p className="text-muted-foreground mt-2">加载中...</p>
           </div>
         </div>

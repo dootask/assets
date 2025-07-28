@@ -45,7 +45,7 @@ type UpdateCategoryRequest struct {
 
 // CategoryFilters 分类筛选条件
 type CategoryFilters struct {
-	Name     *string `form:"name"`
-	Code     *string `form:"code"`
-	ParentID *uint   `form:"parent_id"`
+	Name     *string `json:"name" form:"name"`
+	Code     *string `json:"code" form:"code"`
+	ParentID *uint   `json:"parent_id" form:"parent_id"`
 }
