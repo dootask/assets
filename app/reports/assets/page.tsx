@@ -1,5 +1,13 @@
 'use client';
 
+import {
+    AssetCategoryChart,
+    AssetDepartmentChart,
+    AssetPurchaseTrendChart,
+    AssetStatusChart,
+    AssetValueAnalysisChart
+} from '@/components/charts/asset-charts';
+import { ExportDialog, type ExportOptions } from '@/components/reports/export-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

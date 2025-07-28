@@ -250,7 +250,7 @@ export default function InventoryPage() {
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>确认删除</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        确定要删除盘点任务 "{task.task_name}" 吗？此操作不可撤销。
+                                                        确定要删除盘点任务 &quot;{task.task_name}&quot; 吗？此操作不可撤销。
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
@@ -329,10 +329,14 @@ export default function InventoryPage() {
             {total > pageSize && (
                 <div className="mt-6">
                     <Pagination
-                        current={currentPage}
-                        total={total}
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(total / pageSize)}
                         pageSize={pageSize}
-                        onChange={setCurrentPage}
+                        totalItems={total}
+                        onPageChange={setCurrentPage}
+                        onPageSizeChange={() => {
+                            // pageSize 是常量，不支持修改
+                        }}
                     />
                 </div>
             )}

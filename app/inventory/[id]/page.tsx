@@ -432,10 +432,14 @@ export default function InventoryTaskDetailPage() {
                                     {total > pageSize && (
                                         <div className="mt-6">
                                             <Pagination
-                                                current={currentPage}
-                                                total={total}
+                                                currentPage={currentPage}
+                                                totalPages={Math.ceil(total / pageSize)}
                                                 pageSize={pageSize}
-                                                onChange={setCurrentPage}
+                                                totalItems={total}
+                                                onPageChange={setCurrentPage}
+                                                onPageSizeChange={() => {
+                                                    // pageSize 是常量，不支持修改
+                                                }}
                                             />
                                         </div>
                                     )}

@@ -409,7 +409,12 @@ export default function BorrowPage() {
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
+                    pageSize={12}
+                    totalItems={totalItems}
                     onPageChange={handlePageChange}
+                    onPageSizeChange={() => {
+                      // 默认不支持修改每页大小
+                    }}
                   />
                 </div>
               )}

@@ -367,7 +367,7 @@ export default function LogsPage() {
                   key: 'operation_label',
                   title: '操作',
                   render: (_, record) => (
-                    <Badge variant={operationMap[record.operation]?.variant || 'default'}>
+                    <Badge variant={operationMap[record.operation as OperationType]?.variant || 'default'}>
                       {record.operation_label}
                     </Badge>
                   )
@@ -421,7 +421,12 @@ export default function LogsPage() {
               <Pagination
                 currentPage={pagination.current_page}
                 totalPages={pagination.total_pages}
+                pageSize={pagination.page_size}
+                totalItems={pagination.total_items}
                 onPageChange={handlePageChange}
+                onPageSizeChange={() => {
+                  // 默认不支持修改每页大小
+                }}
               />
             </div>
           )}

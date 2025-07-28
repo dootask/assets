@@ -58,9 +58,9 @@ export default function NewInventoryTaskPage() {
 
     const loadCategories = async () => {
         try {
-            const response = await getCategories();
-            if (response.code === 'SUCCESS') {
-                setCategories(response.data);
+                    const response = await getCategories();
+        if (Array.isArray(response)) {
+            setCategories(response);
             }
         } catch (error) {
             console.error('获取分类失败:', error);

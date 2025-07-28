@@ -6,19 +6,20 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { AssetForm } from '@/components/assets/asset-form';
 import { createAsset } from '@/lib/api/assets';
-import type { CreateAssetRequest } from '@/lib/types';
+import type { CreateAssetRequest, UpdateAssetRequest } from '@/lib/types';
 
 export default function NewAssetPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (data: CreateAssetRequest) => {
+  const handleSubmit = async (data: CreateAssetRequest | UpdateAssetRequest) => {
     try {
       setLoading(true);
-      await createAsset(data);
+      await createAsset(data as CreateAssetRequest);
       toast.success('资产创建成功');
       router.push('/assets');
     } catch (error) {

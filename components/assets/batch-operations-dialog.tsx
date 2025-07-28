@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { showError, showOperationResult } from '@/lib/notifications';
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 
 import { batchDeleteAssets, batchUpdateAssets } from '@/lib/api/assets';
@@ -364,11 +365,11 @@ export function BatchOperationsDialog({
           </Button>
           {operationType === 'update' ? (
             <Button onClick={handleBatchUpdate} disabled={loading}>
-              {loading ? <ButtonLoading text="更新中" /> : '批量更新'}
+              {loading ? '更新中...' : '批量更新'}
             </Button>
           ) : (
             <Button variant="destructive" onClick={handleBatchDelete} disabled={loading}>
-              {loading ? <ButtonLoading text="删除中" /> : '批量删除'}
+              {loading ? '删除中...' : '批量删除'}
             </Button>
           )}
         </DialogFooter>

@@ -191,7 +191,7 @@ export function CategoryAttributesDialog({
           {fields.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>暂无自定义字段</p>
-              <p className="text-sm">点击"添加字段"开始配置</p>
+              <p className="text-sm">点击&quot;添加字段&quot;开始配置</p>
             </div>
           ) : (
             <div className="space-y-4">

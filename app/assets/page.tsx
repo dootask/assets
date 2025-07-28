@@ -12,9 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { BatchOperationsDialog } from '@/components/assets/batch-operations-dialog';
+import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CurrencyRenderer, ResponsiveTable, StatusBadge } from '@/components/ui/responsive-table';
 import { deleteAsset, exportAssets, getAssets } from '@/lib/api/assets';
+import { showError, showSuccess } from '@/lib/notifications';
 import type { AssetFilters, AssetResponse, AssetStatus, PaginationRequest } from '@/lib/types';
 
 // 资产状态映射
@@ -184,6 +187,8 @@ export default function AssetsPage() {
     loadAssets(pagination.current_page);
   };
 
+  const { current_page: currentPage, total_pages: totalPages, total_items: totalItems } = pagination;
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题和操作按钮 */}
@@ -321,7 +326,7 @@ export default function AssetsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <PageLoading text="加载资产列表中..." />
+            <Loading />
           ) : assets.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">暂无资产数据</p>
@@ -424,12 +429,17 @@ export default function AssetsPage() {
           )}
 
           {/* 分页 */}
-          {!loading && assets.length > 0 && (
+          {totalPages > 1 && (
             <div className="mt-6">
               <Pagination
-                currentPage={pagination.current_page}
-                totalPages={pagination.total_pages}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={12}
+                totalItems={totalItems}
                 onPageChange={handlePageChange}
+                onPageSizeChange={() => {
+                  // 默认不支持修改每页大小
+                }}
               />
             </div>
           )}
@@ -437,13 +447,22 @@ export default function AssetsPage() {
       </Card>
 
       {/* 删除确认对话框 */}
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        itemName={assetToDelete?.name}
-        loading={deleting}
-        onConfirm={handleDelete}
-      />
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              你确定要删除资产 &quot;{assetToDelete?.name}&quot; 吗？此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting}>
+              {deleting ? '删除中...' : '删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 批量操作对话框 */}
       <BatchOperationsDialog

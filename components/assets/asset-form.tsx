@@ -31,7 +31,7 @@ const assetFormSchema = z.object({
   purchase_price: z.number().min(0, '采购价格不能为负数').optional(),
   supplier: z.string().max(200, '供应商不能超过200个字符').optional(),
   warranty_period: z.number().min(0, '保修期不能为负数').optional(),
-  status: z.enum(['available', 'borrowed', 'maintenance', 'scrapped']).default('available'),
+  status: z.enum(['available', 'borrowed', 'maintenance', 'scrapped']).optional(),
   location: z.string().max(200, '位置不能超过200个字符').optional(),
   responsible_person: z.string().max(100, '责任人不能超过100个字符').optional(),
   description: z.string().optional(),

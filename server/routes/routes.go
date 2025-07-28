@@ -18,10 +18,6 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine) {
-	// 静态文件服务
-	r.Static("/uploads", "./uploads")
-	r.Static("/static", "./static")
-
 	// 注册路由（不需要认证）
 	root := r.Group("/")
 	health.RegisterRoutes(root)

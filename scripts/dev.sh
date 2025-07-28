@@ -42,7 +42,7 @@ echo ""
 # 启动Go后端（后台）
 echo "🎯 启动Go后端 (端口$(getEnv GO_SERVICE_PORT))..."
 pushd server > /dev/null
-air --build.cmd "go build -o tmp/server main.go" --build.exclude_dir "uploads,tmp,data" --build.full_bin "./tmp/server --env-file ${CURRENT_DIR}/.env" &
+air --build.cmd "CGO_ENABLED=1 go build -o tmp/server main.go" --build.exclude_dir "uploads,tmp,data" --build.full_bin "./tmp/server --env-file ${CURRENT_DIR}/.env" &
 BACKEND_PID=$!
 popd > /dev/null
 

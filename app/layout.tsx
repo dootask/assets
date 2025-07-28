@@ -1,3 +1,4 @@
+import { AssetManagementLayout } from '@/components/layout/asset-management-layout';
 import { Toaster } from '@/components/ui/sonner';
 import { AppProvider } from '@/contexts/app-context';
 import type { Metadata } from 'next';

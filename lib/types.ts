@@ -594,7 +594,7 @@ export interface BorrowRecord {
 }
 
 // 资产筛选条件
-export interface AssetFilters {
+export interface AssetFilters extends Record<string, unknown> {
   name?: string;
   asset_no?: string;
   category_id?: number;
@@ -732,7 +732,7 @@ export interface DepartmentResponse extends Department {
 }
 
 // 部门筛选条件
-export interface DepartmentFilters {
+export interface DepartmentFilters extends Record<string, unknown> {
   name?: string;
   code?: string;
   manager?: string;
@@ -774,7 +774,7 @@ export interface BorrowResponse extends BorrowRecord {
 }
 
 // 借用记录筛选条件
-export interface BorrowFilters {
+export interface BorrowFilters extends Record<string, unknown> {
   asset_id?: number;
   borrower_name?: string;
   department_id?: number;
@@ -882,7 +882,7 @@ export interface OperationLogResponse extends OperationLog {
 }
 
 // 操作日志筛选条件
-export interface OperationLogFilters {
+export interface OperationLogFilters extends Record<string, unknown> {
   table?: string;
   operation?: OperationType;
   operator?: string;

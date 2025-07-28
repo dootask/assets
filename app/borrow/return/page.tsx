@@ -257,7 +257,12 @@ export default function ReturnPage() {
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
+                    pageSize={12}
+                    totalItems={totalPages * 12}
                     onPageChange={handlePageChange}
+                    onPageSizeChange={() => {
+                      // 默认不支持修改每页大小
+                    }}
                   />
                 </div>
               )}

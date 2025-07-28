@@ -379,7 +379,7 @@ export default function AssetDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除资产 "{asset.name}" 吗？此操作不可撤销。
+              确定要删除资产 &quot;{asset.name}&quot; 吗？此操作不可撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

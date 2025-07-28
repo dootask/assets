@@ -295,7 +295,12 @@ export default function DepartmentsPage() {
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
+                    pageSize={10}
+                    totalItems={totalPages * 10}
                     onPageChange={handlePageChange}
+                    onPageSizeChange={() => {
+                      // 默认不支持修改每页大小
+                    }}
                   />
                 </div>
               )}
@@ -330,7 +335,7 @@ export default function DepartmentsPage() {
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              disabled={departmentToDelete?.asset_count && departmentToDelete.asset_count > 0}
+              disabled={!!(departmentToDelete?.asset_count && departmentToDelete.asset_count > 0)}
             >
               删除
             </AlertDialogAction>
