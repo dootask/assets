@@ -2,15 +2,15 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, Check, ChevronDownIcon, Upload, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -18,9 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 
 import { checkAssetNo } from '@/lib/api/assets';
-import type { AssetResponse, AssetStatus, CreateAssetRequest, UpdateAssetRequest } from '@/lib/types';
+import type { AttributeField, Category } from '@/lib/api/categories';
+import { getCategories, getCategoryById } from '@/lib/api/categories';
+import { getDepartments } from '@/lib/api/departments';
+import { showError, showSuccess } from '@/lib/notifications';
+import type { AssetResponse, AssetStatus, CreateAssetRequest, DepartmentResponse, UpdateAssetRequest } from '@/lib/types';
 
-// 表单验证模式
+// 表单验证模式 - 添加自定义属性支持
 const assetFormSchema = z.object({
   asset_no: z.string().min(1, '资产编号不能为空').max(100, '资产编号不能超过100个字符'),
   name: z.string().min(1, '资产名称不能为空').max(200, '资产名称不能超过200个字符'),
@@ -38,9 +42,13 @@ const assetFormSchema = z.object({
   responsible_person: z.string().max(100, '责任人不能超过100个字符').optional(),
   description: z.string().optional(),
   image_url: z.string().max(500, '图片URL不能超过500个字符').optional(),
+  custom_attributes: z.record(z.string(), z.unknown()).optional(),
 });
 
 type AssetFormData = z.infer<typeof assetFormSchema>;
+
+// 定义自定义属性字段名类型
+type CustomAttributeFieldName = `custom_attributes.${string}`;
 
 interface AssetFormProps {
   initialData?: AssetResponse;
@@ -59,21 +67,6 @@ const statusOptions: { value: AssetStatus; label: string }[] = [
   { value: 'scrapped', label: '已报废' },
 ];
 
-// 模拟分类和部门数据（实际应该从API获取）
-const mockCategories = [
-  { id: 1, name: '办公设备' },
-  { id: 2, name: '电子设备' },
-  { id: 3, name: '家具' },
-  { id: 4, name: '车辆' },
-];
-
-const mockDepartments = [
-  { id: 1, name: '行政部' },
-  { id: 2, name: '技术部' },
-  { id: 3, name: '销售部' },
-  { id: 4, name: '财务部' },
-];
-
 export function AssetForm({ initialData, onSubmit, onCancel, loading = false, isEdit = false, hideButtons = false }: AssetFormProps) {
   const [assetNoChecking, setAssetNoChecking] = useState(false);
   const [assetNoValid, setAssetNoValid] = useState<boolean | null>(null);
@@ -81,12 +74,23 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 分类相关状态
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [categoryAttributes, setCategoryAttributes] = useState<AttributeField[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [loadingCategoryDetails, setLoadingCategoryDetails] = useState(false);
+
+  // 部门相关状态
+  const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
+
   const form = useForm<AssetFormData>({
     resolver: zodResolver(assetFormSchema),
     defaultValues: {
       asset_no: initialData?.asset_no || '',
       name: initialData?.name || '',
-      category_id: initialData?.category_id || 1, // 默认选择第一个分类（办公设备）
+      category_id: initialData?.category_id || undefined,
       department_id: initialData?.department_id || undefined,
       brand: initialData?.brand || '',
       model: initialData?.model || '',
@@ -100,8 +104,96 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
       responsible_person: initialData?.responsible_person || '',
       description: initialData?.description || '',
       image_url: initialData?.image_url || '',
+      custom_attributes: initialData?.custom_attributes || {},
     },
   });
+
+  // 加载部门列表
+  const loadDepartments = useCallback(async () => {
+    try {
+      setLoadingDepartments(true);
+      const response = await getDepartments({
+        page: 1,
+        page_size: 100, // 获取所有部门
+        sorts: [{ key: 'name', desc: false }]
+      });
+      setDepartments(response.data.data);
+    } catch (error) {
+      console.error('加载部门失败:', error);
+      showError('加载部门失败', '请检查网络连接或稍后重试');
+    } finally {
+      setLoadingDepartments(false);
+    }
+  }, []);
+
+  // 加载分类属性模板
+  const loadCategoryAttributes = useCallback(async (categoryId: number) => {
+    try {
+      setLoadingCategoryDetails(true);
+      const category = await getCategoryById(categoryId);
+      setSelectedCategory(category);
+      
+      // 处理分类属性
+      if (category.attributes && typeof category.attributes === 'object' && 'fields' in category.attributes) {
+        const attributes = category.attributes as { fields: AttributeField[] };
+        setCategoryAttributes(attributes.fields || []);
+      } else {
+        setCategoryAttributes([]);
+      }
+    } catch (error) {
+      console.error('加载分类属性失败:', error);
+      setCategoryAttributes([]);
+    } finally {
+      setLoadingCategoryDetails(false);
+    }
+  }, []);
+
+  // 加载分类列表
+  const loadCategories = useCallback(async () => {
+    try {
+      setLoadingCategories(true);
+      const categoriesData = await getCategories();
+      
+      // 扁平化分类树为简单列表
+      const flattenCategories = (cats: Category[]): Category[] => {
+        const result: Category[] = [];
+        for (const cat of cats) {
+          result.push(cat);
+          if (cat.children && cat.children.length > 0) {
+            result.push(...flattenCategories(cat.children));
+          }
+        }
+        return result;
+      };
+      
+      const flatCategories = flattenCategories(categoriesData);
+      setCategories(flatCategories);
+      
+      // 如果有初始数据，加载对应分类的属性模板
+      if (initialData?.category_id) {
+        await loadCategoryAttributes(initialData.category_id);
+      }
+    } catch (error) {
+      console.error('加载分类失败:', error);
+      showError('加载分类失败', '请检查网络连接或稍后重试');
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, [initialData?.category_id, loadCategoryAttributes]);
+
+  // 初始化加载数据
+  useEffect(() => {
+    loadCategories();
+    loadDepartments();
+  }, [loadCategories, loadDepartments]);
+
+  // 监听分类选择变化
+  const categoryId = form.watch('category_id');
+  useEffect(() => {
+    if (categoryId && categoryId !== selectedCategory?.id) {
+      loadCategoryAttributes(categoryId);
+    }
+  }, [categoryId, selectedCategory?.id, loadCategoryAttributes]);
 
   // 检查资产编号是否存在
   const checkAssetNoAvailability = async (assetNo: string) => {
@@ -142,13 +234,13 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
 
     // 验证文件类型
     if (!file.type.startsWith('image/')) {
-      toast.error('请选择图片文件');
+      showError('请选择图片文件', '只能上传图片格式的文件');
       return;
     }
 
     // 验证文件大小（5MB）
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('图片大小不能超过5MB');
+      showError('图片大小不能超过5MB', '请选择更小的图片文件');
       return;
     }
 
@@ -168,12 +260,12 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
         const imageUrl = e.target?.result as string;
         setImagePreview(imageUrl);
         form.setValue('image_url', imageUrl);
-        toast.success('图片上传成功');
+        showSuccess('图片上传成功', '图片已成功上传并预览');
       };
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('图片上传失败:', error);
-      toast.error('图片上传失败');
+      showError('图片上传失败', '请稍后重试');
     } finally {
       setUploadingImage(false);
     }
@@ -185,12 +277,218 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
     form.setValue('image_url', '');
   };
 
+  // 渲染自定义属性字段
+  const renderCustomAttributeField = (attribute: AttributeField) => {
+    const fieldName = `custom_attributes.${attribute.name}` as CustomAttributeFieldName;
+    const currentValue = form.getValues('custom_attributes')?.[attribute.name];
+
+    switch (attribute.type) {
+      case 'text':
+        return (
+          <FormField
+            key={attribute.name}
+            control={form.control}
+            name={fieldName as keyof AssetFormData}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {attribute.label}
+                  {attribute.required && ' *'}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={(field.value || currentValue || '') as string}
+                    onChange={(e) => {
+                      const customAttributes = form.getValues('custom_attributes') || {};
+                      form.setValue('custom_attributes', {
+                        ...customAttributes,
+                        [attribute.name]: e.target.value
+                      });
+                    }}
+                    placeholder={`请输入${attribute.label}`}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'number':
+        return (
+          <FormField
+            key={attribute.name}
+            control={form.control}
+            name={fieldName as keyof AssetFormData}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {attribute.label}
+                  {attribute.required && ' *'}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    value={(field.value || currentValue || '') as string}
+                    onChange={(e) => {
+                      const customAttributes = form.getValues('custom_attributes') || {};
+                      const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                      form.setValue('custom_attributes', {
+                        ...customAttributes,
+                        [attribute.name]: value
+                      });
+                    }}
+                    placeholder={`请输入${attribute.label}`}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'date':
+        return (
+          <FormField
+            key={attribute.name}
+            control={form.control}
+            name={fieldName as keyof AssetFormData}
+            render={() => (
+              <FormItem>
+                <FormLabel>
+                  {attribute.label}
+                  {attribute.required && ' *'}
+                </FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between font-normal"
+                      >
+                        {currentValue ? new Date(currentValue as string).toLocaleDateString() : `请选择${attribute.label}`}
+                        <ChevronDownIcon className="w-4 h-4" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={currentValue ? new Date(currentValue as string) : undefined}
+                      captionLayout="dropdown"
+                      onSelect={(date) => {
+                        const customAttributes = form.getValues('custom_attributes') || {};
+                        form.setValue('custom_attributes', {
+                          ...customAttributes,
+                          [attribute.name]: date?.toISOString().split('T')[0]
+                        });
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'select':
+        return (
+          <FormField
+            key={attribute.name}
+            control={form.control}
+            name={fieldName as keyof AssetFormData}
+            render={() => (
+              <FormItem>
+                <FormLabel>
+                  {attribute.label}
+                  {attribute.required && ' *'}
+                </FormLabel>
+                <Select
+                  value={currentValue as string || ''}
+                  onValueChange={(value) => {
+                    const customAttributes = form.getValues('custom_attributes') || {};
+                    form.setValue('custom_attributes', {
+                      ...customAttributes,
+                      [attribute.name]: value
+                    });
+                  }}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={`请选择${attribute.label}`} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {attribute.options?.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'boolean':
+        return (
+          <FormField
+            key={attribute.name}
+            control={form.control}
+            name={fieldName as keyof AssetFormData}
+            render={() => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={currentValue as boolean || false}
+                    onCheckedChange={(checked) => {
+                      const customAttributes = form.getValues('custom_attributes') || {};
+                      form.setValue('custom_attributes', {
+                        ...customAttributes,
+                        [attribute.name]: checked
+                      });
+                    }}
+                  />
+                </FormControl>
+                <FormLabel>
+                  {attribute.label}
+                  {attribute.required && ' *'}
+                </FormLabel>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
   // 表单提交
   const handleSubmit = (data: AssetFormData) => {
     // 验证资产编号
     if (!isEdit && assetNoValid === false) {
-      toast.error('资产编号已存在，请使用其他编号');
+      showError('资产编号已存在，请使用其他编号', '请更换一个唯一的资产编号');
       return;
+    }
+
+    // 验证自定义属性必填字段
+    if (categoryAttributes.length > 0) {
+      for (const attribute of categoryAttributes) {
+        if (attribute.required) {
+          const value = data.custom_attributes?.[attribute.name];
+          if (value === undefined || value === null || value === '') {
+            showError(`请填写${attribute.label}`, '这是必填字段');
+            return;
+          }
+        }
+      }
     }
 
     // 转换数据格式
@@ -209,6 +507,9 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
       responsible_person: data.responsible_person || undefined,
       description: data.description || undefined,
       image_url: data.image_url || undefined,
+      custom_attributes: data.custom_attributes && Object.keys(data.custom_attributes).length > 0 
+        ? data.custom_attributes 
+        : undefined,
     };
 
     onSubmit(submitData);
@@ -283,14 +584,15 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                     <Select
                       value={field.value?.toString() || ''}
                       onValueChange={(value) => field.onChange(parseInt(value))}
+                      disabled={loadingCategories}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="请选择资产分类" />
+                          <SelectValue placeholder={loadingCategories ? "加载中..." : "请选择资产分类"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {mockCategories.map((category) => (
+                        {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id.toString()}>
                             {category.name}
                           </SelectItem>
@@ -312,15 +614,16 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                     <Select
                       value={field.value?.toString() || 'none'}
                       onValueChange={(value) => field.onChange(value === 'none' ? undefined : parseInt(value))}
+                      disabled={loadingDepartments}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="请选择所属部门" />
+                          <SelectValue placeholder={loadingDepartments ? "加载中..." : "请选择所属部门"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">不选择</SelectItem>
-                        {mockDepartments.map((department) => (
+                        {departments.map((department) => (
                           <SelectItem key={department.id} value={department.id.toString()}>
                             {department.name}
                           </SelectItem>
@@ -405,6 +708,25 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
             </div>
           </CardContent>
         </Card>
+
+        {/* 分类自定义属性 */}
+        {categoryAttributes.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                分类属性
+                {loadingCategoryDetails && (
+                  <span className="ml-2 text-sm text-muted-foreground">加载中...</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {categoryAttributes.map((attribute) => renderCustomAttributeField(attribute))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 采购信息 */}
         <Card>

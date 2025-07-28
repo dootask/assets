@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, DollarSign, Edit, MapPin, Package, Trash2, User } from 'lucide-react';
+import { Calendar, DollarSign, Edit, MapPin, Package, Settings, Trash2, User } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -13,6 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import { useAppContext } from '@/contexts/app-context';
 import { deleteAsset, getAsset } from '@/lib/api/assets';
+import type { AttributeField } from '@/lib/api/categories';
+import { getCategoryById } from '@/lib/api/categories';
 import type { AssetResponse, AssetStatus } from '@/lib/types';
 
 // 资产状态映射
@@ -23,16 +25,87 @@ const statusMap: Record<AssetStatus, { label: string; variant: 'default' | 'seco
   scrapped: { label: '已报废', variant: 'destructive' },
 };
 
+// 分类属性显示组件
+const CategoryAttributesCard = ({ asset, categoryAttributes }: { 
+  asset: AssetResponse; 
+  categoryAttributes: AttributeField[] 
+}) => {
+  if (!categoryAttributes.length || !asset.custom_attributes) {
+    return null;
+  }
+
+  const renderAttributeValue = (attribute: AttributeField, value: unknown) => {
+    if (value === undefined || value === null || value === '') {
+      return '-';
+    }
+
+    switch (attribute.type) {
+      case 'date':
+        return new Date(value as string).toLocaleDateString();
+      case 'boolean':
+        return value ? '是' : '否';
+      case 'number':
+        return (value as number).toLocaleString();
+      default:
+        return String(value);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          分类属性
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {categoryAttributes.map((attribute) => {
+            const value = asset.custom_attributes?.[attribute.name];
+            return (
+              <div key={attribute.name} className="flex justify-between">
+                <span className="text-muted-foreground">{attribute.label}:</span>
+                <span className="font-medium">
+                  {renderAttributeValue(attribute, value)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 export default function AssetDetailPage() {
   const router = useRouter();
   const params = useParams();
   const assetId = parseInt(params.id as string);
 
   const [asset, setAsset] = useState<AssetResponse | null>(null);
+  const [categoryAttributes, setCategoryAttributes] = useState<AttributeField[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
   const { Confirm } = useAppContext();
+
+  // 加载分类属性模板
+  const loadCategoryAttributes = async (categoryId: number) => {
+    try {
+      const category = await getCategoryById(categoryId);
+      
+      if (category.attributes && typeof category.attributes === 'object' && 'fields' in category.attributes) {
+        const attributes = category.attributes as { fields: AttributeField[] };
+        setCategoryAttributes(attributes.fields || []);
+      } else {
+        setCategoryAttributes([]);
+      }
+    } catch (error) {
+      console.error('加载分类属性失败:', error);
+      setCategoryAttributes([]);
+    }
+  };
 
   // 加载资产详情
   useEffect(() => {
@@ -40,7 +113,13 @@ export default function AssetDetailPage() {
       try {
         setLoading(true);
         const response = await getAsset(assetId);
-        setAsset(response.data);
+        const assetData = response.data;
+        setAsset(assetData);
+        
+        // 如果资产有分类，加载分类属性模板
+        if (assetData.category_id) {
+          await loadCategoryAttributes(assetData.category_id);
+        }
       } catch (error) {
         console.error('加载资产详情失败:', error);
         toast.error('加载资产详情失败');
@@ -206,6 +285,9 @@ export default function AssetDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 分类属性 */}
+          <CategoryAttributesCard asset={asset} categoryAttributes={categoryAttributes} />
 
           {/* 采购信息 */}
           <Card>

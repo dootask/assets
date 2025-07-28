@@ -258,9 +258,9 @@ export default function InventoryTaskDetailPage() {
                                         <span className="ml-2">{formatDate(task.end_date)}</span>
                                     </div>
                                 </div>
-                                <div>
+                                <div className="flex flex-col">
                                     <div className="text-sm text-gray-600 mb-2">备注:</div>
-                                    <div className="text-sm bg-gray-50 p-3 rounded">
+                                    <div className="text-sm bg-gray-50 p-2 rounded flex-1">
                                         {task.notes || '无备注'}
                                     </div>
                                 </div>

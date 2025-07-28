@@ -200,7 +200,7 @@ export default function InventoryReportPage() {
                             </div>
                             <div className="flex flex-col">
                                 <div className="text-gray-600 mb-2 shrink-0">备注:</div>
-                                <div className="text-sm bg-gray-50 p-3 rounded flex-1">
+                                <div className="text-sm bg-gray-50 p-2 rounded flex-1">
                                     {task.notes || '无备注'}
                                 </div>
                             </div>
