@@ -200,7 +200,7 @@ export function InventoryChecklist({ task, onAssetSelect }: InventoryChecklistPr
                                 <SelectValue placeholder="资产状态" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">全部状态</SelectItem>
+                                <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="available">可用</SelectItem>
                                 <SelectItem value="borrowed">借用中</SelectItem>
                                 <SelectItem value="maintenance">维修中</SelectItem>
@@ -212,7 +212,7 @@ export function InventoryChecklist({ task, onAssetSelect }: InventoryChecklistPr
                                 <SelectValue placeholder="盘点状态" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">全部</SelectItem>
+                                <SelectItem value="all">全部</SelectItem>
                                 <SelectItem value="checked">已盘点</SelectItem>
                                 <SelectItem value="unchecked">待盘点</SelectItem>
                             </SelectContent>

@@ -1,30 +1,33 @@
-import { axiosInstance } from '../axios';
+import apiClient from '@/lib/axios';
 
 export interface Category {
   id: number;
   name: string;
   code: string;
-  parent_id?: number;
-  description: string;
+  parent_id?: number | null;
+  description?: string;
   attributes?: any;
-  asset_count?: number;
-  parent?: Category;
-  children?: Category[];
   created_at: string;
   updated_at: string;
+  children?: Category[];
 }
 
 export interface CategoryTreeNode {
   id: number;
   name: string;
   code: string;
-  parent_id?: number;
-  description: string;
+  parent_id?: number | null;
+  description?: string;
   attributes?: any;
-  asset_count: number;
-  children: CategoryTreeNode[];
   created_at: string;
   updated_at: string;
+  children?: CategoryTreeNode[];
+}
+
+export interface CategoryFilters {
+  name?: string;
+  code?: string;
+  parent_id?: number;
 }
 
 export interface CreateCategoryRequest {
@@ -43,44 +46,44 @@ export interface UpdateCategoryRequest {
   attributes?: any;
 }
 
-export interface CategoryFilters {
-  name?: string;
-  code?: string;
-  parent_id?: number;
-}
-
 // 获取分类树
 export const getCategories = async (filters?: CategoryFilters): Promise<CategoryTreeNode[]> => {
-  const response = await axiosInstance.get('/categories', { params: filters });
-  return response.data.data;
-};
-
-// 获取分类详情
-export const getCategory = async (id: number): Promise<Category> => {
-  const response = await axiosInstance.get(`/categories/${id}`);
+  const response = await apiClient.get('/categories', { params: filters });
   return response.data.data;
 };
 
 // 创建分类
 export const createCategory = async (data: CreateCategoryRequest): Promise<Category> => {
-  const response = await axiosInstance.post('/categories', data);
+  const response = await apiClient.post('/categories', data);
   return response.data.data;
 };
 
 // 更新分类
 export const updateCategory = async (id: number, data: UpdateCategoryRequest): Promise<Category> => {
-  const response = await axiosInstance.put(`/categories/${id}`, data);
+  const response = await apiClient.put(`/categories/${id}`, data);
   return response.data.data;
 };
 
 // 删除分类
 export const deleteCategory = async (id: number): Promise<void> => {
-  await axiosInstance.delete(`/categories/${id}`);
+  await apiClient.delete(`/categories/${id}`);
+};
+
+// 获取分类详情
+export const getCategoryById = async (id: number): Promise<Category> => {
+  const response = await apiClient.get(`/categories/${id}`);
+  return response.data.data;
+};
+
+// 更新分类属性
+export const updateCategoryAttributes = async (id: number, attributes: any): Promise<Category> => {
+  const response = await apiClient.put(`/categories/${id}/attributes`, { attributes });
+  return response.data.data;
 };
 
 // 获取分类下的资产
 export const getCategoryAssets = async (id: number, page = 1, pageSize = 12) => {
-  const response = await axiosInstance.get(`/categories/${id}/assets`, {
+  const response = await apiClient.get(`/categories/${id}/assets`, {
     params: { page, page_size: pageSize }
   });
   return response.data.data;

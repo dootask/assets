@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Calendar, DollarSign, Edit, MapPin, Package, Trash2, User } from 'lucide-react';
+import { Calendar, DollarSign, Edit, MapPin, Package, Trash2, User } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -130,9 +130,6 @@ export default function AssetDetailPage() {
       {/* 页面标题和操作按钮 */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
           <div>
             <h1 className="text-2xl font-bold">{asset.name}</h1>
             <p className="text-muted-foreground">资产编号: {asset.asset_no}</p>

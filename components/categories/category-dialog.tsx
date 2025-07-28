@@ -2,19 +2,19 @@
 
 import { Button } from '@/components/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { CategoryTreeNode, createCategory, getCategories, updateCategory } from '@/lib/api/categories';
@@ -33,7 +33,7 @@ interface CategoryDialogProps {
 interface FormData {
   name: string;
   code: string;
-  parent_id?: number;
+  parent_id?: number | null;
   description: string;
 }
 
@@ -79,7 +79,7 @@ export function CategoryDialog({
         reset({
           name: category.name,
           code: category.code,
-          parent_id: category.parent_id,
+          parent_id: category.parent_id || undefined,
           description: category.description || '',
         });
       } else if (isCreatingSubCategory && parentCategory) {
@@ -155,9 +155,11 @@ export function CategoryDialog({
       }
 
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save category:', error);
-      const message = error.response?.data?.message || '操作失败';
+      const message = error instanceof Error && 'response' in error 
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message || '操作失败'
+        : '操作失败';
       toast.error(message);
     } finally {
       setLoading(false);
@@ -204,14 +206,14 @@ export function CategoryDialog({
           <div className="space-y-2">
             <Label htmlFor="parent_id">父分类</Label>
             <Select
-              value={watchedParentId?.toString() || ''}
-              onValueChange={(value) => setValue('parent_id', value ? parseInt(value) : undefined)}
+              value={watchedParentId?.toString() || 'none'}
+              onValueChange={(value) => setValue('parent_id', value === 'none' ? undefined : parseInt(value))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="选择父分类（可选）" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">无父分类</SelectItem>
+                <SelectItem value="none">无父分类</SelectItem>
                 {flatCategories.map(({ category, level }) => (
                   <SelectItem key={category.id} value={category.id.toString()}>
                     <span style={{ paddingLeft: `${level * 16}px` }}>

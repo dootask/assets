@@ -110,7 +110,7 @@ export default function LogsPage() {
   const handleFilterChange = (key: keyof OperationLogFilters, value: string | number | undefined) => {
     setFilters(prev => ({
       ...prev,
-      [key]: value || undefined,
+      [key]: (value && value !== 'all') ? value : undefined,
     }));
   };
 
@@ -268,7 +268,7 @@ export default function LogsPage() {
                       <SelectValue placeholder="选择表名" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部表</SelectItem>
+                      <SelectItem value="all">全部表</SelectItem>
                       {Object.entries(tableMap).map(([value, label]) => (
                         <SelectItem key={value} value={value}>
                           {label}
@@ -287,7 +287,7 @@ export default function LogsPage() {
                       <SelectValue placeholder="选择操作类型" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部操作</SelectItem>
+                      <SelectItem value="all">全部操作</SelectItem>
                       {Object.entries(operationMap).map(([value, { label }]) => (
                         <SelectItem key={value} value={value}>
                           {label}

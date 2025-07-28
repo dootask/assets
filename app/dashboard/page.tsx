@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import apiClient from '@/lib/axios';
 
 import {
   Activity,
@@ -70,16 +71,12 @@ export default function Dashboard() {
     try {
       // 并行获取多个API数据
       const [dashboardResponse, categoriesResponse, departmentsResponse] = await Promise.all([
-        fetch('/api/reports/dashboard'),
-        fetch('/api/categories'),
-        fetch('/api/departments')
+        apiClient.get('/dashboard/stats'),
+        apiClient.get('/categories'),
+        apiClient.get('/departments')
       ]);
 
-      if (!dashboardResponse.ok) {
-        throw new Error('Failed to fetch dashboard data');
-      }
-
-      const dashboardResult = await dashboardResponse.json();
+      const dashboardResult = dashboardResponse.data;
       
       if (dashboardResult.code === 'SUCCESS' && dashboardResult.data) {
         const data = dashboardResult.data;
@@ -88,51 +85,44 @@ export default function Dashboard() {
         let categoriesCount = 0;
         let departmentsCount = 0;
         
-        if (categoriesResponse.ok) {
-          const categoriesResult = await categoriesResponse.json();
-          if (categoriesResult.code === 'SUCCESS' && categoriesResult.data) {
-            categoriesCount = categoriesResult.data.length || 0;
-          }
+        const categoriesResult = categoriesResponse.data;
+        if (categoriesResult.code === 'SUCCESS' && categoriesResult.data) {
+          categoriesCount = categoriesResult.data.length || 0;
         }
         
-        if (departmentsResponse.ok) {
-          const departmentsResult = await departmentsResponse.json();
-          if (departmentsResult.code === 'SUCCESS' && departmentsResult.data) {
-            departmentsCount = departmentsResult.data.length || 0;
-          }
+        const departmentsResult = departmentsResponse.data;
+        if (departmentsResult.code === 'SUCCESS' && departmentsResult.data) {
+          departmentsCount = departmentsResult.data.data.length || 0;
         }
         
         // 转换后端数据格式为前端期望的格式
-        const recentBorrows = (data.recent_activity.recent_borrows || []).map((borrow: any) => ({
-          id: borrow.id,
-          asset_name: borrow.asset_name,
-          asset_no: borrow.asset_no,
-          borrower_name: borrow.borrower_name,
-          borrow_date: borrow.borrow_date,
-          is_overdue: false, // 这里可以根据需要计算是否超期
-        }));
+        const recentBorrows: any[] = []; // 暂时设为空数组，因为后端还没有返回recent_activity数据
 
         setStats({
           assets: {
-            total: data.asset_overview.total_assets || 0,
-            available: data.asset_overview.available_assets || 0,
-            borrowed: data.asset_overview.borrowed_assets || 0,
-            maintenance: data.asset_overview.maintenance_assets || 0,
-            scrapped: data.asset_overview.scrapped_assets || 0,
+            total: data.assets.total || 0,
+            available: data.assets.available || 0,
+            borrowed: data.assets.borrowed || 0,
+            maintenance: data.assets.maintenance || 0,
+            scrapped: data.assets.scrapped || 0,
           },
-          categories: { total: categoriesCount },
-          departments: { total: departmentsCount },
+          categories: {
+            total: data.categories.total || 0,
+          },
+          departments: {
+            total: data.departments.total || 0,
+          },
           borrowRecords: {
-            total: 0,
-            active: data.borrow_overview.active_borrows || 0,
-            overdue: data.borrow_overview.overdue_borrows || 0,
-            todayReturns: data.borrow_overview.today_returns || 0,
+            total: data.borrow.total || 0,
+            active: data.borrow.active || 0,
+            overdue: data.borrow.overdue || 0,
+            todayReturns: 0, // 后端暂未提供此数据
           },
-          recentAssets: data.recent_activity.recent_assets || [],
+          recentAssets: [], // 后端暂未提供此数据
           recentBorrows: recentBorrows,
         });
       } else {
-        throw new Error(dashboardResult.message || 'API返回错误');
+        throw new Error(dashboardResult.message || 'Failed to load dashboard data');
       }
     } catch (error) {
       console.error('加载仪表板数据失败:', error);

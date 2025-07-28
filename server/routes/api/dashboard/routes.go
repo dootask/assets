@@ -11,8 +11,6 @@ import (
 
 var startTime = time.Now()
 
-
-
 // RegisterRoutes 注册仪表板路由
 func RegisterRoutes(router *gin.RouterGroup) {
 	// 仪表板路由
@@ -29,16 +27,20 @@ func RegisterRoutes(router *gin.RouterGroup) {
 // GetDashboardStats 获取仪表板统计数据
 func GetDashboardStats(c *gin.Context) {
 	stats := map[string]interface{}{
-		"assets":       getAssetStats(),
-		"categories":   getCategoryStats(),
-		"departments":  getDepartmentStats(),
-		"borrow":       getBorrowStats(),
-		"inventory":    getInventoryStats(),
+		"assets":        getAssetStats(),
+		"categories":    getCategoryStats(),
+		"departments":   getDepartmentStats(),
+		"borrow":        getBorrowStats(),
+		"inventory":     getInventoryStats(),
 		"system_status": getSystemStatusInfo(),
-		"last_updated": time.Now(),
+		"last_updated":  time.Now(),
 	}
 
-	c.JSON(http.StatusOK, stats)
+	c.JSON(http.StatusOK, gin.H{
+		"code":    "SUCCESS",
+		"message": "操作成功",
+		"data":    stats,
+	})
 }
 
 // GetSystemStatus 获取系统状态

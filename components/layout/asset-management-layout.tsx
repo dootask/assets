@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import {
   Building2,
@@ -69,6 +69,7 @@ const breadcrumbConfig: Record<string, { name: string; parent?: string }> = {
   '/dashboard': { name: '仪表板' },
   '/assets': { name: '资产管理' },
   '/assets/new': { name: '新增资产', parent: '/assets' },
+  '/assets/import': { name: '资产导入', parent: '/assets' },
   '/categories': { name: '分类管理' },
   '/departments': { name: '部门管理' },
   '/borrow': { name: '借用管理' },
@@ -80,6 +81,30 @@ const breadcrumbConfig: Record<string, { name: string; parent?: string }> = {
   '/reports/assets': { name: '资产报表', parent: '/reports' },
   '/reports/borrow': { name: '借用报表', parent: '/reports' },
   '/reports/inventory': { name: '盘点报表', parent: '/reports' },
+  '/logs': { name: '操作日志' },
+};
+
+// 动态路由处理函数
+const getDynamicBreadcrumb = (pathname: string) => {
+  // 处理资产详情 /assets/[id]
+  if (pathname.match(/^\/assets\/\d+$/)) {
+    return { name: '资产详情', parent: '/assets' };
+  }
+  // 处理资产编辑 /assets/[id]/edit
+  if (pathname.match(/^\/assets\/\d+\/edit$/)) {
+    const assetId = pathname.split('/')[2];
+    return { name: '编辑资产', parent: `/assets/${assetId}` };
+  }
+  // 处理盘点详情 /inventory/[id]
+  if (pathname.match(/^\/inventory\/\d+$/)) {
+    return { name: '盘点详情', parent: '/inventory' };
+  }
+  // 处理盘点报告 /inventory/[id]/report
+  if (pathname.match(/^\/inventory\/\d+\/report$/)) {
+    const inventoryId = pathname.split('/')[2];
+    return { name: '盘点报告', parent: `/inventory/${inventoryId}` };
+  }
+  return null;
 };
 
 interface AssetManagementLayoutProps {
@@ -95,14 +120,28 @@ export function AssetManagementLayout({ children }: AssetManagementLayoutProps) 
     const breadcrumbs = [];
     let currentPath = pathname;
     
-    // 添加首页
-    breadcrumbs.unshift({ name: '首页', href: '/' });
+    // 构建路径链
+    const pathChain = [];
     
-    while (currentPath && breadcrumbConfig[currentPath]) {
-      const config = breadcrumbConfig[currentPath];
-      breadcrumbs.push({ name: config.name, href: currentPath });
+    // 处理当前路径
+    let config = breadcrumbConfig[currentPath] || getDynamicBreadcrumb(currentPath);
+    
+    while (config) {
+      pathChain.unshift({ name: config.name, href: currentPath });
       currentPath = config.parent || '';
+      
+      if (currentPath) {
+        config = breadcrumbConfig[currentPath] || getDynamicBreadcrumb(currentPath);
+      } else {
+        break;
+      }
     }
+    
+    // 添加首页
+    breadcrumbs.push({ name: '首页', href: '/' });
+    
+    // 添加路径链中的所有面包屑
+    breadcrumbs.push(...pathChain);
     
     return breadcrumbs;
   };
@@ -114,12 +153,14 @@ export function AssetManagementLayout({ children }: AssetManagementLayoutProps) 
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         {/* 移动端侧边栏 */}
         <SheetContent side="left" className="w-64 p-0">
-          <div className="flex h-full flex-col">
-            <div className="flex h-16 items-center border-b px-6">
+          <SheetHeader className="flex flex-row h-16 shrink-0 items-center border-b px-6">
+            <SheetTitle className="flex items-center">
               <Package className="h-6 w-6 text-blue-600" />
               <span className="ml-2 text-lg font-semibold">资产管理系统</span>
-            </div>
-            <nav className="flex-1 space-y-1 px-3 py-4">
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex h-full flex-col overflow-y-auto">
+            <nav className="flex-1 space-y-1 px-3">
               {navigation.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 return (
@@ -168,7 +209,7 @@ export function AssetManagementLayout({ children }: AssetManagementLayoutProps) 
                     className={cn(
                       'group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors',
                       isActive
-                        ? 'bg-blue-50 border-r-2 border-blue-500 text-blue-700'
+                        ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                     )}
                   >
@@ -192,12 +233,12 @@ export function AssetManagementLayout({ children }: AssetManagementLayoutProps) 
         {/* 主内容区域 */}
         <div className="lg:pl-64 flex flex-col flex-1">
           {/* 顶部导航栏 */}
-          <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white shadow-sm border-b border-gray-200">
+          <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white border-b border-gray-200 items-center">
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="lg:hidden px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                className="lg:hidden px-4 ml-2 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
               >
                 <Menu className="h-6 w-6" />
               </Button>

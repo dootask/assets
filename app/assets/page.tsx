@@ -93,7 +93,7 @@ export default function AssetsPage() {
   const handleFilterChange = (key: keyof AssetFilters, value: string | number | undefined) => {
     setFilters(prev => ({
       ...prev,
-      [key]: value || undefined,
+      [key]: (value && value !== 'all') ? value : undefined,
     }));
   };
 
@@ -256,14 +256,14 @@ export default function AssetsPage() {
                 <div>
                   <label className="text-sm font-medium mb-1 block">状态</label>
                   <Select
-                    value={filters.status || ''}
+                    value={filters.status || 'all'}
                     onValueChange={(value) => handleFilterChange('status', value as AssetStatus)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="选择状态" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部状态</SelectItem>
+                                              <SelectItem value="all">全部状态</SelectItem>
                       {Object.entries(statusMap).map(([value, { label }]) => (
                         <SelectItem key={value} value={value}>
                           {label}
@@ -313,15 +313,6 @@ export default function AssetsPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>资产列表 ({pagination.total_items} 项)</span>
-            {assets.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={selectedAssets.length === assets.length}
-                  onCheckedChange={handleSelectAll}
-                />
-                <span className="text-sm text-muted-foreground">全选</span>
-              </div>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -340,7 +331,10 @@ export default function AssetsPage() {
               columns={[
                 {
                   key: 'select',
-                  title: '',
+                  title: <Checkbox
+                  checked={selectedAssets.length === assets.length}
+                  onCheckedChange={handleSelectAll}
+                />,
                   render: (_, record) => (
                     <Checkbox
                       checked={selectedAssets.some(a => a.id === record.id)}

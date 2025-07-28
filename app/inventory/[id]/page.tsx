@@ -356,7 +356,7 @@ export default function InventoryTaskDetailPage() {
                                         <SelectValue placeholder="盘点结果" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">全部结果</SelectItem>
+                                        <SelectItem value="all">全部结果</SelectItem>
                                         <SelectItem value="normal">正常</SelectItem>
                                         <SelectItem value="surplus">盘盈</SelectItem>
                                         <SelectItem value="deficit">盘亏</SelectItem>

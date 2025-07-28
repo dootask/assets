@@ -43,8 +43,8 @@ export default function InventoryPage() {
     
     // 筛选条件
     const [keyword, setKeyword] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('');
-    const [taskTypeFilter, setTaskTypeFilter] = useState<string>('');
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [taskTypeFilter, setTaskTypeFilter] = useState<string>('all');
 
     const loadTasks = async () => {
         try {
@@ -53,8 +53,8 @@ export default function InventoryPage() {
                 page: currentPage,
                 page_size: pageSize,
                 keyword: keyword || undefined,
-                status: statusFilter as any || undefined,
-                task_type: taskTypeFilter as any || undefined,
+                status: (statusFilter && statusFilter !== 'all') ? statusFilter as any : undefined,
+                task_type: (taskTypeFilter && taskTypeFilter !== 'all') ? taskTypeFilter as any : undefined,
             };
 
             const response = await getInventoryTasks(params);
@@ -154,7 +154,7 @@ export default function InventoryPage() {
                                 <SelectValue placeholder="状态" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">全部状态</SelectItem>
+                                <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="pending">待开始</SelectItem>
                                 <SelectItem value="in_progress">进行中</SelectItem>
                                 <SelectItem value="completed">已完成</SelectItem>
@@ -165,7 +165,7 @@ export default function InventoryPage() {
                                 <SelectValue placeholder="类型" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">全部类型</SelectItem>
+                                <SelectItem value="all">全部类型</SelectItem>
                                 <SelectItem value="full">全盘</SelectItem>
                                 <SelectItem value="category">按分类</SelectItem>
                                 <SelectItem value="department">按部门</SelectItem>

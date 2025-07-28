@@ -1,17 +1,19 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AlertCircle, Check, Upload, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertCircle, Check, ChevronDownIcon, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -27,7 +29,7 @@ const assetFormSchema = z.object({
   brand: z.string().max(100, '品牌不能超过100个字符').optional(),
   model: z.string().max(100, '型号不能超过100个字符').optional(),
   serial_number: z.string().max(100, '序列号不能超过100个字符').optional(),
-  purchase_date: z.string().optional(),
+  purchase_date: z.date().optional(),
   purchase_price: z.number().min(0, '采购价格不能为负数').optional(),
   supplier: z.string().max(200, '供应商不能超过200个字符').optional(),
   warranty_period: z.number().min(0, '保修期不能为负数').optional(),
@@ -77,18 +79,19 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
   const [assetNoValid, setAssetNoValid] = useState<boolean | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.image_url || null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<AssetFormData>({
     resolver: zodResolver(assetFormSchema),
     defaultValues: {
       asset_no: initialData?.asset_no || '',
       name: initialData?.name || '',
-      category_id: initialData?.category_id || 0,
+      category_id: initialData?.category_id || 1, // 默认选择第一个分类（办公设备）
       department_id: initialData?.department_id || undefined,
       brand: initialData?.brand || '',
       model: initialData?.model || '',
       serial_number: initialData?.serial_number || '',
-      purchase_date: initialData?.purchase_date ? initialData.purchase_date.split('T')[0] : '',
+      purchase_date: initialData?.purchase_date ? new Date(initialData.purchase_date) : undefined,
       purchase_price: initialData?.purchase_price || undefined,
       supplier: initialData?.supplier || '',
       warranty_period: initialData?.warranty_period || undefined,
@@ -194,7 +197,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
       ...data,
       category_id: data.category_id || undefined,
       department_id: data.department_id || undefined,
-      purchase_date: data.purchase_date || undefined,
+      purchase_date: data.purchase_date ? data.purchase_date.toISOString().split('T')[0] : undefined,
       purchase_price: data.purchase_price || undefined,
       warranty_period: data.warranty_period || undefined,
       brand: data.brand || undefined,
@@ -306,8 +309,8 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                   <FormItem>
                     <FormLabel>所属部门</FormLabel>
                     <Select
-                      value={field.value?.toString() || ''}
-                      onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
+                      value={field.value?.toString() || 'none'}
+                      onValueChange={(value) => field.onChange(value === 'none' ? undefined : parseInt(value))}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -315,7 +318,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">不选择</SelectItem>
+                        <SelectItem value="none">不选择</SelectItem>
                         {mockDepartments.map((department) => (
                           <SelectItem key={department.id} value={department.id.toString()}>
                             {department.name}
@@ -416,9 +419,29 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>采购日期</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="date" />
-                    </FormControl>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-between font-normal"
+                          >
+                            {field.value ? field.value.toLocaleDateString() : "请选择采购日期"}
+                            <ChevronDownIcon className="w-4 h-4" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          captionLayout="dropdown"
+                          onSelect={(date) => {
+                            field.onChange(date);
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -564,21 +587,26 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
                 </Button>
               </div>
             ) : (
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+              <div 
+                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">点击上传资产图片</p>
                   <p className="text-xs text-muted-foreground">支持 JPG、PNG 格式，大小不超过 5MB</p>
                 </div>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={uploadingImage}
-                  className="mt-4"
-                />
               </div>
             )}
+            {/* 隐藏的文件输入 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={uploadingImage}
+              className="hidden"
+            />
             {uploadingImage && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />

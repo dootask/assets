@@ -248,11 +248,11 @@ export function BatchOperationsDialog({
               <div className="space-y-2">
                 <Label>状态</Label>
                 <Select
-                  value={updateData.status || ''}
+                  value={updateData.status || 'no-update'}
                   onValueChange={(value) => 
                     setUpdateData(prev => ({ 
                       ...prev, 
-                      status: value ? value as AssetStatus : undefined 
+                      status: (value && value !== 'no-update') ? value as AssetStatus : undefined 
                     }))
                   }
                 >
@@ -260,7 +260,7 @@ export function BatchOperationsDialog({
                     <SelectValue placeholder="选择状态" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">不更新</SelectItem>
+                    <SelectItem value="no-update">不更新</SelectItem>
                     {statusOptions.map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
@@ -273,11 +273,11 @@ export function BatchOperationsDialog({
               <div className="space-y-2">
                 <Label>部门</Label>
                 <Select
-                  value={updateData.department_id?.toString() || ''}
+                  value={updateData.department_id?.toString() || 'no-update'}
                   onValueChange={(value) => 
                     setUpdateData(prev => ({ 
                       ...prev, 
-                      department_id: value ? parseInt(value) : undefined 
+                      department_id: (value && value !== 'no-update' && value !== 'loading') ? parseInt(value) : undefined 
                     }))
                   }
                   onOpenChange={(open) => {
@@ -288,9 +288,9 @@ export function BatchOperationsDialog({
                     <SelectValue placeholder="选择部门" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">不更新</SelectItem>
+                    <SelectItem value="no-update">不更新</SelectItem>
                     {departmentsLoading ? (
-                      <SelectItem value="" disabled>加载中...</SelectItem>
+                      <SelectItem value="loading" disabled>加载中...</SelectItem>
                     ) : (
                       departments.map(dept => (
                         <SelectItem key={dept.id} value={dept.id.toString()}>

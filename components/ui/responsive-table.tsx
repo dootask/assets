@@ -15,7 +15,7 @@ import { useState } from 'react';
 
 interface Column {
   key: string;
-  title: string;
+  title: string | React.ReactNode;
   render?: (value: any, record: any) => React.ReactNode;
   className?: string;
   mobileHidden?: boolean; // 在移动端隐藏的列
