@@ -1,7 +1,7 @@
 'use client';
 
 import { ReturnDialog } from '@/components/borrow/return-dialog';
-import Loading from '@/components/loading';
+import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

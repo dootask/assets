@@ -1,8 +1,8 @@
-# DooTask AI - API 标准规范
+# 企业固定资产管理系统 - API 标准规范
 
 ## 🎯 概述
 
-本文档专门定义 DooTask AI 项目的 API 设计标准，包括 HTTP 状态码使用、响应格式、错误码规范等，确保前后端 API 交互的一致性。
+本文档专门定义企业固定资产管理系统的 API 设计标准，包括 HTTP 状态码使用、响应格式、错误码规范等，确保前后端 API 交互的一致性。
 
 ## 🔗 HTTP 状态码规范
 
@@ -218,9 +218,18 @@ toast({
 
 ### 业务相关 (BUSINESS_xxx)
 
-- `USER_001`: 用户不存在
-- `TASK_001`: 任务创建失败
-- `AGENT_001`: 智能体配置错误
+- `ASSET_001`: 资产不存在
+- `ASSET_002`: 资产编号已存在
+- `ASSET_003`: 资产正在使用中，无法删除
+- `CATEGORY_001`: 分类不存在
+- `CATEGORY_002`: 分类下有资产，无法删除
+- `DEPARTMENT_001`: 部门不存在
+- `DEPARTMENT_002`: 部门下有资产，无法删除
+- `BORROW_001`: 资产不可借用
+- `BORROW_002`: 借用记录不存在
+- `BORROW_003`: 资产已归还
+- `INVENTORY_001`: 盘点任务不存在
+- `INVENTORY_002`: 盘点任务已完成
 
 ## 📊 TypeScript 类型定义
 
@@ -239,8 +248,8 @@ interface APIError {
 }
 
 // 使用示例
-const createAgent = async (agentData: CreateAgentRequest): Promise<Agent> => {
-  const response = await apiClient.post<APIResponse<Agent>>('/agents', agentData);
+const createAsset = async (assetData: CreateAssetRequest): Promise<Asset> => {
+  const response = await apiClient.post<APIResponse<Asset>>('/assets', assetData);
   return response.data.data;
 };
 ```

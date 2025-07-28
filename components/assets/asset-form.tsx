@@ -46,6 +46,7 @@ interface AssetFormProps {
   onCancel: () => void;
   loading?: boolean;
   isEdit?: boolean;
+  hideButtons?: boolean;
 }
 
 // 资产状态选项
@@ -71,7 +72,7 @@ const mockDepartments = [
   { id: 4, name: '财务部' },
 ];
 
-export function AssetForm({ initialData, onSubmit, onCancel, loading = false, isEdit = false }: AssetFormProps) {
+export function AssetForm({ initialData, onSubmit, onCancel, loading = false, isEdit = false, hideButtons = false }: AssetFormProps) {
   const [assetNoChecking, setAssetNoChecking] = useState(false);
   const [assetNoValid, setAssetNoValid] = useState<boolean | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(initialData?.image_url || null);
@@ -588,21 +589,23 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
         </Card>
 
         {/* 操作按钮 */}
-        <div className="flex gap-4 justify-end">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
-            取消
-          </Button>
-          <Button type="submit" disabled={loading || assetNoValid === false}>
-            {loading ? (
-              <>
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                {isEdit ? '更新中...' : '创建中...'}
-              </>
-            ) : (
-              isEdit ? '更新资产' : '创建资产'
-            )}
-          </Button>
-        </div>
+        {!hideButtons && (
+          <div className="flex gap-4 justify-end">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+              取消
+            </Button>
+            <Button type="submit" disabled={loading || assetNoValid === false}>
+              {loading ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                  {isEdit ? '更新中...' : '创建中...'}
+                </>
+              ) : (
+                isEdit ? '更新资产' : '创建资产'
+              )}
+            </Button>
+          </div>
+        )}
       </form>
     </Form>
   );

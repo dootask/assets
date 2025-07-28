@@ -3,6 +3,10 @@ import type {
     APIResponse,
     AssetFilters,
     AssetResponse,
+    BatchDeleteAssetsRequest,
+    BatchDeleteAssetsResponse,
+    BatchUpdateAssetsRequest,
+    BatchUpdateAssetsResponse,
     CheckAssetNoResponse,
     CreateAssetRequest,
     ImportAssetRequest,
@@ -95,5 +99,17 @@ export const exportAssets = async (filters?: AssetFilters) => {
   const response = await apiClient.get<APIResponse<AssetResponse[]>>(
     `/assets/export?${queryParams.toString()}`
   );
+  return response.data;
+};
+
+// 批量更新资产
+export const batchUpdateAssets = async (data: BatchUpdateAssetsRequest) => {
+  const response = await apiClient.put<APIResponse<BatchUpdateAssetsResponse>>('/assets/batch', data);
+  return response.data;
+};
+
+// 批量删除资产
+export const batchDeleteAssets = async (data: BatchDeleteAssetsRequest) => {
+  const response = await apiClient.delete<APIResponse<BatchDeleteAssetsResponse>>('/assets/batch', { data });
   return response.data;
 };

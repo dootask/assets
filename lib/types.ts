@@ -677,6 +677,53 @@ export interface CheckAssetNoResponse {
   exists: boolean;
 }
 
+// 批量更新资产请求
+export interface BatchUpdateAssetsRequest {
+  asset_ids: number[];
+  updates: BatchUpdateAssetsData;
+}
+
+// 批量更新数据
+export interface BatchUpdateAssetsData {
+  status?: AssetStatus;
+  department_id?: number;
+  location?: string;
+  responsible_person?: string;
+}
+
+// 批量更新资产响应
+export interface BatchUpdateAssetsResponse {
+  success_count: number;
+  failed_count: number;
+  errors: BatchUpdateError[];
+  updated_assets: Asset[];
+}
+
+// 批量更新错误详情
+export interface BatchUpdateError {
+  asset_id: number;
+  error: string;
+}
+
+// 批量删除资产请求
+export interface BatchDeleteAssetsRequest {
+  asset_ids: number[];
+}
+
+// 批量删除资产响应
+export interface BatchDeleteAssetsResponse {
+  success_count: number;
+  failed_count: number;
+  errors: BatchDeleteError[];
+  deleted_asset_ids: number[];
+}
+
+// 批量删除错误详情
+export interface BatchDeleteError {
+  asset_id: number;
+  error: string;
+}
+
 // 部门管理相关类型
 
 // 部门响应类型（包含统计信息）
@@ -806,4 +853,56 @@ export interface AssetBorrowStats {
 export interface AvailableAssetResponse extends Asset {
   last_borrow_date?: string;
   borrow_count: number;
+}
+
+// 操作日志相关类型
+
+// 操作类型
+export type OperationType = 'create' | 'update' | 'delete';
+
+// 操作日志
+export interface OperationLog {
+  id: number;
+  table_name: string;
+  record_id: number;
+  operation: OperationType;
+  old_data?: Record<string, unknown>;
+  new_data?: Record<string, unknown>;
+  operator: string;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// 操作日志响应
+export interface OperationLogResponse extends OperationLog {
+  table_label: string;
+  operation_label: string;
+}
+
+// 操作日志筛选条件
+export interface OperationLogFilters {
+  table?: string;
+  operation?: OperationType;
+  operator?: string;
+  record_id?: number;
+  ip_address?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+// 操作日志统计
+export interface OperationLogStats {
+  total_logs: number;
+  today_logs: number;
+  operation_stats: Record<string, number>;
+  table_stats: Record<string, number>;
+  top_operators: OperatorStat[];
+}
+
+// 操作者统计
+export interface OperatorStat {
+  operator: string;
+  count: number;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { DepartmentDialog } from '@/components/departments/department-dialog';
-import Loading from '@/components/loading';
+import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
 import {
     AlertDialog,

@@ -642,6 +642,235 @@ func ExportAssets(c *gin.Context) {
 	utils.Success(c, assetResponses)
 }
 
+// BatchUpdateAssets 批量更新资产
+func BatchUpdateAssets(c *gin.Context) {
+	var req BatchUpdateAssetsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ValidationError(c, err.Error())
+		return
+	}
+
+	// 验证请求数据
+	if err := validate.Struct(&req); err != nil {
+		utils.ValidationError(c, err.Error())
+		return
+	}
+
+	if len(req.AssetIDs) == 0 {
+		utils.ValidationError(c, "资产ID列表不能为空")
+		return
+	}
+
+	if len(req.AssetIDs) > 100 {
+		utils.ValidationError(c, "批量操作最多支持100个资产")
+		return
+	}
+
+	response := BatchUpdateAssetsResponse{
+		SuccessCount: 0,
+		FailedCount:  0,
+		Errors:       make([]BatchUpdateError, 0),
+		UpdatedAssets: make([]models.Asset, 0),
+	}
+
+	// 开始事务
+	tx := global.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 验证所有资产是否存在
+	var existingAssets []models.Asset
+	if err := tx.Where("id IN ?", req.AssetIDs).Find(&existingAssets).Error; err != nil {
+		tx.Rollback()
+		utils.InternalError(c, err)
+		return
+	}
+
+	// 创建ID到资产的映射
+	assetMap := make(map[uint]models.Asset)
+	for _, asset := range existingAssets {
+		assetMap[asset.ID] = asset
+	}
+
+	// 检查不存在的资产ID
+	for _, id := range req.AssetIDs {
+		if _, exists := assetMap[id]; !exists {
+			response.FailedCount++
+			response.Errors = append(response.Errors, BatchUpdateError{
+				AssetID: id,
+				Error:   "资产不存在",
+			})
+		}
+	}
+
+	// 构建更新数据
+	updates := make(map[string]interface{})
+	if req.Updates.Status != nil {
+		updates["status"] = *req.Updates.Status
+	}
+	if req.Updates.DepartmentID != nil {
+		// 验证部门是否存在
+		var department models.Department
+		if err := tx.First(&department, *req.Updates.DepartmentID).Error; err != nil {
+			tx.Rollback()
+			if err == gorm.ErrRecordNotFound {
+				utils.Error(c, utils.DEPARTMENT_NOT_FOUND, nil)
+			} else {
+				utils.InternalError(c, err)
+			}
+			return
+		}
+		updates["department_id"] = *req.Updates.DepartmentID
+	}
+	if req.Updates.Location != nil {
+		updates["location"] = *req.Updates.Location
+	}
+	if req.Updates.ResponsiblePerson != nil {
+		updates["responsible_person"] = *req.Updates.ResponsiblePerson
+	}
+
+	// 批量更新存在的资产
+	validAssetIDs := make([]uint, 0)
+	for _, id := range req.AssetIDs {
+		if _, exists := assetMap[id]; exists {
+			validAssetIDs = append(validAssetIDs, id)
+		}
+	}
+
+	if len(validAssetIDs) > 0 && len(updates) > 0 {
+		if err := tx.Model(&models.Asset{}).Where("id IN ?", validAssetIDs).Updates(updates).Error; err != nil {
+			tx.Rollback()
+			utils.InternalError(c, err)
+			return
+		}
+
+		// 获取更新后的资产
+		var updatedAssets []models.Asset
+		if err := tx.Preload("Category").Preload("Department").Where("id IN ?", validAssetIDs).Find(&updatedAssets).Error; err != nil {
+			tx.Rollback()
+			utils.InternalError(c, err)
+			return
+		}
+
+		response.SuccessCount = len(updatedAssets)
+		response.UpdatedAssets = updatedAssets
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		utils.InternalError(c, err)
+		return
+	}
+
+	utils.Success(c, response)
+}
+
+// BatchDeleteAssets 批量删除资产
+func BatchDeleteAssets(c *gin.Context) {
+	var req BatchDeleteAssetsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ValidationError(c, err.Error())
+		return
+	}
+
+	// 验证请求数据
+	if err := validate.Struct(&req); err != nil {
+		utils.ValidationError(c, err.Error())
+		return
+	}
+
+	if len(req.AssetIDs) == 0 {
+		utils.ValidationError(c, "资产ID列表不能为空")
+		return
+	}
+
+	if len(req.AssetIDs) > 100 {
+		utils.ValidationError(c, "批量操作最多支持100个资产")
+		return
+	}
+
+	response := BatchDeleteAssetsResponse{
+		SuccessCount: 0,
+		FailedCount:  0,
+		Errors:       make([]BatchDeleteError, 0),
+		DeletedAssetIDs: make([]uint, 0),
+	}
+
+	// 开始事务
+	tx := global.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	for _, assetID := range req.AssetIDs {
+		// 查找资产
+		var asset models.Asset
+		if err := tx.First(&asset, assetID).Error; err != nil {
+			response.FailedCount++
+			if err == gorm.ErrRecordNotFound {
+				response.Errors = append(response.Errors, BatchDeleteError{
+					AssetID: assetID,
+					Error:   "资产不存在",
+				})
+			} else {
+				response.Errors = append(response.Errors, BatchDeleteError{
+					AssetID: assetID,
+					Error:   "查询资产失败",
+				})
+			}
+			continue
+		}
+
+		// 检查是否有未归还的借用记录
+		var borrowCount int64
+		if err := tx.Model(&models.BorrowRecord{}).
+			Where("asset_id = ? AND status = ?", assetID, models.BorrowStatusBorrowed).
+			Count(&borrowCount).Error; err != nil {
+			response.FailedCount++
+			response.Errors = append(response.Errors, BatchDeleteError{
+				AssetID: assetID,
+				Error:   "检查借用记录失败",
+			})
+			continue
+		}
+
+		if borrowCount > 0 {
+			response.FailedCount++
+			response.Errors = append(response.Errors, BatchDeleteError{
+				AssetID: assetID,
+				Error:   "资产正在使用中，无法删除",
+			})
+			continue
+		}
+
+		// 删除资产
+		if err := tx.Delete(&asset).Error; err != nil {
+			response.FailedCount++
+			response.Errors = append(response.Errors, BatchDeleteError{
+				AssetID: assetID,
+				Error:   "删除资产失败",
+			})
+			continue
+		}
+
+		response.SuccessCount++
+		response.DeletedAssetIDs = append(response.DeletedAssetIDs, assetID)
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		utils.InternalError(c, err)
+		return
+	}
+
+	utils.Success(c, response)
+}
+
 // applyAssetFilters 应用资产筛选条件
 func applyAssetFilters(query *gorm.DB, filters AssetFilters) *gorm.DB {
 	if filters.Name != nil && *filters.Name != "" {

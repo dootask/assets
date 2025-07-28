@@ -95,3 +95,50 @@ type ImportAssetError struct {
 type CheckAssetNoResponse struct {
 	Exists bool `json:"exists"` // 是否存在
 }
+
+// BatchUpdateAssetsRequest 批量更新资产请求
+type BatchUpdateAssetsRequest struct {
+	AssetIDs []uint                    `json:"asset_ids" validate:"required,min=1,max=100"`
+	Updates  BatchUpdateAssetsData     `json:"updates" validate:"required"`
+}
+
+// BatchUpdateAssetsData 批量更新数据
+type BatchUpdateAssetsData struct {
+	Status            *models.AssetStatus `json:"status" validate:"omitempty,oneof=available borrowed maintenance scrapped"`
+	DepartmentID      *uint               `json:"department_id"`
+	Location          *string             `json:"location" validate:"omitempty,max=200"`
+	ResponsiblePerson *string             `json:"responsible_person" validate:"omitempty,max=100"`
+}
+
+// BatchUpdateAssetsResponse 批量更新资产响应
+type BatchUpdateAssetsResponse struct {
+	SuccessCount  int                 `json:"success_count"`  // 成功更新数量
+	FailedCount   int                 `json:"failed_count"`   // 失败数量
+	Errors        []BatchUpdateError  `json:"errors"`         // 错误详情
+	UpdatedAssets []models.Asset      `json:"updated_assets"` // 更新后的资产
+}
+
+// BatchUpdateError 批量更新错误详情
+type BatchUpdateError struct {
+	AssetID uint   `json:"asset_id"` // 资产ID
+	Error   string `json:"error"`    // 错误信息
+}
+
+// BatchDeleteAssetsRequest 批量删除资产请求
+type BatchDeleteAssetsRequest struct {
+	AssetIDs []uint `json:"asset_ids" validate:"required,min=1,max=100"`
+}
+
+// BatchDeleteAssetsResponse 批量删除资产响应
+type BatchDeleteAssetsResponse struct {
+	SuccessCount    int                 `json:"success_count"`     // 成功删除数量
+	FailedCount     int                 `json:"failed_count"`      // 失败数量
+	Errors          []BatchDeleteError  `json:"errors"`            // 错误详情
+	DeletedAssetIDs []uint              `json:"deleted_asset_ids"` // 已删除的资产ID
+}
+
+// BatchDeleteError 批量删除错误详情
+type BatchDeleteError struct {
+	AssetID uint   `json:"asset_id"` // 资产ID
+	Error   string `json:"error"`    // 错误信息
+}

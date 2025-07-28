@@ -4,10 +4,12 @@ import (
 	"asset-management-system/server/database"
 	"asset-management-system/server/global"
 	"asset-management-system/server/middleware"
+	"asset-management-system/server/pkg/config"
 	"asset-management-system/server/pkg/utils"
 	"asset-management-system/server/routes"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -45,6 +47,24 @@ func runPre(*cobra.Command, []string) {
 		fmt.Printf("环境变量文件: %s\n", global.EnvFile)
 	}
 
+	// 加载应用配置
+	global.AppConfig = config.LoadConfig()
+	fmt.Printf("应用配置加载完成: %s v%s (%s)\n", 
+		global.AppConfig.AppName, 
+		global.AppConfig.AppVersion, 
+		global.AppConfig.NodeEnv)
+
+	// 创建必要的目录
+	if err := os.MkdirAll(global.AppConfig.UploadDir, 0755); err != nil {
+		fmt.Printf("创建上传目录失败: %v\n", err)
+		os.Exit(1)
+	}
+	
+	if err := os.MkdirAll(filepath.Dir(global.AppConfig.SQLiteDBPath), 0755); err != nil {
+		fmt.Printf("创建数据库目录失败: %v\n", err)
+		os.Exit(1)
+	}
+
 	// 初始化SQLite数据库
 	if err := database.InitSQLiteDatabase(); err != nil {
 		fmt.Printf("初始化数据库失败: %v\n", err)
@@ -54,7 +74,7 @@ func runPre(*cobra.Command, []string) {
 
 func runServer(*cobra.Command, []string) {
 	// 设置gin模式
-	if os.Getenv("ENABLE_DEBUG") == "true" {
+	if global.AppConfig.EnableDebug {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
@@ -79,17 +99,45 @@ func runServer(*cobra.Command, []string) {
 	// 请求响应日志中间件
 	r.Use(middleware.RequestResponseLoggingMiddleware())
 
+	// 静态文件服务
+	setupStaticFileServing(r)
+
 	// 注册路由
 	routes.RegisterRoutes(r)
 
-	// 获取端口
-	port := utils.GetEnvWithDefault("GO_SERVICE_PORT", "8000")
-
 	// 启动服务器
-	fmt.Printf("服务器启动在端口: %s\n", port)
-	if err := r.Run(":" + port); err != nil {
+	fmt.Printf("🚀 %s 服务器启动在端口: %s\n", global.AppConfig.AppName, global.AppConfig.GoServicePort)
+	if err := r.Run(":" + global.AppConfig.GoServicePort); err != nil {
 		database.CloseDatabase()
 		log.Fatal("Failed to start server:", err)
+	}
+}
+
+// setupStaticFileServing 设置静态文件服务
+func setupStaticFileServing(r *gin.Engine) {
+	// 上传文件服务
+	r.Static("/uploads", global.AppConfig.UploadDir)
+	
+	// 生产环境下服务前端静态文件
+	if config.IsProduction() {
+		// 服务 Next.js 静态文件
+		r.Static("/static", "./public")
+		r.Static("/_next/static", "./_next/static")
+		
+		// 处理前端路由 - 所有非API请求返回index.html
+		r.NoRoute(func(c *gin.Context) {
+			// 如果是API请求，返回404
+			if len(c.Request.URL.Path) > 4 && c.Request.URL.Path[:4] == "/api" {
+				c.JSON(http.StatusNotFound, gin.H{
+					"code":    "NOT_FOUND",
+					"message": "API endpoint not found",
+				})
+				return
+			}
+			
+			// 其他请求返回前端页面
+			c.File("./index.html")
+		})
 	}
 }
 

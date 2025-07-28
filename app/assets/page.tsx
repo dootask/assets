@@ -1,21 +1,19 @@
 'use client';
 
-import { Download, Edit, Eye, Filter, MoreHorizontal, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { Download, Edit, Eye, Filter, Plus, Search, Settings, Trash2, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
 
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+import { BatchOperationsDialog } from '@/components/assets/batch-operations-dialog';
 import { Pagination } from '@/components/pagination';
+import { CurrencyRenderer, ResponsiveTable, StatusBadge } from '@/components/ui/responsive-table';
 import { deleteAsset, exportAssets, getAssets } from '@/lib/api/assets';
 import type { AssetFilters, AssetResponse, AssetStatus, PaginationRequest } from '@/lib/types';
 
@@ -48,6 +46,10 @@ export default function AssetsPage() {
   const [assetToDelete, setAssetToDelete] = useState<AssetResponse | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // 批量操作状态
+  const [selectedAssets, setSelectedAssets] = useState<AssetResponse[]>([]);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+
   // 加载资产列表
   const loadAssets = useCallback(async (page = 1, pageSize = 12) => {
     try {
@@ -68,7 +70,7 @@ export default function AssetsPage() {
       setPagination(response.data);
     } catch (error) {
       console.error('加载资产列表失败:', error);
-      toast.error('加载资产列表失败');
+      showError('加载资产列表失败', '请检查网络连接或稍后重试');
     } finally {
       setLoading(false);
     }
@@ -118,13 +120,13 @@ export default function AssetsPage() {
     try {
       setDeleting(true);
       await deleteAsset(assetToDelete.id);
-      toast.success('资产删除成功');
+      showSuccess('资产删除成功', `资产 "${assetToDelete.name}" 已成功删除`);
       setDeleteDialogOpen(false);
       setAssetToDelete(null);
       loadAssets(pagination.current_page);
     } catch (error) {
       console.error('删除资产失败:', error);
-      toast.error('删除资产失败');
+      showError('删除资产失败', '请检查资产是否正在使用中或稍后重试');
     } finally {
       setDeleting(false);
     }
@@ -150,11 +152,36 @@ export default function AssetsPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      toast.success('资产数据导出成功');
+      showSuccess('资产数据导出成功', '文件已保存到下载目录');
     } catch (error) {
       console.error('导出资产失败:', error);
-      toast.error('导出资产失败');
+      showError('导出资产失败', '请稍后重试');
     }
+  };
+
+  // 处理资产选择
+  const handleAssetSelect = (asset: AssetResponse, checked: boolean) => {
+    if (checked) {
+      setSelectedAssets(prev => [...prev, asset]);
+    } else {
+      setSelectedAssets(prev => prev.filter(a => a.id !== asset.id));
+    }
+  };
+
+  // 处理全选
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedAssets(assets);
+    } else {
+      setSelectedAssets([]);
+    }
+  };
+
+  // 批量操作成功后的回调
+  const handleBatchSuccess = () => {
+    setSelectedAssets([]);
+    setBatchDialogOpen(false);
+    loadAssets(pagination.current_page);
   };
 
   return (
@@ -166,6 +193,15 @@ export default function AssetsPage() {
           <p className="text-muted-foreground">管理企业固定资产信息</p>
         </div>
         <div className="flex gap-2">
+          {selectedAssets.length > 0 && (
+            <Button 
+              variant="outline" 
+              onClick={() => setBatchDialogOpen(true)}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              批量操作 ({selectedAssets.length})
+            </Button>
+          )}
           <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             导出
@@ -270,23 +306,22 @@ export default function AssetsPage() {
       {/* 资产列表 */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            资产列表 ({pagination.total_items} 项)
+          <CardTitle className="flex items-center justify-between">
+            <span>资产列表 ({pagination.total_items} 项)</span>
+            {assets.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={selectedAssets.length === assets.length}
+                  onCheckedChange={handleSelectAll}
+                />
+                <span className="text-sm text-muted-foreground">全选</span>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded" />
-                  <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PageLoading text="加载资产列表中..." />
           ) : assets.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">暂无资产数据</p>
@@ -296,81 +331,96 @@ export default function AssetsPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>资产编号</TableHead>
-                    <TableHead>资产名称</TableHead>
-                    <TableHead>分类</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>位置</TableHead>
-                    <TableHead>责任人</TableHead>
-                    <TableHead>采购价格</TableHead>
-                    <TableHead>操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assets.map((asset) => (
-                    <TableRow key={asset.id}>
-                      <TableCell className="font-medium">{asset.asset_no}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{asset.name}</div>
-                          {asset.brand && asset.model && (
-                            <div className="text-sm text-muted-foreground">
-                              {asset.brand} {asset.model}
-                            </div>
-                          )}
+            <ResponsiveTable
+              columns={[
+                {
+                  key: 'select',
+                  title: '',
+                  render: (_, record) => (
+                    <Checkbox
+                      checked={selectedAssets.some(a => a.id === record.id)}
+                      onCheckedChange={(checked) => handleAssetSelect(record, checked as boolean)}
+                    />
+                  ),
+                  className: 'w-12'
+                },
+                {
+                  key: 'asset_no',
+                  title: '资产编号',
+                  render: (value) => <span className="font-medium">{value}</span>
+                },
+                {
+                  key: 'name',
+                  title: '资产名称',
+                  render: (value, record) => (
+                    <div>
+                      <div className="font-medium">{value}</div>
+                      {record.brand && record.model && (
+                        <div className="text-sm text-muted-foreground">
+                          {record.brand} {record.model}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {asset.category?.name || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusMap[asset.status].variant}>
-                          {statusMap[asset.status].label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{asset.location || '-'}</TableCell>
-                      <TableCell>{asset.responsible_person || '-'}</TableCell>
-                      <TableCell>
-                        {asset.purchase_price ? `¥${asset.purchase_price.toLocaleString()}` : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => router.push(`/assets/${asset.id}`)}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              查看详情
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push(`/assets/${asset.id}/edit`)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              编辑
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setAssetToDelete(asset);
-                                setDeleteDialogOpen(true);
-                              }}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              删除
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                      )}
+                    </div>
+                  )
+                },
+                {
+                  key: 'category',
+                  title: '分类',
+                  render: (value) => value?.name || '-',
+                  mobileHidden: true
+                },
+                {
+                  key: 'status',
+                  title: '状态',
+                  render: (value) => <StatusBadge status={value} statusMap={statusMap} />
+                },
+                {
+                  key: 'location',
+                  title: '位置',
+                  render: (value) => value || '-',
+                  mobileHidden: true
+                },
+                {
+                  key: 'responsible_person',
+                  title: '责任人',
+                  render: (value) => value || '-',
+                  mobileHidden: true
+                },
+                {
+                  key: 'purchase_price',
+                  title: '采购价格',
+                  render: (value) => value ? <CurrencyRenderer amount={value} /> : '-',
+                  mobileHidden: true
+                }
+              ]}
+              data={assets}
+              actions={[
+                {
+                  key: 'view',
+                  label: '查看',
+                  icon: Eye,
+                  onClick: (record) => router.push(`/assets/${record.id}`)
+                },
+                {
+                  key: 'edit',
+                  label: '编辑',
+                  icon: Edit,
+                  onClick: (record) => router.push(`/assets/${record.id}/edit`)
+                },
+                {
+                  key: 'delete',
+                  label: '删除',
+                  icon: Trash2,
+                  variant: 'destructive',
+                  onClick: (record) => {
+                    setAssetToDelete(record);
+                    setDeleteDialogOpen(true);
+                  }
+                }
+              ]}
+              loading={loading}
+              emptyText="暂无资产数据"
+            />
           )}
 
           {/* 分页 */}
@@ -387,26 +437,21 @@ export default function AssetsPage() {
       </Card>
 
       {/* 删除确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除资产 "{assetToDelete?.name}" 吗？此操作不可撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? '删除中...' : '确认删除'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        itemName={assetToDelete?.name}
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
+
+      {/* 批量操作对话框 */}
+      <BatchOperationsDialog
+        open={batchDialogOpen}
+        onOpenChange={setBatchDialogOpen}
+        selectedAssets={selectedAssets}
+        onSuccess={handleBatchSuccess}
+      />
     </div>
   );
 }

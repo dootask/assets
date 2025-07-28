@@ -110,7 +110,7 @@ export default function EditAssetPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">编辑资产</h1>
-          <p className="text-muted-foreground">编辑资产 "{asset.name}" 的信息</p>
+          <p className="text-muted-foreground">编辑资产【{asset.name}】的信息</p>
         </div>
       </div>
 

@@ -4,14 +4,53 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-import { fetchDashboardStats, fetchRecentActivity, RecentActivity } from '@/lib/api/dashboard';
-import { DashboardStats } from '@/lib/types';
-import { Activity, Bot, Brain, Cpu, Database, Link, MessageSquare, RefreshCcw, Zap } from 'lucide-react';
+import {
+    Activity,
+    RefreshCcw
+} from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+// 资产管理系统仪表板统计数据接口
+interface AssetDashboardStats {
+  assets: {
+    total: number;
+    available: number;
+    borrowed: number;
+    maintenance: number;
+    scrapped: number;
+  };
+  categories: {
+    total: number;
+  };
+  departments: {
+    total: number;
+  };
+  borrowRecords: {
+    total: number;
+    active: number;
+    overdue: number;
+    todayReturns: number;
+  };
+  recentAssets: Array<{
+    id: number;
+    asset_no: string;
+    name: string;
+    category_name: string;
+    created_at: string;
+  }>;
+  recentBorrows: Array<{
+    id: number;
+    asset_name: string;
+    asset_no: string;
+    borrower_name: string;
+    borrow_date: string;
+    is_overdue?: boolean;
+  }>;
+}
+
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity | null>(null);
+  const [stats, setStats] = useState<AssetDashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,31 +58,84 @@ export default function Dashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      // 获取仪表板统计数据
-      const dashboardStats = await fetchDashboardStats();
-      setStats(dashboardStats);
+      // 并行获取多个API数据
+      const [dashboardResponse, categoriesResponse, departmentsResponse] = await Promise.all([
+        fetch('/api/reports/dashboard'),
+        fetch('/api/categories'),
+        fetch('/api/departments')
+      ]);
 
-      // 获取最近活动数据
-      const activityData = await fetchRecentActivity();
-      setRecentActivity(activityData);
+      if (!dashboardResponse.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+
+      const dashboardResult = await dashboardResponse.json();
+      
+      if (dashboardResult.code === 'SUCCESS' && dashboardResult.data) {
+        const data = dashboardResult.data;
+        
+        // 获取分类和部门数量
+        let categoriesCount = 0;
+        let departmentsCount = 0;
+        
+        if (categoriesResponse.ok) {
+          const categoriesResult = await categoriesResponse.json();
+          if (categoriesResult.code === 'SUCCESS' && categoriesResult.data) {
+            categoriesCount = categoriesResult.data.length || 0;
+          }
+        }
+        
+        if (departmentsResponse.ok) {
+          const departmentsResult = await departmentsResponse.json();
+          if (departmentsResult.code === 'SUCCESS' && departmentsResult.data) {
+            departmentsCount = departmentsResult.data.length || 0;
+          }
+        }
+        
+        // 转换后端数据格式为前端期望的格式
+        const recentBorrows = (data.recent_activity.recent_borrows || []).map((borrow: any) => ({
+          id: borrow.id,
+          asset_name: borrow.asset_name,
+          asset_no: borrow.asset_no,
+          borrower_name: borrow.borrower_name,
+          borrow_date: borrow.borrow_date,
+          is_overdue: false, // 这里可以根据需要计算是否超期
+        }));
+
+        setStats({
+          assets: {
+            total: data.asset_overview.total_assets || 0,
+            available: data.asset_overview.available_assets || 0,
+            borrowed: data.asset_overview.borrowed_assets || 0,
+            maintenance: data.asset_overview.maintenance_assets || 0,
+            scrapped: data.asset_overview.scrapped_assets || 0,
+          },
+          categories: { total: categoriesCount },
+          departments: { total: departmentsCount },
+          borrowRecords: {
+            total: 0,
+            active: data.borrow_overview.active_borrows || 0,
+            overdue: data.borrow_overview.overdue_borrows || 0,
+            todayReturns: data.borrow_overview.today_returns || 0,
+          },
+          recentAssets: data.recent_activity.recent_assets || [],
+          recentBorrows: recentBorrows,
+        });
+      } else {
+        throw new Error(dashboardResult.message || 'API返回错误');
+      }
     } catch (error) {
       console.error('加载仪表板数据失败:', error);
       setError('加载仪表板数据失败，请检查后端服务是否正常运行');
-      // 如果API调用失败，设置默认值
+      // 设置默认值
       setStats({
-        agents: { total: 0, active: 0, inactive: 0 },
-        conversations: { total: 0, today: 0, active: 0 },
-        messages: { total: 0, today: 0, averageResponseTime: 0 },
-        knowledgeBases: { total: 0, documentsCount: 0 },
-        mcpTools: { total: 0, active: 0 },
-        systemStatus: {
-          goService: 'offline',
-          pythonService: 'offline',
-          database: 'offline',
-          webhook: 'disconnected',
-        },
+        assets: { total: 0, available: 0, borrowed: 0, maintenance: 0, scrapped: 0 },
+        categories: { total: 0 },
+        departments: { total: 0 },
+        borrowRecords: { total: 0, active: 0, overdue: 0, todayReturns: 0 },
+        recentAssets: [],
+        recentBorrows: [],
       });
-      setRecentActivity({ recent_agents: [], recent_conversations: [] });
     } finally {
       setIsLoading(false);
     }
@@ -53,45 +145,13 @@ export default function Dashboard() {
     loadData();
   }, []);
 
-  // 转换最近智能体数据格式以兼容现有UI
-  const recentAgents = (
-    recentActivity?.recent_agents?.map(agent => ({
-      id: agent.id,
-      name: agent.name,
-      isActive: agent.is_active,
-      statistics: {
-        todayMessages: agent.today_messages,
-        totalMessages: agent.today_messages,
-        averageResponseTime: 2.1,
-        successRate: 98.5,
-      },
-    })) || []
-  ).slice(0, 4);
-
-  // 转换最近对话数据格式以兼容现有UI
-  const recentConversations = (
-    recentActivity?.recent_conversations?.map(conv => ({
-      id: conv.id.toString(),
-      userName: conv.user_name,
-      agentName: conv.agent_name,
-      messagesCount: conv.messages_count,
-      agentId: '',
-      dootaskChatId: '',
-      dootaskUserId: '',
-      userId: '',
-      context: {},
-      createdAt: conv.last_activity,
-      updatedAt: conv.last_activity,
-    })) || []
-  ).slice(0, 4);
-
   if (isLoading || !stats) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold tracking-tight">仪表板</h1>
-            <p className="text-muted-foreground">DooTask AI 智能体管理系统概览</p>
+            <p className="text-muted-foreground">企业固定资产管理系统概览</p>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -116,7 +176,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold tracking-tight">仪表板</h1>
-          <p className="text-muted-foreground">DooTask AI 智能体管理系统概览</p>
+          <p className="text-muted-foreground">企业固定资产管理系统概览</p>
         </div>
         <Button onClick={loadData} variant="outline" size="sm">
           <RefreshCcw className="mr-2 h-4 w-4" />
@@ -145,196 +205,169 @@ export default function Dashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">智能体数量</CardTitle>
-                <Bot className="text-muted-foreground h-4 w-4" />
+                <CardTitle className="text-sm font-medium">资产总数</CardTitle>
+                <Package className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.agents.total || 0}</div>
+                <div className="text-2xl font-bold">{stats.assets.total}</div>
                 <p className="text-muted-foreground text-xs">
-                  活跃: {stats.agents.active || 0} | 已停用: {stats.agents.inactive || 0}
+                  可用: {stats.assets.available} | 借用中: {stats.assets.borrowed}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">今日消息</CardTitle>
-                <MessageSquare className="text-muted-foreground h-4 w-4" />
+                <CardTitle className="text-sm font-medium">分类数量</CardTitle>
+                <Building2 className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.messages.today || 0}</div>
+                <div className="text-2xl font-bold">{stats.categories.total}</div>
+                <p className="text-muted-foreground text-xs">资产分类管理</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">部门数量</CardTitle>
+                <Users className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.departments.total}</div>
+                <p className="text-muted-foreground text-xs">组织架构管理</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">借用记录</CardTitle>
+                <ClipboardList className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.borrowRecords.active}</div>
                 <p className="text-muted-foreground text-xs">
-                  总计: {stats.messages.total || 0} | 平均响应: {(stats.messages.averageResponseTime || 0).toFixed(1)}s
+                  超期: {stats.borrowRecords.overdue} | 今日归还: {stats.borrowRecords.todayReturns}
                 </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">知识库</CardTitle>
-                <Database className="text-muted-foreground h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.knowledgeBases.total || 0}</div>
-                <p className="text-muted-foreground text-xs">文档总数: {stats.knowledgeBases.documentsCount || 0}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">活跃对话</CardTitle>
-                <Activity className="text-muted-foreground h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.conversations.active || 0}</div>
-                <p className="text-muted-foreground text-xs">今日新增: {stats.conversations.today || 0}</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* 系统状态和最近活动 */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {/* 快速操作 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                快速操作
+              </CardTitle>
+              <CardDescription>常用功能快速入口</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Link href="/assets/new">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <Plus className="h-6 w-6" />
+                    <span>新增资产</span>
+                  </Button>
+                </Link>
+                <Link href="/borrow/new">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <ClipboardList className="h-6 w-6" />
+                    <span>资产借用</span>
+                  </Button>
+                </Link>
+                <Link href="/inventory/new">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <CheckCircle className="h-6 w-6" />
+                    <span>创建盘点</span>
+                  </Button>
+                </Link>
+                <Link href="/reports">
+                  <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                    <TrendingUp className="h-6 w-6" />
+                    <span>查看报表</span>
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 最近活动和状态 */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  系统状态
-                </CardTitle>
-                <CardDescription>AI服务和组件运行状态</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-3">
-                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/30">
-                        <Cpu className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <span className="text-sm font-medium">Go API 服务</span>
-                    </div>
-                    <Badge
-                      variant={stats.systemStatus.goService === 'online' ? 'default' : 'destructive'}
-                      className={
-                        stats.systemStatus.goService === 'online'
-                          ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'
-                          : ''
-                      }
-                    >
-                      {stats.systemStatus.goService === 'online' ? '运行正常' : '服务异常'}
-                    </Badge>
-                  </div>
-
-                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-900/30">
-                        <Brain className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <span className="text-sm font-medium">Python AI 服务</span>
-                    </div>
-                    <Badge
-                      variant={stats.systemStatus.pythonService === 'online' ? 'default' : 'destructive'}
-                      className={
-                        stats.systemStatus.pythonService === 'online'
-                          ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'
-                          : ''
-                      }
-                    >
-                      {stats.systemStatus.pythonService === 'online' ? '运行正常' : '服务异常'}
-                    </Badge>
-                  </div>
-
-                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/30">
-                        <Link className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                      </div>
-                      <span className="text-sm font-medium">DooTask Webhook</span>
-                    </div>
-                    <Badge
-                      variant={stats.systemStatus.webhook === 'connected' ? 'default' : 'destructive'}
-                      className={
-                        stats.systemStatus.webhook === 'connected'
-                          ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'
-                          : ''
-                      }
-                    >
-                      {stats.systemStatus.webhook === 'connected' ? '连接正常' : '连接异常'}
-                    </Badge>
-                  </div>
-
-                  <div className="bg-muted/30 flex items-center justify-between rounded-lg p-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-full bg-cyan-100 p-2 dark:bg-cyan-900/30">
-                        <Database className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-                      </div>
-                      <span className="text-sm font-medium">数据库连接</span>
-                    </div>
-                    <Badge
-                      variant={stats.systemStatus.database === 'online' ? 'default' : 'destructive'}
-                      className={
-                        stats.systemStatus.database === 'online'
-                          ? 'border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'
-                          : ''
-                      }
-                    >
-                      {stats.systemStatus.database === 'online' ? '连接正常' : '连接异常'}
-                    </Badge>
-                  </div>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>最新资产</CardTitle>
+                  <CardDescription>最近添加的资产</CardDescription>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>最近活动</CardTitle>
-                <CardDescription>智能体和对话活动记录</CardDescription>
+                <Link href="/assets">
+                  <Button variant="ghost" size="sm">
+                    查看全部 <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
               </CardHeader>
-              <CardContent className="flex-1 space-y-3">
-                <div className="space-y-2">
-                  {recentAgents.map(agent => (
-                    <div key={agent.id} className="bg-muted/50 flex items-start gap-3 rounded-lg p-3">
-                      <Bot className={`mt-0.5 h-4 w-4 ${agent.isActive ? 'text-green-500' : 'text-gray-400'}`} />
+              <CardContent className="space-y-3">
+                {stats.recentAssets.length > 0 ? (
+                  stats.recentAssets.map(asset => (
+                    <div key={asset.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Package className="h-4 w-4 text-blue-500" />
                       <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium">{agent.name}</p>
+                        <p className="text-sm font-medium">{asset.name}</p>
                         <p className="text-muted-foreground text-xs">
-                          {agent.isActive ? '运行中' : '已停用'} • 今日处理 {agent.statistics?.todayMessages || 0}{' '}
-                          条消息
+                          {asset.asset_no} • {asset.category_name}
                         </p>
                       </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(asset.created_at).toLocaleDateString()}
+                      </div>
                     </div>
-                  ))}
-                </div>
-
-                {recentAgents.length === 0 && (
-                  <div className="flex h-full items-center justify-center pb-8">
-                    <p className="text-muted-foreground text-sm">暂无最近活动</p>
+                  ))
+                ) : (
+                  <div className="flex h-32 items-center justify-center">
+                    <p className="text-muted-foreground text-sm">暂无最新资产</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>最近对话</CardTitle>
-                <CardDescription>最近对话记录</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>借用状态</CardTitle>
+                  <CardDescription>当前借用情况</CardDescription>
+                </div>
+                <Link href="/borrow">
+                  <Button variant="ghost" size="sm">
+                    查看全部 <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
               </CardHeader>
-              <CardContent className="flex-1 space-y-3">
-                <div className="space-y-2">
-                  {recentConversations.map(conv => (
-                    <div key={conv.id} className="hover:bg-muted/50 flex items-start gap-3 rounded-lg p-2">
-                      <MessageSquare className="mt-1 h-3 w-3 text-blue-500" />
+              <CardContent className="space-y-3">
+                {stats.recentBorrows.length > 0 ? (
+                  stats.recentBorrows.map(borrow => (
+                    <div key={borrow.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      {borrow.is_overdue ? (
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-orange-500" />
+                      )}
                       <div className="flex-1 space-y-1">
-                        <p className="text-xs">
-                          {conv.userName} 与 {conv.agentName}
+                        <p className="text-sm font-medium">{borrow.asset_name}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {borrow.borrower_name} • {borrow.asset_no}
                         </p>
-                        <p className="text-muted-foreground text-xs">{conv.messagesCount} 条消息</p>
+                      </div>
+                      <div className="text-xs">
+                        {borrow.is_overdue ? (
+                          <Badge variant="destructive">超期</Badge>
+                        ) : (
+                          <Badge variant="secondary">借用中</Badge>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                {recentConversations.length === 0 && (
-                  <div className="flex h-full items-center justify-center pb-8">
-                    <p className="text-muted-foreground text-sm">暂无最近对话</p>
+                  ))
+                ) : (
+                  <div className="flex h-32 items-center justify-center">
+                    <p className="text-muted-foreground text-sm">暂无借用记录</p>
                   </div>
                 )}
               </CardContent>

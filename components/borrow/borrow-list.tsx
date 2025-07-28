@@ -2,7 +2,7 @@
 
 import { BorrowDialog } from '@/components/borrow/borrow-dialog';
 import { ReturnDialog } from '@/components/borrow/return-dialog';
-import Loading from '@/components/loading';
+import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
 import {
     AlertDialog,

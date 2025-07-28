@@ -1,0 +1,57 @@
+# 企业固定资产管理系统 - 生产环境 Docker Compose
+
+version: '3.8'
+
+services:
+  asset-management:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: asset-management-system
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # 持久化数据
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      # 自定义配置（可选）
+      - ./config.production.env:/app/.env:ro
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - asset-management-network
+
+  # 可选：Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: asset-management-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # SSL证书目录（如果需要HTTPS）
+    depends_on:
+      - asset-management
+    networks:
+      - asset-management-network
+
+networks:
+  asset-management-network:
+    driver: bridge
+
+volumes:
+  asset-data:
+    driver: local
+  asset-uploads:
+    driver: local

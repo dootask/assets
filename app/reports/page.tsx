@@ -1,0 +1,273 @@
+'use client';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    BarChart3,
+    Calendar,
+    ClipboardList,
+    Download,
+    FileText,
+    Filter,
+    Package,
+    TrendingUp,
+    Users
+} from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
+
+export default function ReportsPage() {
+  const [selectedPeriod, setSelectedPeriod] = useState('month');
+
+  const reportCategories = [
+    {
+      title: '资产统计报表',
+      description: '查看资产分布、价值分析、状态统计等信息',
+      icon: Package,
+      href: '/reports/assets',
+      color: 'bg-blue-500',
+      stats: [
+        { label: '总资产', value: '1,234' },
+        { label: '总价值', value: '¥2.5M' },
+        { label: '可用率', value: '85%' }
+      ]
+    },
+    {
+      title: '借用统计报表',
+      description: '分析借用趋势、超期情况、热门资产等',
+      icon: Users,
+      href: '/reports/borrow',
+      color: 'bg-green-500',
+      stats: [
+        { label: '活跃借用', value: '156' },
+        { label: '超期数量', value: '12' },
+        { label: '超期率', value: '7.7%' }
+      ]
+    },
+    {
+      title: '盘点统计报表',
+      description: '查看盘点任务执行情况、准确率分析等',
+      icon: ClipboardList,
+      href: '/reports/inventory',
+      color: 'bg-purple-500',
+      stats: [
+        { label: '完成任务', value: '8' },
+        { label: '准确率', value: '96.5%' },
+        { label: '待处理', value: '2' }
+      ]
+    }
+  ];
+
+  const quickActions = [
+    {
+      title: '导出资产清单',
+      description: '导出完整的资产清单Excel文件',
+      action: 'export-assets',
+      icon: Download
+    },
+    {
+      title: '生成月度报告',
+      description: '生成本月的综合统计报告',
+      action: 'monthly-report',
+      icon: FileText
+    },
+    {
+      title: '自定义报表',
+      description: '创建个性化的数据分析报表',
+      action: 'custom-report',
+      icon: BarChart3
+    }
+  ];
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'export-assets':
+        // 导出资产清单逻辑
+        console.log('导出资产清单');
+        break;
+      case 'monthly-report':
+        // 生成月度报告逻辑
+        console.log('生成月度报告');
+        break;
+      case 'custom-report':
+        // 跳转到自定义报表页面
+        console.log('自定义报表');
+        break;
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* 页面标题 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">报表统计</h1>
+          <p className="text-muted-foreground mt-2">
+            查看和分析资产管理系统的各项统计数据
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm">
+            <Filter className="h-4 w-4 mr-2" />
+            筛选
+          </Button>
+          <Button variant="outline" size="sm">
+            <Calendar className="h-4 w-4 mr-2" />
+            时间范围
+          </Button>
+        </div>
+      </div>
+
+      {/* 时间周期选择 */}
+      <div className="flex items-center space-x-2">
+        <span className="text-sm font-medium">统计周期:</span>
+        {['week', 'month', 'quarter', 'year'].map((period) => (
+          <Button
+            key={period}
+            variant={selectedPeriod === period ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedPeriod(period)}
+          >
+            {period === 'week' && '本周'}
+            {period === 'month' && '本月'}
+            {period === 'quarter' && '本季度'}
+            {period === 'year' && '本年'}
+          </Button>
+        ))}
+      </div>
+
+      {/* 报表分类卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {reportCategories.map((category) => {
+          const Icon = category.icon;
+          return (
+            <Card key={category.title} className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className={`p-2 rounded-lg ${category.color} text-white`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <Badge variant="secondary">
+                    {selectedPeriod === 'week' && '本周'}
+                    {selectedPeriod === 'month' && '本月'}
+                    {selectedPeriod === 'quarter' && '本季度'}
+                    {selectedPeriod === 'year' && '本年'}
+                  </Badge>
+                </div>
+                <CardTitle className="text-lg">{category.title}</CardTitle>
+                <CardDescription>{category.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  {category.stats.map((stat) => (
+                    <div key={stat.label} className="text-center">
+                      <div className="text-2xl font-bold text-primary">
+                        {stat.value}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {stat.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Link href={category.href}>
+                  <Button className="w-full">
+                    查看详细报表
+                    <TrendingUp className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* 快速操作 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>快速操作</CardTitle>
+          <CardDescription>
+            常用的报表生成和导出功能
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <div
+                  key={action.title}
+                  className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => handleQuickAction(action.action)}
+                >
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium">{action.title}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {action.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 最近生成的报表 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>最近生成的报表</CardTitle>
+          <CardDescription>
+            查看最近生成的报表文件
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[
+              {
+                name: '2024年1月资产统计报表.xlsx',
+                type: '资产报表',
+                date: '2024-01-28 14:30',
+                size: '2.3 MB'
+              },
+              {
+                name: '借用情况月度分析.pdf',
+                type: '借用报表',
+                date: '2024-01-27 09:15',
+                size: '1.8 MB'
+              },
+              {
+                name: '盘点结果汇总.xlsx',
+                type: '盘点报表',
+                date: '2024-01-26 16:45',
+                size: '3.1 MB'
+              }
+            ].map((report, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 border rounded-lg"
+              >
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <h4 className="font-medium">{report.name}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {report.type} • {report.date} • {report.size}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -109,6 +109,17 @@ func Success(c *gin.Context, data interface{}) {
 	})
 }
 
+// SuccessWithPagination 带分页的成功响应
+func SuccessWithPagination(c *gin.Context, items interface{}, total int64, page, pageSize int) {
+	paginationData := NewPaginationResponse(page, pageSize, total, items)
+	
+	c.JSON(http.StatusOK, APIResponse{
+		Code:    SUCCESS,
+		Message: GetMessage(SUCCESS),
+		Data:    paginationData,
+	})
+}
+
 // Error 错误响应
 func Error(c *gin.Context, code string, data interface{}) {
 	statusCode := getHTTPStatusCode(code)
@@ -139,11 +150,21 @@ func ValidationError(c *gin.Context, errors interface{}) {
 }
 
 // InternalError 内部错误响应
-func InternalError(c *gin.Context, err error) {
+func InternalError(c *gin.Context, err interface{}) {
+	var message string
+	switch v := err.(type) {
+	case error:
+		message = v.Error()
+	case string:
+		message = v
+	default:
+		message = "内部服务器错误"
+	}
+	
 	c.JSON(http.StatusInternalServerError, APIResponse{
 		Code:    INTERNAL_ERROR,
-		Message: GetMessage(INTERNAL_ERROR),
-		Data:    gin.H{"error": err.Error()},
+		Message: message,
+		Data:    nil,
 	})
 }
 
