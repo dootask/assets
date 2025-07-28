@@ -79,6 +79,7 @@ export default function InventoryTaskDetailPage() {
             loadTask();
             loadRecords();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [taskId, currentPage, resultFilter, keyword]);
 
     const loadTask = async () => {
@@ -427,20 +428,18 @@ export default function InventoryTaskDetailPage() {
                                     )}
 
                                     {/* 分页 */}
-                                    {total > pageSize && (
-                                        <div className="mt-6">
-                                            <Pagination
-                                                currentPage={currentPage}
-                                                totalPages={Math.ceil(total / pageSize)}
-                                                pageSize={pageSize}
-                                                totalItems={total}
-                                                onPageChange={setCurrentPage}
-                                                onPageSizeChange={() => {
-                                                    // pageSize 是常量，不支持修改
-                                                }}
-                                            />
-                                        </div>
-                                    )}
+                                    <div className="mt-6">
+                                        <Pagination
+                                            currentPage={currentPage}
+                                            totalPages={Math.ceil(total / pageSize)}
+                                            pageSize={pageSize}
+                                            totalItems={total}
+                                            onPageChange={setCurrentPage}
+                                            onPageSizeChange={() => {
+                                                // pageSize 是常量，不支持修改
+                                            }}
+                                        />
+                                    </div>
                                 </>
                             )}
                         </CardContent>

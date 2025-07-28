@@ -1,25 +1,26 @@
 'use client';
 
-import { Activity, Calendar, Database, Eye, Filter, Search, User } from 'lucide-react';
+import { Activity, Calendar, Database, Eye, Filter, MoreHorizontal, Search, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import { Pagination } from '@/components/pagination';
-import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { getOperationLogs, getOperationLogStats } from '@/lib/api/logs';
 import type {
-    OperationLogFilters,
-    OperationLogResponse,
-    OperationLogStats,
-    OperationType,
-    PaginationRequest
+  OperationLogFilters,
+  OperationLogResponse,
+  OperationLogStats,
+  OperationType,
+  PaginationRequest
 } from '@/lib/types';
 
 // 操作类型映射
@@ -36,6 +37,18 @@ const tableMap: Record<string, string> = {
   departments: '部门',
   borrow_records: '借用记录',
   inventory_tasks: '盘点任务',
+};
+
+// 操作徽章组件
+const OperationBadge = ({ operation, operationLabel }: { operation: OperationType; operationLabel: string }) => {
+  const operationInfo = operationMap[operation];
+  if (!operationInfo) return <span>{operationLabel}</span>;
+  
+  return (
+    <Badge variant={operationInfo.variant}>
+      {operationLabel}
+    </Badge>
+  );
 };
 
 export default function LogsPage() {
@@ -138,6 +151,13 @@ export default function LogsPage() {
     return new Date(dateTime).toLocaleString('zh-CN');
   };
 
+  // 查看日志详情
+  const handleViewDetails = (log: OperationLogResponse) => {
+    // 这里可以打开详情对话框
+    console.log('查看日志详情:', log);
+    toast.info('查看日志详情功能待实现');
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* 页面标题 */}
@@ -155,13 +175,13 @@ export default function LogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">总日志数</p>
-                <p className="text-2xl font-bold">
+                <div className="text-2xl font-bold">
                   {statsLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
                     stats?.total_logs.toLocaleString() || 0
                   )}
-                </p>
+                </div>
               </div>
               <Database className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -173,13 +193,13 @@ export default function LogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">今日日志</p>
-                <p className="text-2xl font-bold">
+                <div className="text-2xl font-bold">
                   {statsLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
                     stats?.today_logs.toLocaleString() || 0
                   )}
-                </p>
+                </div>
               </div>
               <Calendar className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -191,13 +211,13 @@ export default function LogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">活跃操作者</p>
-                <p className="text-2xl font-bold">
+                <div className="text-2xl font-bold">
                   {statsLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
                     stats?.top_operators.length || 0
                   )}
-                </p>
+                </div>
               </div>
               <User className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -209,13 +229,13 @@ export default function LogsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">操作类型</p>
-                <p className="text-2xl font-bold">
+                <div className="text-2xl font-bold">
                   {statsLoading ? (
                     <Skeleton className="h-8 w-16" />
                   ) : (
                     Object.keys(stats?.operation_stats || {}).length
                   )}
-                </p>
+                </div>
               </div>
               <Activity className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -346,86 +366,70 @@ export default function LogsPage() {
               <p className="text-muted-foreground">暂无操作日志</p>
             </div>
           ) : (
-            <ResponsiveTable
-              columns={[
-                {
-                  key: 'id',
-                  title: 'ID',
-                  render: (value) => <span className="font-mono text-sm">{value as string | number}</span>,
-                  className: 'w-16'
-                },
-                {
-                  key: 'table_label',
-                  title: '表名',
-                  render: (value) => <Badge variant="outline">{value as string}</Badge>
-                },
-                {
-                  key: 'operation_label',
-                  title: '操作',
-                  render: (_, record) => (
-                    <Badge variant={operationMap[(record as OperationLogResponse).operation as OperationType]?.variant || 'default'}>
-                      {(record as OperationLogResponse).operation_label}
-                    </Badge>
-                  )
-                },
-                {
-                  key: 'record_id',
-                  title: '记录ID',
-                  render: (value) => <span className="font-mono text-sm">{value as string | number}</span>,
-                  mobileHidden: true
-                },
-                {
-                  key: 'operator',
-                  title: '操作者',
-                  render: (value) => (value as string) || '-',
-                  mobileHidden: true
-                },
-                {
-                  key: 'ip_address',
-                  title: 'IP地址',
-                  render: (value) => <span className="font-mono text-sm">{value as string}</span>,
-                  mobileHidden: true
-                },
-                {
-                  key: 'created_at',
-                  title: '操作时间',
-                  render: (value) => (
-                    <span className="text-sm">{formatDateTime(value as string)}</span>
-                  )
-                }
-              ]}
-              data={logs}
-              actions={[
-                {
-                  key: 'view',
-                  label: '查看详情',
-                  icon: Eye,
-                  onClick: (record) => {
-                    // 这里可以打开详情对话框
-                    console.log('查看日志详情:', record);
-                  }
-                }
-              ]}
-              loading={loading}
-              emptyText="暂无操作日志"
-            />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">ID</TableHead>
+                  <TableHead>表名</TableHead>
+                  <TableHead>操作</TableHead>
+                  <TableHead>记录ID</TableHead>
+                  <TableHead>操作者</TableHead>
+                  <TableHead>IP地址</TableHead>
+                  <TableHead>操作时间</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="font-mono text-sm">{log.id}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{log.table_label}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <OperationBadge 
+                        operation={log.operation as OperationType} 
+                        operationLabel={log.operation_label} 
+                      />
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{log.record_id}</TableCell>
+                    <TableCell>{log.operator || '-'}</TableCell>
+                    <TableCell className="font-mono text-sm">{log.ip_address}</TableCell>
+                    <TableCell className="text-sm">{formatDateTime(log.created_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewDetails(log)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            查看详情
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
 
           {/* 分页 */}
-          {!loading && logs.length > 0 && (
-            <div className="mt-6">
-              <Pagination
-                currentPage={pagination.current_page}
-                totalPages={pagination.total_pages}
-                pageSize={pagination.page_size}
-                totalItems={pagination.total_items}
-                onPageChange={handlePageChange}
-                onPageSizeChange={() => {
-                  // 默认不支持修改每页大小
-                }}
-              />
-            </div>
-          )}
+          <div className="mt-6">
+            <Pagination
+              currentPage={pagination.current_page}
+              totalPages={pagination.total_pages}
+              pageSize={pagination.page_size}
+              totalItems={pagination.total_items}
+              onPageChange={handlePageChange}
+              onPageSizeChange={() => {
+                // 默认不支持修改每页大小
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

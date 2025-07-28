@@ -1,20 +1,21 @@
 'use client';
 
-import { Download, Edit, Eye, Filter, Plus, Search, Settings, Trash2, Upload } from 'lucide-react';
+import { Download, Edit, Eye, Filter, MoreHorizontal, Plus, Search, Settings, Trash2, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import { BatchOperationsDialog } from '@/components/assets/batch-operations-dialog';
 import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
-import { CurrencyRenderer, ResponsiveTable, StatusBadge } from '@/components/ui/responsive-table';
+import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/app-context';
 import { deleteAsset, exportAssets, getAssets } from '@/lib/api/assets';
 import { showError, showSuccess } from '@/lib/notifications';
@@ -26,6 +27,26 @@ const statusMap: Record<AssetStatus, { label: string; variant: 'default' | 'seco
   borrowed: { label: '借用中', variant: 'secondary' },
   maintenance: { label: '维护中', variant: 'outline' },
   scrapped: { label: '已报废', variant: 'destructive' },
+};
+
+// 货币格式化函数
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: 'CNY',
+  }).format(amount);
+};
+
+// 状态徽章组件
+const StatusBadge = ({ status }: { status: string }) => {
+  const statusInfo = statusMap[status as AssetStatus];
+  if (!statusInfo) return <span>{status}</span>;
+  
+  return (
+    <Badge variant={statusInfo.variant}>
+      {statusInfo.label}
+    </Badge>
+  );
 };
 
 export default function AssetsPage() {
@@ -263,7 +284,7 @@ export default function AssetsPage() {
                       <SelectValue placeholder="选择状态" />
                     </SelectTrigger>
                     <SelectContent>
-                                              <SelectItem value="all">全部状态</SelectItem>
+                      <SelectItem value="all">全部状态</SelectItem>
                       {Object.entries(statusMap).map(([value, { label }]) => (
                         <SelectItem key={value} value={value}>
                           {label}
@@ -327,106 +348,96 @@ export default function AssetsPage() {
               </Button>
             </div>
           ) : (
-            <ResponsiveTable<AssetResponse>
-              columns={[
-                {
-                  key: 'select',
-                  title: <Checkbox
-                  checked={selectedAssets.length === assets.length}
-                  onCheckedChange={handleSelectAll}
-                />,
-                  render: (_, record) => (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedAssets.some(a => a.id === record.id)}
-                      onCheckedChange={(checked) => handleAssetSelect(record, checked as boolean)}
+                      checked={selectedAssets.length === assets.length}
+                      onCheckedChange={handleSelectAll}
                     />
-                  ),
-                  className: 'w-12'
-                },
-                {
-                  key: 'asset_no',
-                  title: '资产编号',
-                  render: (value) => <span className="font-medium">{value as string}</span>
-                },
-                {
-                  key: 'name',
-                  title: '资产名称',
-                  render: (value) => (
-                    <div>
-                      <div className="font-medium">{value as string}</div>
-                    </div>
-                  )
-                },
-                {
-                  key: 'category_id',
-                  title: '分类',
-                  render: (value, record) => (record as AssetResponse).category?.name || '-',
-                  mobileHidden: true
-                },
-                {
-                  key: 'status',
-                  title: '状态',
-                  render: (value) => <StatusBadge status={value as string} statusMap={statusMap} />
-                },
-                {
-                  key: 'location',
-                  title: '存放位置',
-                  mobileHidden: true
-                },
-                {
-                  key: 'responsible_person',
-                  title: '责任人',
-                  mobileHidden: true
-                },
-                {
-                  key: 'purchase_price',
-                  title: '采购价格',
-                  render: (value) => value ? <CurrencyRenderer amount={value as number} /> : '-',
-                  mobileHidden: true
-                }
-              ]}
-              data={assets}
-              actions={[
-                {
-                  key: 'view',
-                  label: '查看',
-                  icon: Eye,
-                  onClick: (record) => router.push(`/assets/${record.id}`)
-                },
-                {
-                  key: 'edit',
-                  label: '编辑',
-                  icon: Edit,
-                  onClick: (record) => router.push(`/assets/${record.id}/edit`)
-                },
-                {
-                  key: 'delete',
-                  label: '删除',
-                  icon: Trash2,
-                  variant: 'destructive',
-                  onClick: (record) => handleDelete(record)
-                }
-              ]}
-              loading={loading}
-              emptyText="暂无资产数据"
-            />
+                  </TableHead>
+                  <TableHead>资产编号</TableHead>
+                  <TableHead>资产名称</TableHead>
+                  <TableHead>分类</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>存放位置</TableHead>
+                  <TableHead>责任人</TableHead>
+                  <TableHead>采购价格</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assets.map((asset) => (
+                  <TableRow key={asset.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedAssets.some(a => a.id === asset.id)}
+                        onCheckedChange={(checked) => handleAssetSelect(asset, checked as boolean)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">{asset.asset_no}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{asset.name}</div>
+                    </TableCell>
+                    <TableCell>{asset.category?.name || '-'}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={asset.status} />
+                    </TableCell>
+                    <TableCell>{asset.location}</TableCell>
+                    <TableCell>{asset.responsible_person}</TableCell>
+                    <TableCell>
+                      {asset.purchase_price ? formatCurrency(asset.purchase_price) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/assets/${asset.id}`)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            查看
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/assets/${asset.id}/edit`)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            编辑
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(asset)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            删除
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
 
           {/* 分页 */}
-          {totalPages > 1 && (
-            <div className="mt-6">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                pageSize={12}
-                totalItems={totalItems}
-                onPageChange={handlePageChange}
-                onPageSizeChange={() => {
-                  // 默认不支持修改每页大小
-                }}
-              />
-            </div>
-          )}
+          <div className="mt-6">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={10}
+              totalItems={totalItems}
+              onPageChange={handlePageChange}
+              onPageSizeChange={() => {
+                // 默认不支持修改每页大小
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 

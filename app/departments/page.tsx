@@ -287,20 +287,18 @@ export default function DepartmentsPage() {
               </Table>
 
               {/* 分页 */}
-              {totalPages > 1 && (
-                <div className="mt-6">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    pageSize={10}
-                    totalItems={totalPages * 10}
-                    onPageChange={handlePageChange}
-                    onPageSizeChange={() => {
-                      // 默认不支持修改每页大小
-                    }}
-                  />
-                </div>
-              )}
+              <div className="mt-6">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={10}
+                  totalItems={totalPages * 10}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={() => {
+                    // 默认不支持修改每页大小
+                  }}
+                />
+              </div>
             </>
           )}
         </CardContent>

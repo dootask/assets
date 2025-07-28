@@ -323,6 +323,7 @@ export default function AssetDetailPage() {
                 <CardTitle>资产图片</CardTitle>
               </CardHeader>
               <CardContent>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={asset.image_url}
                   alt={asset.name}

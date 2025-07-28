@@ -70,7 +70,7 @@ export default function Dashboard() {
     setError(null);
     try {
       // 并行获取多个API数据
-      const [dashboardResponse, categoriesResponse, departmentsResponse] = await Promise.all([
+      const [dashboardResponse] = await Promise.all([
         apiClient.get('/dashboard/stats'),
         apiClient.get('/categories'),
         apiClient.get('/departments')

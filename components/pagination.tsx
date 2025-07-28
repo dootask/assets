@@ -1,21 +1,21 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useState } from 'react';
 
 // 默认分页数据
 export const defaultPagination = {
   current_page: 1,
-  page_size: 12,
+  page_size: 10,
   total_items: 0,
   total_pages: 0,
 };
 
 // 默认每页条数选项
-export const defaultPageSizeOptions = [12, 30, 60, 120];
+export const defaultPageSizeOptions = [10, 20, 50, 100];
 
 export interface PaginationProps {
   currentPage: number;
@@ -39,7 +39,7 @@ export function Pagination({
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = defaultPageSizeOptions,
-  showQuickJumper = true,
+  showQuickJumper = false,
   showSizeChanger = true,
   showTotal = true,
   className = '',
@@ -102,16 +102,16 @@ export function Pagination({
   }
 
   return (
-    <div className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${className}`}>
+    <div className={`flex flex-col flex-wrap gap-4 sm:flex-row sm:items-center sm:justify-between ${className}`}>
       {/* 总数信息 */}
       {showTotal && (
-        <div className="text-muted-foreground text-sm">
+        <div className="text-muted-foreground text-sm whitespace-nowrap">
           共 {totalItems} 条记录，第 {currentPage} / {totalPages} 页
         </div>
       )}
 
       {/* 分页控件 */}
-      <div className="flex flex-col items-center gap-4 sm:flex-row">
+      <div className="flex flex-col items-center gap-4 sm:flex-row flex-wrap">
         {/* 每页条数选择器 */}
         {showSizeChanger && (
           <div className="flex items-center gap-2 text-sm">

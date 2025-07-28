@@ -27,11 +27,9 @@ type InventoryRecordFieldValue = string | number | 'normal' | 'surplus' | 'defic
 
 export function InventoryExecution({ task, onRecordCreated }: InventoryExecutionProps) {
     const [assets, setAssets] = useState<AssetResponse[]>([]);
-    const [loading, setLoading] = useState(false);
     const [keyword, setKeyword] = useState('');
     const [batchRecords, setBatchRecords] = useState<CreateInventoryRecordRequest[]>([]);
     const [mode, setMode] = useState<'single' | 'batch'>('single');
-    const [showBatchDialog, setShowBatchDialog] = useState(false);
     
     // 单个盘点记录状态
     const [singleRecord, setSingleRecord] = useState<CreateInventoryRecordRequest>({
@@ -47,11 +45,11 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
         if (mode === 'single') {
             loadAssets();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode, keyword]);
 
     const loadAssets = async () => {
         try {
-            setLoading(true);
             const response = await getAssets({
                 page: 1,
                 page_size: 50,
@@ -65,8 +63,6 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
         } catch (error) {
             console.error('获取资产列表失败:', error);
             toast.error('获取资产列表失败');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -128,7 +124,6 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
             if (response.code === 'SUCCESS') {
                 toast.success(`批量创建 ${response.data.count} 条盘点记录成功`);
                 setBatchRecords([]);
-                setShowBatchDialog(false);
                 onRecordCreated();
             } else {
                 toast.error(response.message || '批量创建盘点记录失败');

@@ -132,6 +132,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
     }, 500);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetNoValue, isEdit, initialData?.asset_no]);
 
   // 处理图片上传
@@ -571,6 +572,7 @@ export function AssetForm({ initialData, onSubmit, onCancel, loading = false, is
           <CardContent className="space-y-4">
             {imagePreview ? (
               <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imagePreview}
                   alt="资产图片预览"

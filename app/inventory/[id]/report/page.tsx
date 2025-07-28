@@ -64,6 +64,7 @@ export default function InventoryReportPage() {
         if (taskId) {
             loadReport();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [taskId]);
 
     const loadReport = async () => {
