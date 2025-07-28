@@ -98,9 +98,9 @@ function CategoryNode({
         </div>
 
         {/* 分类信息 */}
-        <div className="flex flex-1 items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium">{category.name}</span>
+        <div className="flex min-w-0 flex-1 items-center justify-between">
+          <div className="flex min-w-0 items-center space-x-2">
+            <span className="text-sm font-medium truncate">{category.name}</span>
             <span className="font-mono text-xs text-gray-500">({category.code})</span>
             {(category.asset_count ?? 0) > 0 && (
               <Badge variant="secondary" className="ml-2 text-xs">
@@ -109,7 +109,7 @@ function CategoryNode({
             )}
           </div>
 
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center">
             <Button variant="ghost" size="sm" onClick={handleEdit} title="编辑分类">
               <Edit className="h-3 w-3" />
             </Button>

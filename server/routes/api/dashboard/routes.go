@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"asset-management-system/server/global"
+	"asset-management-system/server/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -125,7 +126,7 @@ func TestDashboard(c *gin.Context) {
 
 	// 测试assets表
 	var assetCount int64
-	if err := global.DB.Table("assets").Count(&assetCount).Error; err != nil {
+	if err := global.DB.Model(&models.Asset{}).Count(&assetCount).Error; err != nil {
 		testResults["assets"] = gin.H{"error": err.Error()}
 	} else {
 		testResults["assets"] = gin.H{"count": assetCount, "status": "ok"}
@@ -133,7 +134,7 @@ func TestDashboard(c *gin.Context) {
 
 	// 测试categories表
 	var categoryCount int64
-	if err := global.DB.Table("categories").Count(&categoryCount).Error; err != nil {
+	if err := global.DB.Model(&models.Category{}).Count(&categoryCount).Error; err != nil {
 		testResults["categories"] = gin.H{"error": err.Error()}
 	} else {
 		testResults["categories"] = gin.H{"count": categoryCount, "status": "ok"}
@@ -141,7 +142,7 @@ func TestDashboard(c *gin.Context) {
 
 	// 测试departments表
 	var departmentCount int64
-	if err := global.DB.Table("departments").Count(&departmentCount).Error; err != nil {
+	if err := global.DB.Model(&models.Department{}).Count(&departmentCount).Error; err != nil {
 		testResults["departments"] = gin.H{"error": err.Error()}
 	} else {
 		testResults["departments"] = gin.H{"count": departmentCount, "status": "ok"}
@@ -149,7 +150,7 @@ func TestDashboard(c *gin.Context) {
 
 	// 测试borrow_records表
 	var borrowCount int64
-	if err := global.DB.Table("borrow_records").Count(&borrowCount).Error; err != nil {
+	if err := global.DB.Model(&models.BorrowRecord{}).Count(&borrowCount).Error; err != nil {
 		testResults["borrow_records"] = gin.H{"error": err.Error()}
 	} else {
 		testResults["borrow_records"] = gin.H{"count": borrowCount, "status": "ok"}
@@ -165,11 +166,11 @@ func TestDashboard(c *gin.Context) {
 func getAssetStats() map[string]interface{} {
 	var total, available, borrowed, maintenance, scrapped int64
 
-	global.DB.Table("assets").Count(&total)
-	global.DB.Table("assets").Where("status = ?", "available").Count(&available)
-	global.DB.Table("assets").Where("status = ?", "borrowed").Count(&borrowed)
-	global.DB.Table("assets").Where("status = ?", "maintenance").Count(&maintenance)
-	global.DB.Table("assets").Where("status = ?", "scrapped").Count(&scrapped)
+	global.DB.Model(&models.Asset{}).Count(&total)
+	global.DB.Model(&models.Asset{}).Where("status = ?", "available").Count(&available)
+	global.DB.Model(&models.Asset{}).Where("status = ?", "borrowed").Count(&borrowed)
+	global.DB.Model(&models.Asset{}).Where("status = ?", "maintenance").Count(&maintenance)
+	global.DB.Model(&models.Asset{}).Where("status = ?", "scrapped").Count(&scrapped)
 
 	return map[string]interface{}{
 		"total":       total,
@@ -183,7 +184,7 @@ func getAssetStats() map[string]interface{} {
 // getCategoryStats 获取分类统计
 func getCategoryStats() map[string]interface{} {
 	var total int64
-	global.DB.Table("categories").Count(&total)
+	global.DB.Model(&models.Category{}).Count(&total)
 
 	return map[string]interface{}{
 		"total": total,
@@ -193,7 +194,7 @@ func getCategoryStats() map[string]interface{} {
 // getDepartmentStats 获取部门统计
 func getDepartmentStats() map[string]interface{} {
 	var total int64
-	global.DB.Table("departments").Count(&total)
+	global.DB.Model(&models.Department{}).Count(&total)
 
 	return map[string]interface{}{
 		"total": total,
@@ -204,9 +205,9 @@ func getDepartmentStats() map[string]interface{} {
 func getBorrowStats() map[string]interface{} {
 	var total, active, overdue int64
 
-	global.DB.Table("borrow_records").Count(&total)
-	global.DB.Table("borrow_records").Where("status = ?", "borrowed").Count(&active)
-	global.DB.Table("borrow_records").Where("status = ? AND expected_return_date < ?", "borrowed", time.Now()).Count(&overdue)
+	global.DB.Model(&models.BorrowRecord{}).Count(&total)
+	global.DB.Model(&models.BorrowRecord{}).Where("status = ?", "borrowed").Count(&active)
+	global.DB.Model(&models.BorrowRecord{}).Where("status = ? AND expected_return_date < ?", "borrowed", time.Now()).Count(&overdue)
 
 	return map[string]interface{}{
 		"total":   total,
@@ -219,9 +220,9 @@ func getBorrowStats() map[string]interface{} {
 func getInventoryStats() map[string]interface{} {
 	var total, pending, completed int64
 
-	global.DB.Table("inventory_tasks").Count(&total)
-	global.DB.Table("inventory_tasks").Where("status = ?", "pending").Count(&pending)
-	global.DB.Table("inventory_tasks").Where("status = ?", "completed").Count(&completed)
+	global.DB.Model(&models.InventoryTask{}).Count(&total)
+	global.DB.Model(&models.InventoryTask{}).Where("status = ?", "pending").Count(&pending)
+	global.DB.Model(&models.InventoryTask{}).Where("status = ?", "completed").Count(&completed)
 
 	return map[string]interface{}{
 		"total":     total,
@@ -291,8 +292,9 @@ func getRecentAssets() []map[string]interface{} {
 		SELECT a.id, a.asset_no, a.name, a.status, a.created_at,
 		       c.name as category_name, d.name as department_name
 		FROM assets a
-		LEFT JOIN categories c ON c.id = a.category_id
-		LEFT JOIN departments d ON d.id = a.department_id
+		LEFT JOIN categories c ON c.id = a.category_id AND c.deleted_at IS NULL
+		LEFT JOIN departments d ON d.id = a.department_id AND d.deleted_at IS NULL
+		WHERE a.deleted_at IS NULL
 		ORDER BY a.created_at DESC
 		LIMIT 5
 	`).Rows()
@@ -334,7 +336,8 @@ func getRecentBorrows() []map[string]interface{} {
 		SELECT br.id, br.borrower_name, br.borrow_date, br.status,
 		       a.asset_no, a.name as asset_name
 		FROM borrow_records br
-		JOIN assets a ON a.id = br.asset_id
+		JOIN assets a ON a.id = br.asset_id AND a.deleted_at IS NULL
+		WHERE br.deleted_at IS NULL
 		ORDER BY br.borrow_date DESC
 		LIMIT 5
 	`).Rows()
