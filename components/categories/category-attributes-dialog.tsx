@@ -149,12 +149,12 @@ export function CategoryAttributesDialog({ open, onOpenChange, category, onSucce
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[700px]">
+      <DialogContent className="max-h-[80vh] sm:max-w-[700px] flex flex-col">
         <DialogHeader>
           <DialogTitle>配置分类属性 - {category.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 min-h-0 -mx-6 px-6 space-y-4 overflow-y-auto">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-sm">
               为此分类定义自定义属性字段，这些字段将在创建该分类资产时显示。
@@ -279,7 +279,7 @@ export function CategoryAttributesDialog({ open, onOpenChange, category, onSucce
             </div>
           )}
 
-          <div className="flex justify-end space-x-2 border-t pt-4">
+          <div className="flex justify-end space-x-2 pt-4 -mx-6 px-6 sticky bottom-0 bg-background z-10">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               取消
             </Button>

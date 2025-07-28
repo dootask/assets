@@ -206,13 +206,13 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
+      <DialogContent className="max-h-[90vh] sm:max-w-[600px] flex flex-col">
         <DialogHeader>
           <DialogTitle>{isEditing ? '编辑借用记录' : '新增借用记录'}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 min-h-0 -mx-6 px-6 space-y-4 overflow-y-auto">
             {!isEditing && (
               <FormField
                 control={form.control}
@@ -389,7 +389,7 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
               )}
             />
 
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex justify-end space-x-2 pt-4 -mx-6 px-6 sticky bottom-0 bg-background z-10">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>
                 取消
               </Button>
