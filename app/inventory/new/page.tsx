@@ -11,7 +11,7 @@ import { CategoryTreeNode, getCategories } from '@/lib/api/categories';
 import { getDepartments } from '@/lib/api/departments';
 import type { CreateInventoryTaskRequest, InventoryScopeFilter } from '@/lib/api/inventory';
 import { createInventoryTask } from '@/lib/api/inventory';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -174,7 +174,7 @@ export default function NewInventoryTaskPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
+                                <div className="space-y-2">
                                     <Label htmlFor="task_name">任务名称 *</Label>
                                     <Input
                                         id="task_name"
@@ -184,7 +184,7 @@ export default function NewInventoryTaskPage() {
                                         required
                                     />
                                 </div>
-                                <div>
+                                <div className="space-y-2">
                                     <Label htmlFor="created_by">创建人 *</Label>
                                     <Input
                                         id="created_by"
@@ -195,11 +195,11 @@ export default function NewInventoryTaskPage() {
                                     />
                                 </div>
                             </div>
-                            <div>
+                            <div className="space-y-2">
                                 <Label htmlFor="task_type">盘点类型</Label>
                                 <Select
                                     value={formData.task_type}
-                                    onValueChange={(value: any) => setFormData({ ...formData, task_type: value })}
+                                    onValueChange={(value: 'full' | 'category' | 'department') => setFormData({ ...formData, task_type: value })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />
@@ -211,7 +211,7 @@ export default function NewInventoryTaskPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
+                            <div className="space-y-2">
                                 <Label htmlFor="notes">备注</Label>
                                 <Textarea
                                     id="notes"
@@ -307,7 +307,7 @@ export default function NewInventoryTaskPage() {
                             </div>
 
                             {/* 位置筛选 */}
-                            <div>
+                            <div className="space-y-2">
                                 <Label htmlFor="location_filter">位置筛选（可选）</Label>
                                 <Input
                                     id="location_filter"

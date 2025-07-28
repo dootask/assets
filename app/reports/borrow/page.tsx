@@ -171,7 +171,7 @@ export default function BorrowReportsPage() {
 
       {/* 详细统计 */}
       <Tabs defaultValue="department" className="space-y-4">
-        <TabsList>
+        <TabsList className="gap-2">
           <TabsTrigger value="department">按部门统计</TabsTrigger>
           <TabsTrigger value="overdue">超期分析</TabsTrigger>
           <TabsTrigger value="trend">借用趋势</TabsTrigger>

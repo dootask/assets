@@ -108,11 +108,11 @@ export default function ReportsPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline">
             <Filter className="h-4 w-4 mr-2" />
             筛选
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline">
             <Calendar className="h-4 w-4 mr-2" />
             时间范围
           </Button>

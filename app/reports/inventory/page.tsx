@@ -173,7 +173,7 @@ export default function InventoryReportsPage() {
 
       {/* 详细统计 */}
       <Tabs defaultValue="tasks" className="space-y-4">
-        <TabsList>
+        <TabsList className="gap-2">
           <TabsTrigger value="tasks">任务分析</TabsTrigger>
           <TabsTrigger value="results">结果分析</TabsTrigger>
           <TabsTrigger value="department">按部门分析</TabsTrigger>

@@ -183,7 +183,7 @@ export default function AssetReportsPage() {
 
       {/* 详细统计 */}
       <Tabs defaultValue="category" className="space-y-4">
-        <TabsList>
+        <TabsList className="gap-2">
           <TabsTrigger value="category">按分类统计</TabsTrigger>
           <TabsTrigger value="department">按部门统计</TabsTrigger>
           <TabsTrigger value="status">按状态统计</TabsTrigger>

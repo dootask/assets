@@ -220,7 +220,7 @@ export default function InventoryTaskDetailPage() {
             </div>
 
             <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList>
+                <TabsList className="gap-2">
                     <TabsTrigger value="overview">概览</TabsTrigger>
                     <TabsTrigger value="checklist">盘点清单</TabsTrigger>
                     {task.status === 'in_progress' && (

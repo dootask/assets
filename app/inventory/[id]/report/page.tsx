@@ -114,7 +114,7 @@ export default function InventoryReportPage() {
         );
     }
 
-    const { task, summary, records = [], category_stats = [], department_stats = [] } = report;
+    const { task, summary, records, category_stats, department_stats } = report;
 
     return (
         <div className="container mx-auto p-6">
@@ -162,7 +162,7 @@ export default function InventoryReportPage() {
             <div className="space-y-6">
                 {/* 报告头部 */}
                 <Card>
-                    <CardHeader className="text-center">
+                    <CardHeader>
                         <CardTitle className="text-xl">资产盘点报告</CardTitle>
                         <div className="text-sm text-gray-600 space-y-1">
                             <div>任务名称: {task.task_name}</div>
@@ -197,9 +197,9 @@ export default function InventoryReportPage() {
                                     <span>{formatDate(task.end_date)}</span>
                                 </div>
                             </div>
-                            <div>
-                                <div className="text-gray-600 mb-2">备注:</div>
-                                <div className="text-sm bg-gray-50 p-3 rounded">
+                            <div className="flex flex-col">
+                                <div className="text-gray-600 mb-2 shrink-0">备注:</div>
+                                <div className="text-sm bg-gray-50 p-3 rounded flex-1">
                                     {task.notes || '无备注'}
                                 </div>
                             </div>
@@ -257,7 +257,7 @@ export default function InventoryReportPage() {
                 </Card>
 
                 <Tabs defaultValue="category" className="space-y-6">
-                    <TabsList className="print:hidden">
+                    <TabsList className="print:hidden gap-2">
                         <TabsTrigger value="category">分类统计</TabsTrigger>
                         <TabsTrigger value="department">部门统计</TabsTrigger>
                         <TabsTrigger value="records">详细记录</TabsTrigger>
