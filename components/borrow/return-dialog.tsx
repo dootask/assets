@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
     Dialog,
     DialogContent,
@@ -16,11 +17,14 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 import { returnAsset } from '@/lib/api/borrow';
 import type { BorrowResponse, ReturnAssetRequest } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { format } from 'date-fns';
+import { ChevronDownIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -28,7 +32,7 @@ import * as z from 'zod';
 
 // 表单验证模式
 const returnSchema = z.object({
-  actual_return_date: z.string().optional(),
+  actual_return_date: z.date().optional(),
   notes: z.string().optional(),
 });
 
@@ -52,7 +56,7 @@ export function ReturnDialog({
   const form = useForm<ReturnFormData>({
     resolver: zodResolver(returnSchema),
     defaultValues: {
-      actual_return_date: new Date().toISOString().split('T')[0],
+      actual_return_date: new Date(),
       notes: '',
     },
   });
@@ -61,7 +65,7 @@ export function ReturnDialog({
   useEffect(() => {
     if (borrow) {
       form.reset({
-        actual_return_date: new Date().toISOString().split('T')[0],
+        actual_return_date: new Date(),
         notes: borrow.notes || '',
       });
     }
@@ -75,7 +79,7 @@ export function ReturnDialog({
       setLoading(true);
 
       const returnData: ReturnAssetRequest = {
-        actual_return_date: data.actual_return_date || undefined,
+        actual_return_date: data.actual_return_date ? data.actual_return_date.toISOString() : undefined,
         notes: data.notes || undefined,
       };
 
@@ -180,15 +184,32 @@ export function ReturnDialog({
               control={form.control}
               name="actual_return_date"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0 sm:space-x-2">
                   <FormLabel>实际归还时间</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="date"
-                      {...field}
-                      disabled={loading}
-                    />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[240px] justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? format(field.value, "PPP") : <span>选择归还日期</span>}
+                          <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

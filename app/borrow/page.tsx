@@ -2,36 +2,30 @@
 
 import { BorrowDialog } from '@/components/borrow/borrow-dialog';
 import { ReturnDialog } from '@/components/borrow/return-dialog';
+import { CommandSelect } from '@/components/command-select';
 import { Loading } from '@/components/loading';
 import { Pagination } from '@/components/pagination';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { deleteBorrowRecord, getBorrowRecords } from '@/lib/api/borrow';
 import type { BorrowFilters, BorrowResponse, BorrowStatus, PaginationRequest } from '@/lib/types';
@@ -276,17 +270,17 @@ export default function BorrowPage() {
                 />
               </div>
             </div>
-            <Select value={statusFilter} onValueChange={(value) => handleFilter(value as BorrowStatus | 'all', overdueFilter)}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="状态" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部状态</SelectItem>
-                <SelectItem value="borrowed">借用中</SelectItem>
-                <SelectItem value="returned">已归还</SelectItem>
-                <SelectItem value="overdue">超期</SelectItem>
-              </SelectContent>
-            </Select>
+            <CommandSelect
+              options={[
+                { value: 'all', label: '全部状态' },
+                { value: 'borrowed', label: '借用中' },
+                { value: 'returned', label: '已归还' },
+                { value: 'overdue', label: '超期' },
+              ]}
+              value={statusFilter}
+              onValueChange={(value) => handleFilter(value as BorrowStatus | 'all', overdueFilter)}
+              placeholder="状态"
+            />
             <Button
               variant={overdueFilter ? "default" : "outline"}
               onClick={() => handleFilter(statusFilter, !overdueFilter)}

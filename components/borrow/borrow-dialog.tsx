@@ -1,27 +1,32 @@
 'use client';
 
-import { AssetSelector } from '@/components/borrow/asset-selector';
-import { DepartmentSelector } from '@/components/departments/department-selector';
+import { CommandSelect } from '@/components/command-select';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
-import { createBorrowRecord, updateBorrowRecord } from '@/lib/api/borrow';
-import type { BorrowResponse, CreateBorrowRequest, UpdateBorrowRequest } from '@/lib/types';
+import { createBorrowRecord, getAvailableAssets, updateBorrowRecord } from '@/lib/api/borrow';
+import { getDepartments } from '@/lib/api/departments';
+import type { AvailableAssetResponse, BorrowResponse, CreateBorrowRequest, DepartmentResponse, UpdateBorrowRequest } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { format } from 'date-fns';
+import { ChevronDownIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -33,8 +38,8 @@ const borrowSchema = z.object({
   borrower_name: z.string().min(1, '借用人姓名不能为空').max(100, '借用人姓名不能超过100个字符'),
   borrower_contact: z.string().max(100, '联系方式不能超过100个字符').optional(),
   department_id: z.number().optional(),
-  borrow_date: z.string().min(1, '借用时间不能为空'),
-  expected_return_date: z.string().optional(),
+  borrow_date: z.date(),
+  expected_return_date: z.date().optional(),
   purpose: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -48,14 +53,12 @@ interface BorrowDialogProps {
   onSuccess: () => void;
 }
 
-export function BorrowDialog({
-  open,
-  onOpenChange,
-  borrow,
-  onSuccess,
-}: BorrowDialogProps) {
+export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDialogProps) {
   const [loading, setLoading] = useState(false);
-  const isEditing = !!borrow;
+  const [departments, setDepartments] = useState<DepartmentResponse[]>([]);
+  const [availableAssets, setAvailableAssets] = useState<AvailableAssetResponse[]>([]);
+  
+  const isEditing = borrow && borrow.id > 0;
 
   const form = useForm<BorrowFormData>({
     resolver: zodResolver(borrowSchema),
@@ -64,41 +67,87 @@ export function BorrowDialog({
       borrower_name: '',
       borrower_contact: '',
       department_id: undefined,
-      borrow_date: new Date().toISOString().split('T')[0],
-      expected_return_date: '',
+      borrow_date: new Date(),
+      expected_return_date: undefined,
       purpose: '',
       notes: '',
     },
   });
 
-  // 当借用数据变化时更新表单
-  useEffect(() => {
-    if (borrow) {
-      form.reset({
-        asset_id: borrow.asset_id,
-        borrower_name: borrow.borrower_name,
-        borrower_contact: borrow.borrower_contact || '',
-        department_id: borrow.department_id || undefined,
-        borrow_date: new Date(borrow.borrow_date).toISOString().split('T')[0],
-        expected_return_date: borrow.expected_return_date 
-          ? new Date(borrow.expected_return_date).toISOString().split('T')[0]
-          : '',
-        purpose: borrow.purpose || '',
-        notes: borrow.notes || '',
+  // 加载部门列表
+  const loadDepartments = async () => {
+    try {
+      const response = await getDepartments({
+        page: 1,
+        page_size: 100,
+        sorts: [{ key: 'name', desc: false }],
       });
-    } else {
+      
+      if (response.code === 'SUCCESS') {
+        setDepartments(response.data.data);
+      }
+    } catch (error) {
+      console.error('加载部门列表失败:', error);
+    }
+  };
+
+  // 加载可用资产列表
+  const loadAvailableAssets = async () => {
+    try {
+      const response = await getAvailableAssets({
+        page: 1,
+        page_size: 100,
+        search: '',
+      });
+
+      if (response.code === 'SUCCESS') {
+        setAvailableAssets(response.data.data);
+      }
+    } catch (error) {
+      console.error('加载可用资产列表失败:', error);
+    }
+  };
+
+  // 初始化加载
+  useEffect(() => {
+    if (open) {
+      loadDepartments();
+      loadAvailableAssets();
+    }
+  }, [open]);
+
+  // 当borrow改变时，更新表单值
+  useEffect(() => {
+    if (open && borrow) {
+      if (isEditing) {
+        // 编辑模式：填充现有数据
+        form.reset({
+          asset_id: borrow.asset_id,
+          borrower_name: borrow.borrower_name,
+          borrower_contact: borrow.borrower_contact || '',
+          department_id: borrow.department_id || undefined,
+          borrow_date: new Date(borrow.borrow_date),
+          expected_return_date: borrow.expected_return_date 
+            ? new Date(borrow.expected_return_date)
+            : undefined,
+          purpose: borrow.purpose || '',
+          notes: borrow.notes || '',
+        });
+      }
+    } else if (open) {
+      // 新建模式：重置表单
       form.reset({
         asset_id: 0,
         borrower_name: '',
         borrower_contact: '',
         department_id: undefined,
-        borrow_date: new Date().toISOString().split('T')[0],
-        expected_return_date: '',
+        borrow_date: new Date(),
+        expected_return_date: undefined,
         purpose: '',
         notes: '',
       });
     }
-  }, [borrow, form]);
+  }, [open, borrow, form, isEditing]);
 
   // 提交表单
   const onSubmit = async (data: BorrowFormData) => {
@@ -111,8 +160,8 @@ export function BorrowDialog({
           borrower_name: data.borrower_name,
           borrower_contact: data.borrower_contact || undefined,
           department_id: data.department_id || undefined,
-          borrow_date: data.borrow_date,
-          expected_return_date: data.expected_return_date || undefined,
+          borrow_date: data.borrow_date.toISOString(),
+          expected_return_date: data.expected_return_date ? data.expected_return_date.toISOString() : undefined,
           purpose: data.purpose || undefined,
           notes: data.notes || undefined,
         };
@@ -132,8 +181,8 @@ export function BorrowDialog({
           borrower_name: data.borrower_name,
           borrower_contact: data.borrower_contact || undefined,
           department_id: data.department_id || undefined,
-          borrow_date: data.borrow_date,
-          expected_return_date: data.expected_return_date || undefined,
+          borrow_date: data.borrow_date.toISOString(),
+          expected_return_date: data.expected_return_date ? data.expected_return_date.toISOString() : undefined,
           purpose: data.purpose || undefined,
           notes: data.notes || undefined,
         };
@@ -182,10 +231,17 @@ export function BorrowDialog({
                   <FormItem>
                     <FormLabel>选择资产 *</FormLabel>
                     <FormControl>
-                      <AssetSelector
-                        value={field.value || undefined}
-                        onValueChange={(value) => field.onChange(value || 0)}
+                      <CommandSelect
+                        options={availableAssets.map(asset => ({
+                          value: asset.id.toString(),
+                          label: asset.name,
+                          description: `${asset.asset_no} • ${asset.status} • ${asset.department?.name || ''}`
+                        }))}
+                        value={field.value?.toString() || ''}
+                        onValueChange={(value: string) => field.onChange(value ? parseInt(value) : undefined)}
+                        placeholder="选择资产"
                         disabled={loading}
+                        allowClear
                       />
                     </FormControl>
                     <FormMessage />
@@ -239,10 +295,17 @@ export function BorrowDialog({
                 <FormItem>
                   <FormLabel>所属部门</FormLabel>
                   <FormControl>
-                    <DepartmentSelector
-                      value={field.value}
-                      onValueChange={field.onChange}
+                    <CommandSelect
+                      options={departments.map(dept => ({
+                        value: dept.id.toString(),
+                        label: dept.name,
+                        description: `${dept.code} • ${dept.asset_count || 0} 个资产`
+                      }))}
+                      value={field.value?.toString() || ''}
+                      onValueChange={(value: string) => field.onChange(value ? parseInt(value) : undefined)}
+                      placeholder="选择部门"
                       disabled={loading}
+                      allowClear
                     />
                   </FormControl>
                   <FormMessage />
@@ -258,11 +321,34 @@ export function BorrowDialog({
                   <FormItem>
                     <FormLabel>借用时间 *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-[240px] justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>选择借用时间</span>
+                              )}
+                              <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -276,11 +362,34 @@ export function BorrowDialog({
                   <FormItem>
                     <FormLabel>预期归还时间</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        disabled={loading}
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-[240px] justify-start text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>选择预期归还时间</span>
+                              )}
+                              <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
