@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { InventoryRecord, InventoryRecordListQuery, InventoryTask } from '@/lib/api/inventory';
 import { getInventoryRecords, getInventoryTask, updateInventoryTask } from '@/lib/api/inventory';
-import { AlertCircle, ArrowLeft, CheckCircle, FileText, Play, Search, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, FileText, Play, Search, XCircle } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -88,11 +88,11 @@ export default function InventoryTaskDetailPage() {
             if (response.code === 'SUCCESS') {
                 setTask(response.data);
             } else {
-                toast.error(response.message || '获取盘点任务失败');
+                toast.error(response.message);
             }
         } catch (error) {
-            console.error('获取盘点任务失败:', error);
-            toast.error('获取盘点任务失败');
+            console.error('Failed to load task:', error);
+            toast.error('加载盘点任务失败');
         } finally {
             setLoading(false);
         }
@@ -105,7 +105,9 @@ export default function InventoryTaskDetailPage() {
                 page: currentPage,
                 page_size: pageSize,
                 task_id: taskId,
-                result: resultFilter as any || undefined,
+                result: resultFilter && resultFilter !== 'all' 
+                    ? resultFilter as 'normal' | 'surplus' | 'deficit' | 'damaged' 
+                    : undefined,
                 keyword: keyword || undefined,
             };
 

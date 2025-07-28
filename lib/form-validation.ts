@@ -1,5 +1,8 @@
 // 表单验证工具函数
 
+// 表单字段值的可能类型
+export type FormFieldValue = string | number | boolean | Date | null | undefined;
+
 // 验证规则类型
 export interface ValidationRule {
   required?: boolean;
@@ -8,7 +11,7 @@ export interface ValidationRule {
   pattern?: RegExp;
   min?: number;
   max?: number;
-  custom?: (value: any) => string | null;
+  custom?: (value: FormFieldValue) => string | null;
 }
 
 // 验证结果类型
@@ -26,7 +29,7 @@ export interface FieldValidation {
 }
 
 // 验证单个字段
-export function validateField(value: any, rules: ValidationRule, label: string): ValidationResult {
+export function validateField(value: FormFieldValue, rules: ValidationRule, label: string): ValidationResult {
   const errors: string[] = [];
 
   // 必填验证
@@ -80,7 +83,7 @@ export function validateField(value: any, rules: ValidationRule, label: string):
 }
 
 // 验证整个表单
-export function validateForm(data: Record<string, any>, config: FieldValidation): {
+export function validateForm(data: Record<string, FormFieldValue>, config: FieldValidation): {
   isValid: boolean;
   errors: Record<string, string[]>;
   firstError?: string;
@@ -135,7 +138,7 @@ export const commonRules = {
   },
   positiveInteger: {
     min: 1,
-    custom: (value: any) => {
+    custom: (value: FormFieldValue) => {
       if (value && !Number.isInteger(Number(value))) {
         return '必须是整数';
       }

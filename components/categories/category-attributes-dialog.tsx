@@ -19,7 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { CategoryTreeNode, updateCategory } from '@/lib/api/categories';
+import { AttributeField, CategoryTreeNode, SaveCategoryAttributes, updateCategory } from '@/lib/api/categories';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,23 +31,15 @@ interface CategoryAttributesDialogProps {
   onSuccess: () => void;
 }
 
-interface AttributeField {
-  id: string;
-  name: string;
-  label: string;
-  type: 'text' | 'number' | 'date' | 'select' | 'boolean';
-  required: boolean;
-  options?: string[];
-  default_value?: any;
-}
-
 const FIELD_TYPES = [
   { value: 'text', label: '文本' },
   { value: 'number', label: '数字' },
   { value: 'date', label: '日期' },
   { value: 'select', label: '选择' },
   { value: 'boolean', label: '布尔值' },
-];
+] as const;
+
+type FieldType = typeof FIELD_TYPES[number]['value'];
 
 export function CategoryAttributesDialog({
   open,
@@ -62,12 +54,12 @@ export function CategoryAttributesDialog({
     if (open && category) {
       // 加载现有属性
       if (category.attributes && category.attributes.fields) {
-        const existingFields = category.attributes.fields.map((field: any, index: number) => ({
-          id: `field_${index}`,
-          name: field.name || '',
-          label: field.label || '',
-          type: field.type || 'text',
-          required: field.required || false,
+        const existingFields = category.attributes.fields.map((field: AttributeField, index: number) => ({
+          id: field.id || `field_${index}`,
+          name: field.name,
+          label: field.label,
+          type: field.type,
+          required: field.required,
           options: field.options || [],
           default_value: field.default_value,
         }));
@@ -145,7 +137,7 @@ export function CategoryAttributesDialog({
     try {
       setLoading(true);
 
-      const attributes = {
+      const attributes: SaveCategoryAttributes = {
         fields: fields.map(field => ({
           name: field.name,
           label: field.label,
@@ -239,7 +231,7 @@ export function CategoryAttributesDialog({
                         <Label>字段类型</Label>
                         <Select
                           value={field.type}
-                          onValueChange={(value: any) => updateField(field.id, { type: value })}
+                          onValueChange={(value: FieldType) => updateField(field.id, { type: value })}
                         >
                           <SelectTrigger>
                             <SelectValue />

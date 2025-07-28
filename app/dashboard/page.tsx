@@ -96,7 +96,14 @@ export default function Dashboard() {
         }
         
         // 转换后端数据格式为前端期望的格式
-        const recentBorrows: any[] = []; // 暂时设为空数组，因为后端还没有返回recent_activity数据
+        const recentBorrows: Array<{
+          id: number;
+          asset_name: string;
+          asset_no: string;
+          borrower_name: string;
+          borrow_date: string;
+          is_overdue?: boolean;
+        }> = []; // 暂时设为空数组，因为后端还没有返回recent_activity数据
 
         setStats({
           assets: {

@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { getAssets } from '@/lib/api/assets';
 import type { InventoryRecord, InventoryTask } from '@/lib/api/inventory';
 import { getInventoryRecords } from '@/lib/api/inventory';
-import type { AssetResponse } from '@/lib/types';
+import type { AssetFilters, AssetResponse, AssetStatus } from '@/lib/types';
 import { AlertTriangle, CheckCircle, Clock, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -44,12 +44,12 @@ export function InventoryChecklist({ task, onAssetSelect }: InventoryChecklistPr
             setLoading(true);
             
             // 构建筛选条件
-            const filters: any = {};
+            const filters: AssetFilters = {};
             if (keyword) {
-                filters.keyword = keyword;
+                filters.name = keyword;
             }
-            if (statusFilter) {
-                filters.status = statusFilter;
+            if (statusFilter && statusFilter !== 'all') {
+                filters.status = statusFilter as AssetStatus;
             }
 
             // 根据任务类型和范围过滤条件构建查询

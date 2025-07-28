@@ -1,12 +1,43 @@
 import apiClient from '@/lib/axios';
 
+// 分类属性字段类型定义
+export interface AttributeField {
+  id: string;
+  name: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select' | 'boolean';
+  required: boolean;
+  options?: string[];
+  default_value?: unknown;
+}
+
+// 用于保存的属性字段类型（不包含id）
+export interface SaveAttributeField {
+  name: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select' | 'boolean';
+  required: boolean;
+  options?: string[];
+  default_value?: unknown;
+}
+
+// 分类属性结构
+export interface CategoryAttributes {
+  fields: AttributeField[];
+}
+
+// 用于保存的分类属性结构
+export interface SaveCategoryAttributes {
+  fields: SaveAttributeField[];
+}
+
 export interface Category {
   id: number;
   name: string;
   code: string;
   parent_id?: number | null;
   description?: string;
-  attributes?: any;
+  attributes?: CategoryAttributes;
   created_at: string;
   updated_at: string;
   children?: Category[];
@@ -18,7 +49,7 @@ export interface CategoryTreeNode {
   code: string;
   parent_id?: number | null;
   description?: string;
-  attributes?: any;
+  attributes?: CategoryAttributes;
   asset_count?: number;
   created_at: string;
   updated_at: string;
@@ -36,7 +67,7 @@ export interface CreateCategoryRequest {
   code: string;
   parent_id?: number;
   description?: string;
-  attributes?: any;
+  attributes?: SaveCategoryAttributes;
 }
 
 export interface UpdateCategoryRequest {
@@ -44,7 +75,7 @@ export interface UpdateCategoryRequest {
   code?: string;
   parent_id?: number;
   description?: string;
-  attributes?: any;
+  attributes?: SaveCategoryAttributes;
 }
 
 // 获取分类树
@@ -77,7 +108,7 @@ export const getCategoryById = async (id: number): Promise<Category> => {
 };
 
 // 更新分类属性
-export const updateCategoryAttributes = async (id: number, attributes: any): Promise<Category> => {
+export const updateCategoryAttributes = async (id: number, attributes: SaveCategoryAttributes): Promise<Category> => {
   const response = await apiClient.put(`/categories/${id}/attributes`, { attributes });
   return response.data.data;
 };

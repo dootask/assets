@@ -268,11 +268,69 @@ export interface SystemAlert {
   created_at: string;
 }
 
+// 报表筛选条件的具体类型定义
+export interface AssetReportFilters {
+  name?: string;
+  asset_no?: string;
+  category_id?: number;
+  department_id?: number;
+  status?: string;
+  brand?: string;
+  location?: string;
+  purchase_date_from?: string;
+  purchase_date_to?: string;
+  price_low?: number;
+  price_high?: number;
+}
+
+export interface BorrowReportFilters {
+  asset_id?: number;
+  borrower_name?: string;
+  department_id?: number;
+  status?: string;
+  borrow_date_from?: string;
+  borrow_date_to?: string;
+  overdue_only?: boolean;
+}
+
+export interface InventoryReportFilters {
+  task_id?: number;
+  task_type?: string;
+  status?: string;
+  department_id?: number;
+  category_id?: number;
+  result?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+// 报表数据的联合类型
+export type ReportFilters = AssetReportFilters | BorrowReportFilters | InventoryReportFilters | Record<string, unknown>;
+
+// 报表数据的具体类型定义
+export type ReportDataItem = 
+  | CategoryStats 
+  | DepartmentStats 
+  | StatusStats 
+  | BorrowDepartmentStats 
+  | BorrowAssetStats 
+  | InventoryTaskStats 
+  | InventoryDepartmentStats 
+  | InventoryCategoryStats
+  | Record<string, unknown>;
+
+// 报表汇总数据的联合类型
+export type ReportSummary = 
+  | AssetSummary 
+  | BorrowSummary 
+  | InventorySummary 
+  | Record<string, unknown>;
+
 // 自定义报表请求接口
 export interface CustomReportRequest {
   report_type: string;
   date_range: DateRange;
-  filters: Record<string, any>;
+  filters: ReportFilters;
   group_by: string[];
   metrics: string[];
   sort_by: string;
@@ -290,8 +348,8 @@ export interface CustomReportResponse {
   generated_at: string;
   date_range: DateRange;
   total_count: number;
-  data: Record<string, any>[];
-  summary: Record<string, any>;
+  data: ReportDataItem[];
+  summary: ReportSummary;
 }
 
 // 报表查询参数接口

@@ -43,6 +43,9 @@ const resultIcons = {
     damaged: AlertCircle
 };
 
+// 定义CreateInventoryRecordRequest字段值的类型
+type InventoryRecordFieldValue = string | number | 'normal' | 'surplus' | 'deficit' | 'damaged';
+
 export function InventoryExecution({ task, onRecordCreated }: InventoryExecutionProps) {
     const [assets, setAssets] = useState<AssetResponse[]>([]);
     const [loading, setLoading] = useState(false);
@@ -178,7 +181,7 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
         toast.success(`已添加资产: ${asset.name}`);
     };
 
-    const updateBatchRecord = (index: number, field: keyof CreateInventoryRecordRequest, value: any) => {
+    const updateBatchRecord = (index: number, field: keyof CreateInventoryRecordRequest, value: InventoryRecordFieldValue) => {
         const updatedRecords = [...batchRecords];
         updatedRecords[index] = { ...updatedRecords[index], [field]: value };
         setBatchRecords(updatedRecords);
@@ -323,7 +326,7 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                                             <Label htmlFor="result">盘点结果</Label>
                                             <Select
                                                 value={singleRecord.result}
-                                                onValueChange={(value: any) => setSingleRecord({ ...singleRecord, result: value })}
+                                                onValueChange={(value: 'normal' | 'surplus' | 'deficit' | 'damaged') => setSingleRecord({ ...singleRecord, result: value })}
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue />
@@ -478,9 +481,9 @@ export function InventoryExecution({ task, onRecordCreated }: InventoryExecution
                                                                 </Select>
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Select
+                                                                <Select 
                                                                     value={record.result}
-                                                                    onValueChange={(value: any) => updateBatchRecord(index, 'result', value)}
+                                                                    onValueChange={(value: 'normal' | 'surplus' | 'deficit' | 'damaged') => updateBatchRecord(index, 'result', value)}
                                                                 >
                                                                     <SelectTrigger className="w-24">
                                                                         <SelectValue />

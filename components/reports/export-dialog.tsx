@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { ReportFilters } from '@/lib/api/reports';
 import {
     Calendar,
     Download,
@@ -26,13 +27,16 @@ interface ExportDialogProps {
   children: React.ReactNode;
 }
 
+export type ExportFormat = 'excel' | 'csv' | 'pdf';
+export type DateRangeType = 'all' | 'month' | 'quarter' | 'year' | 'custom';
+
 export interface ExportOptions {
-  format: 'excel' | 'csv' | 'pdf';
+  format: ExportFormat;
   dateRange?: {
     start_date?: string;
     end_date?: string;
   };
-  filters?: Record<string, any>;
+  filters?: ReportFilters;
   includeCharts?: boolean;
   includeSummary?: boolean;
   customFields?: string[];
@@ -41,12 +45,18 @@ export interface ExportOptions {
 export function ExportDialog({ reportType, onExport, children }: ExportDialogProps) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [format, setFormat] = useState<'excel' | 'csv' | 'pdf'>('excel');
+  const [format, setFormat] = useState<ExportFormat>('excel');
   const [includeCharts, setIncludeCharts] = useState(true);
   const [includeSummary, setIncludeSummary] = useState(true);
-  const [dateRange, setDateRange] = useState<'all' | 'month' | 'quarter' | 'year' | 'custom'>('month');
+  const [dateRange, setDateRange] = useState<DateRangeType>('month');
 
-  const formatOptions = [
+  const formatOptions: Array<{
+    value: ExportFormat;
+    label: string;
+    description: string;
+    icon: React.ComponentType<{ className?: string }>;
+    recommended?: boolean;
+  }> = [
     {
       value: 'excel',
       label: 'Excel 文件',
@@ -191,7 +201,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
                     className={`cursor-pointer transition-colors ${
                       format === option.value ? 'ring-2 ring-primary' : 'hover:bg-muted/50'
                     }`}
-                    onClick={() => setFormat(option.value as any)}
+                    onClick={() => setFormat(option.value)}
                   >
                     <CardContent className="flex items-center space-x-3 p-4">
                       <Icon className="h-5 w-5 text-muted-foreground" />
@@ -226,7 +236,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
               <Calendar className="h-4 w-4 mr-2" />
               时间范围
             </Label>
-            <Select value={dateRange} onValueChange={(value: any) => setDateRange(value)}>
+            <Select value={dateRange} onValueChange={(value: DateRangeType) => setDateRange(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

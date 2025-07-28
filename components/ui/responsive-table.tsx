@@ -4,48 +4,48 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
-interface Column {
+interface Column<T = Record<string, unknown>> {
   key: string;
   title: string | React.ReactNode;
-  render?: (value: any, record: any) => React.ReactNode;
+  render?: (value: unknown, record: T) => React.ReactNode;
   className?: string;
   mobileHidden?: boolean; // 在移动端隐藏的列
 }
 
-interface Action {
+interface Action<T = Record<string, unknown>> {
   key: string;
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
-  onClick: (record: any) => void;
+  onClick: (record: T) => void;
   variant?: 'default' | 'destructive';
 }
 
-interface ResponsiveTableProps {
-  columns: Column[];
-  data: any[];
-  actions?: Action[];
+interface ResponsiveTableProps<T = Record<string, unknown>> {
+  columns: Column<T>[];
+  data: T[];
+  actions?: Action<T>[];
   loading?: boolean;
   emptyText?: string;
   className?: string;
 }
 
-export function ResponsiveTable({
+export function ResponsiveTable<T extends Record<string, unknown> = Record<string, unknown>>({
   columns,
   data,
   actions,
   loading = false,
   emptyText = '暂无数据',
   className,
-}: ResponsiveTableProps) {
+}: ResponsiveTableProps<T>) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const toggleRowExpansion = (id: string) => {
@@ -113,7 +113,7 @@ export function ResponsiveTable({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {data.map((record, index) => (
-                <tr key={record.id || index} className="hover:bg-gray-50">
+                <tr key={(record.id as string | number) || index} className="hover:bg-gray-50">
                   {columns.map((column) => (
                     <td
                       key={column.key}
@@ -124,7 +124,7 @@ export function ResponsiveTable({
                     >
                       {column.render
                         ? column.render(record[column.key], record)
-                        : record[column.key]}
+                        : (record[column.key] as React.ReactNode)}
                     </td>
                   ))}
                   {actions && actions.length > 0 && (
@@ -164,7 +164,7 @@ export function ResponsiveTable({
       {/* 移动端卡片视图 */}
       <div className="md:hidden space-y-3">
         {data.map((record, index) => {
-          const recordId = record.id || index;
+          const recordId = (record.id as string | number) || index;
           const isExpanded = expandedRows.has(recordId.toString());
           const visibleColumns = columns.filter(col => !col.mobileHidden);
           const hiddenColumns = columns.filter(col => col.mobileHidden);
@@ -182,7 +182,7 @@ export function ResponsiveTable({
                       <span className="text-sm text-gray-900 text-right flex-1 ml-2">
                         {column.render
                           ? column.render(record[column.key], record)
-                          : record[column.key]}
+                          : (record[column.key] as React.ReactNode)}
                       </span>
                     </div>
                   ))}
@@ -199,7 +199,7 @@ export function ResponsiveTable({
                         <span className="text-sm text-gray-900 text-right flex-1 ml-2">
                           {column.render
                             ? column.render(record[column.key], record)
-                            : record[column.key]}
+                            : (record[column.key] as React.ReactNode)}
                         </span>
                       </div>
                     ))}
@@ -211,7 +211,7 @@ export function ResponsiveTable({
                         <span className="text-sm text-gray-900 text-right flex-1 ml-2">
                           {column.render
                             ? column.render(record[column.key], record)
-                            : record[column.key]}
+                            : (record[column.key] as React.ReactNode)}
                         </span>
                       </div>
                     ))}
