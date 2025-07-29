@@ -1,267 +1,255 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CategoryStats, DepartmentStats, PurchaseYearStats, StatusStats, ValueAnalysis } from '@/lib/api/reports';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { BarChart3, PieChart, TrendingUp } from 'lucide-react';
+import { Cell, Legend, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 // 颜色配置
-const COLORS = {
-  primary: '#3b82f6',
-  secondary: '#10b981',
-  accent: '#f59e0b',
-  danger: '#ef4444',
-  warning: '#f97316',
-  info: '#06b6d4',
-  success: '#22c55e',
-  muted: '#6b7280',
-};
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
-const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#22c55e'];
-
-interface AssetCategoryChartProps {
-  data: CategoryStats[];
-}
-
-export function AssetCategoryChart({ data }: AssetCategoryChartProps) {
+// 资产分类图表组件
+export function AssetCategoryChart({ data }: { data: Array<{ category_name: string; asset_count: number; percentage: number }> }) {
   const chartData = data.map((item, index) => ({
-    ...item,
-    fill: PIE_COLORS[index % PIE_COLORS.length],
+    name: item.category_name,
+    value: item.asset_count,
+    percentage: item.percentage,
+    color: COLORS[index % COLORS.length],
   }));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>资产分类分布</CardTitle>
-        <CardDescription>按分类查看资产数量分布</CardDescription>
+        <CardTitle className="flex items-center">
+          <PieChart className="mr-2 h-5 w-5" />
+          按分类统计
+        </CardTitle>
+        <CardDescription>资产分类分布饼图</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={({ category_name, percentage }) => `${category_name} (${percentage.toFixed(1)}%)`}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="asset_count"
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value: number, name: string) => [`${value} 个资产`, name === 'asset_count' ? '数量' : name]}
-            />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value, name) => [value, '数量']} />
+              <Legend />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-interface AssetDepartmentChartProps {
-  data: DepartmentStats[];
-}
-
-export function AssetDepartmentChart({ data }: AssetDepartmentChartProps) {
-  const chartData = data.slice(0, 10); // 只显示前10个部门
+// 资产部门图表组件
+export function AssetDepartmentChart({ data }: { data: Array<{ department_name: string; asset_count: number; total_value: number }> }) {
+  const chartData = data.map((item, index) => ({
+    name: item.department_name,
+    assets: item.asset_count,
+    value: Math.round(item.total_value / 10000), // 转换为万元
+    color: COLORS[index % COLORS.length],
+  }));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>部门资产分布</CardTitle>
-        <CardDescription>各部门的资产数量和价值</CardDescription>
+        <CardTitle className="flex items-center">
+          <BarChart3 className="mr-2 h-5 w-5" />
+          按部门统计
+        </CardTitle>
+        <CardDescription>各部门资产数量和价值对比</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="department_name" angle={-45} textAnchor="end" height={80} />
-            <YAxis yAxisId="left" />
-            <YAxis yAxisId="right" orientation="right" />
-            <Tooltip
-              formatter={(value: number, name: string) => {
-                if (name === 'asset_count') return [`${value} 个`, '资产数量'];
-                if (name === 'total_value') return [`¥${value.toLocaleString()}`, '总价值'];
-                return [value, name];
-              }}
-            />
-            <Legend />
-            <Bar yAxisId="left" dataKey="asset_count" fill={COLORS.primary} name="资产数量" />
-            <Bar yAxisId="right" dataKey="total_value" fill={COLORS.secondary} name="总价值" />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, assets }) => `${name}: ${assets}个`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="assets"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip 
+                formatter={(value, name, props) => {
+                  if (name === 'assets') return [value, '资产数量'];
+                  return [value, name];
+                }}
+                labelFormatter={(label) => `部门: ${label}`}
+              />
+              <Legend />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-interface AssetStatusChartProps {
-  data: StatusStats[];
-}
-
-export function AssetStatusChart({ data }: AssetStatusChartProps) {
-  const chartData = data.map(item => ({
-    ...item,
-    status_name:
-      item.status === 'available'
-        ? '可用'
-        : item.status === 'borrowed'
-          ? '借用中'
-          : item.status === 'maintenance'
-            ? '维护中'
-            : item.status === 'scrapped'
-              ? '已报废'
-              : item.status,
-  }));
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available':
-        return COLORS.success;
-      case 'borrowed':
-        return COLORS.warning;
-      case 'maintenance':
-        return COLORS.info;
-      case 'scrapped':
-        return COLORS.danger;
-      default:
-        return COLORS.muted;
-    }
+// 资产状态图表组件
+export function AssetStatusChart({ data }: { data: Array<{ status: string; count: number; percentage: number }> }) {
+  const statusMap = {
+    available: '可用',
+    borrowed: '借用中',
+    maintenance: '维护中',
+    scrapped: '已报废',
   };
 
+  const chartData = data.map((item, index) => ({
+    name: statusMap[item.status as keyof typeof statusMap] || item.status,
+    value: item.count,
+    percentage: item.percentage,
+    color: COLORS[index % COLORS.length],
+  }));
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>资产状态分布</CardTitle>
-        <CardDescription>不同状态资产的数量分布</CardDescription>
+        <CardTitle className="flex items-center">
+          <PieChart className="mr-2 h-5 w-5" />
+          资产状态分布
+        </CardTitle>
+        <CardDescription>不同状态资产的分布情况</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={({ status_name, percentage }) => `${status_name} (${percentage.toFixed(1)}%)`}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="count"
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getStatusColor(entry.status)} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value: number) => [`${value} 个资产`, '数量']} />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => [value, '数量']} />
+              <Legend />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-interface AssetPurchaseTrendChartProps {
-  data: PurchaseYearStats[];
-}
-
-export function AssetPurchaseTrendChart({ data }: AssetPurchaseTrendChartProps) {
-  const chartData = data.sort((a, b) => a.year - b.year);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>资产采购趋势</CardTitle>
-        <CardDescription>历年资产采购数量和价值趋势</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="year" />
-            <YAxis yAxisId="left" />
-            <YAxis yAxisId="right" orientation="right" />
-            <Tooltip
-              formatter={(value: number, name: string) => {
-                if (name === 'count') return [`${value} 个`, '采购数量'];
-                if (name === 'total_value') return [`¥${value.toLocaleString()}`, '采购价值'];
-                return [value, name];
-              }}
-            />
-            <Legend />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="count"
-              stroke={COLORS.primary}
-              strokeWidth={2}
-              name="采购数量"
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="total_value"
-              stroke={COLORS.secondary}
-              strokeWidth={2}
-              name="采购价值"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  );
-}
-
-interface AssetValueAnalysisChartProps {
-  data: ValueAnalysis;
-}
-
-export function AssetValueAnalysisChart({ data }: AssetValueAnalysisChartProps) {
+// 资产价值分析图表组件
+export function AssetValueAnalysisChart({ data }: { data: { high_value: number; medium_value: number; low_value: number; no_value: number } }) {
   const chartData = [
-    { name: '高价值 (>¥10,000)', value: data.high_value, fill: COLORS.danger },
-    { name: '中等价值 (¥1,000-¥10,000)', value: data.medium_value, fill: COLORS.warning },
-    { name: '低价值 (<¥1,000)', value: data.low_value, fill: COLORS.success },
-    { name: '无价值信息', value: data.no_value, fill: COLORS.muted },
+    { name: '高价值资产 (>¥10,000)', value: data.high_value, color: '#FF6B6B' },
+    { name: '中等价值资产 (¥1,000-¥10,000)', value: data.medium_value, color: '#4ECDC4' },
+    { name: '低价值资产 (<¥1,000)', value: data.low_value, color: '#45B7D1' },
+    { name: '无价值信息', value: data.no_value, color: '#96CEB4' },
   ];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>资产价值分析</CardTitle>
+        <CardTitle className="flex items-center">
+          <TrendingUp className="mr-2 h-5 w-5" />
+          价值分析
+        </CardTitle>
         <CardDescription>按价值区间分析资产分布</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-            <YAxis />
-            <Tooltip formatter={(value: number) => [`${value} 个资产`, '数量']} />
-            <Bar dataKey="value" fill={COLORS.primary}>
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, value }) => `${value}个`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => [value, '数量']} />
+              <Legend />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// 资产采购趋势图表组件
+export function AssetPurchaseTrendChart({ data }: { data: Array<{ year: number; count: number; total_value: number }> }) {
+  const chartData = data.map(item => ({
+    year: item.year.toString(),
+    count: item.count,
+    value: Math.round(item.total_value / 10000), // 转换为万元
+  }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <TrendingUp className="mr-2 h-5 w-5" />
+          采购趋势
+        </CardTitle>
+        <CardDescription>历年资产采购数量和价值趋势</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ year, count }) => `${year}年: ${count}个`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="count"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip 
+                formatter={(value, name) => {
+                  if (name === 'count') return [value, '采购数量'];
+                  if (name === 'value') return [`¥${value}万`, '采购价值'];
+                  return [value, name];
+                }}
+              />
+              <Legend />
+            </RechartsPieChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

@@ -4,15 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  BarChart3,
-  Calendar,
-  ClipboardList,
-  Download,
-  FileText,
-  Filter,
-  Package,
-  TrendingUp,
-  Users,
+    BarChart3,
+    Calendar,
+    ClipboardList,
+    Download,
+    FileText,
+    Filter,
+    Package,
+    TrendingUp,
+    Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -80,19 +80,37 @@ export default function ReportsPage() {
     },
   ];
 
-  const handleQuickAction = (action: string) => {
+  const handleQuickAction = async (action: string) => {
     switch (action) {
       case 'export-assets':
-        // 导出资产清单逻辑
-        console.log('导出资产清单');
+        try {
+          // 使用动态导入避免循环依赖
+          const { exportAssetInventory, downloadFile } = await import('@/lib/api/reports');
+          const blob = await exportAssetInventory();
+          const filename = `资产清单_${new Date().toISOString().split('T')[0]}.xlsx`;
+          downloadFile(blob, filename);
+          // 临时使用toast模拟，实际项目中应使用toast库
+          console.log('资产清单导出成功');
+        } catch (error) {
+          console.error('导出资产清单失败:', error);
+        }
         break;
       case 'monthly-report':
-        // 生成月度报告逻辑
-        console.log('生成月度报告');
+        try {
+          // 使用动态导入避免循环依赖
+          const { generateMonthlyReport, downloadFile } = await import('@/lib/api/reports');
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          const blob = await generateMonthlyReport(currentMonth);
+          const filename = `月度报告_${currentMonth}.pdf`;
+          downloadFile(blob, filename);
+          console.log('月度报告生成成功');
+        } catch (error) {
+          console.error('生成月度报告失败:', error);
+        }
         break;
       case 'custom-report':
         // 跳转到自定义报表页面
-        console.log('自定义报表');
+        window.location.href = '/reports/custom';
         break;
     }
   };

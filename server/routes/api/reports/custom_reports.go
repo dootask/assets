@@ -1,6 +1,8 @@
 package reports
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"asset-management-system/server/global"
@@ -11,234 +13,400 @@ import (
 
 // generateCustomAssetReport 生成自定义资产报表
 func generateCustomAssetReport(req CustomReportRequest) ([]map[string]interface{}, map[string]interface{}, int64) {
-	query := global.DB.Model(&models.Asset{})
-	
-	// 应用日期范围过滤
+	var data []map[string]interface{}
+	var summary map[string]interface{}
+	var totalCount int64
+
+	// 构建基础查询
+	query := global.DB.Table("assets a").
+		Select(buildAssetSelectFields(req.Metrics)).
+		Joins("LEFT JOIN categories c ON c.id = a.category_id").
+		Joins("LEFT JOIN departments d ON d.id = a.department_id")
+
+	// 应用过滤条件
+	query = applyAssetFilters(query, req.Filters)
+
+	// 应用日期范围
 	if req.DateRange.StartDate != nil {
-		query = query.Where("created_at >= ?", req.DateRange.StartDate)
+		query = query.Where("a.created_at >= ?", *req.DateRange.StartDate)
 	}
 	if req.DateRange.EndDate != nil {
-		query = query.Where("created_at <= ?", req.DateRange.EndDate)
+		query = query.Where("a.created_at <= ?", *req.DateRange.EndDate)
 	}
-	
-	// 应用其他过滤条件
-	query = applyAssetFilters(query, req.Filters)
-	
-	// 构建选择字段
-	selectFields := buildAssetSelectFields(req.Metrics, req.GroupBy)
-	
-	// 构建分组和排序
+
+	// 应用分组
 	if len(req.GroupBy) > 0 {
-		query = query.Group(strings.Join(req.GroupBy, ", "))
-	}
-	
-	if req.SortBy != "" {
-		order := req.SortBy
-		if req.SortOrder == "desc" {
-			order += " DESC"
+		groupFields := make([]string, len(req.GroupBy))
+		for i, field := range req.GroupBy {
+			groupFields[i] = mapAssetGroupField(field)
 		}
-		query = query.Order(order)
+		query = query.Group(strings.Join(groupFields, ", "))
 	}
-	
+
+	// 应用排序
+	if req.SortBy != "" {
+		sortField := mapAssetSortField(req.SortBy)
+		sortOrder := "ASC"
+		if req.SortOrder == "desc" {
+			sortOrder = "DESC"
+		}
+		query = query.Order(fmt.Sprintf("%s %s", sortField, sortOrder))
+	}
+
+	// 获取总数
+	query.Count(&totalCount)
+
 	// 应用限制
 	if req.Limit > 0 {
 		query = query.Limit(req.Limit)
 	}
-	
+
 	// 执行查询
-	var data []map[string]interface{}
-	rows, err := query.Select(selectFields).Rows()
+	rows, err := query.Rows()
 	if err != nil {
-		return data, nil, 0
+		return data, summary, totalCount
 	}
 	defer rows.Close()
-	
-	// 获取列名
+
+	// 获取列信息
 	columns, _ := rows.Columns()
-	
-	// 读取数据
+	values := make([]interface{}, len(columns))
+	valuePtrs := make([]interface{}, len(columns))
+
 	for rows.Next() {
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
-		for i := range values {
+		for i := range columns {
 			valuePtrs[i] = &values[i]
 		}
-		
 		rows.Scan(valuePtrs...)
-		
-		row := make(map[string]interface{})
+
+		record := make(map[string]interface{})
 		for i, col := range columns {
-			row[col] = values[i]
+			val := values[i]
+			if b, ok := val.([]byte); ok {
+				record[col] = string(b)
+			} else {
+				record[col] = val
+			}
 		}
-		data = append(data, row)
+		data = append(data, record)
 	}
-	
+
 	// 生成汇总信息
-	summary := generateAssetReportSummary(req)
-	
-	return data, summary, int64(len(data))
+	summary = generateAssetSummary(req)
+
+	return data, summary, totalCount
 }
 
 // generateCustomBorrowReport 生成自定义借用报表
 func generateCustomBorrowReport(req CustomReportRequest) ([]map[string]interface{}, map[string]interface{}, int64) {
-	query := global.DB.Model(&models.BorrowRecord{})
-	
-	// 应用日期范围过滤
+	var data []map[string]interface{}
+	var summary map[string]interface{}
+	var totalCount int64
+
+	// 构建基础查询
+	query := global.DB.Table("borrow_records br").
+		Select(buildBorrowSelectFields(req.Metrics)).
+		Joins("JOIN assets a ON a.id = br.asset_id").
+		Joins("JOIN users u ON u.id = br.borrower_id").
+		Joins("LEFT JOIN departments d ON d.id = br.department_id")
+
+	// 应用过滤条件
+	query = applyBorrowFilters(query, req.Filters)
+
+	// 应用日期范围
 	if req.DateRange.StartDate != nil {
-		query = query.Where("borrow_date >= ?", req.DateRange.StartDate)
+		query = query.Where("br.borrow_date >= ?", *req.DateRange.StartDate)
 	}
 	if req.DateRange.EndDate != nil {
-		query = query.Where("borrow_date <= ?", req.DateRange.EndDate)
+		query = query.Where("br.borrow_date <= ?", *req.DateRange.EndDate)
 	}
-	
-	// 应用其他过滤条件
-	query = applyBorrowFilters(query, req.Filters)
-	
-	// 构建选择字段
-	selectFields := buildBorrowSelectFields(req.Metrics, req.GroupBy)
-	
-	// 构建分组和排序
+
+	// 应用分组
 	if len(req.GroupBy) > 0 {
-		query = query.Group(strings.Join(req.GroupBy, ", "))
-	}
-	
-	if req.SortBy != "" {
-		order := req.SortBy
-		if req.SortOrder == "desc" {
-			order += " DESC"
+		groupFields := make([]string, len(req.GroupBy))
+		for i, field := range req.GroupBy {
+			groupFields[i] = mapBorrowGroupField(field)
 		}
-		query = query.Order(order)
+		query = query.Group(strings.Join(groupFields, ", "))
 	}
-	
+
+	// 应用排序
+	if req.SortBy != "" {
+		sortField := mapBorrowSortField(req.SortBy)
+		sortOrder := "ASC"
+		if req.SortOrder == "desc" {
+			sortOrder = "DESC"
+		}
+		query = query.Order(fmt.Sprintf("%s %s", sortField, sortOrder))
+	}
+
+	// 获取总数
+	query.Count(&totalCount)
+
 	// 应用限制
 	if req.Limit > 0 {
 		query = query.Limit(req.Limit)
 	}
-	
+
 	// 执行查询
-	var data []map[string]interface{}
-	rows, err := query.Select(selectFields).Rows()
+	rows, err := query.Rows()
 	if err != nil {
-		return data, nil, 0
+		return data, summary, totalCount
 	}
 	defer rows.Close()
-	
-	// 获取列名
+
+	// 获取列信息
 	columns, _ := rows.Columns()
-	
-	// 读取数据
+	values := make([]interface{}, len(columns))
+	valuePtrs := make([]interface{}, len(columns))
+
 	for rows.Next() {
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
-		for i := range values {
+		for i := range columns {
 			valuePtrs[i] = &values[i]
 		}
-		
 		rows.Scan(valuePtrs...)
-		
-		row := make(map[string]interface{})
+
+		record := make(map[string]interface{})
 		for i, col := range columns {
-			row[col] = values[i]
+			val := values[i]
+			if b, ok := val.([]byte); ok {
+				record[col] = string(b)
+			} else {
+				record[col] = val
+			}
 		}
-		data = append(data, row)
+		data = append(data, record)
 	}
-	
+
 	// 生成汇总信息
-	summary := generateBorrowReportSummary(req)
-	
-	return data, summary, int64(len(data))
+	summary = generateBorrowSummary(req)
+
+	return data, summary, totalCount
 }
 
 // generateCustomInventoryReport 生成自定义盘点报表
 func generateCustomInventoryReport(req CustomReportRequest) ([]map[string]interface{}, map[string]interface{}, int64) {
-	query := global.DB.Model(&models.InventoryRecord{})
-	
-	// 应用日期范围过滤
+	var data []map[string]interface{}
+	var summary map[string]interface{}
+	var totalCount int64
+
+	// 构建基础查询
+	query := global.DB.Table("inventory_records ir").
+		Select(buildInventorySelectFields(req.Metrics)).
+		Joins("JOIN inventory_tasks it ON it.id = ir.task_id").
+		Joins("JOIN assets a ON a.id = ir.asset_id").
+		Joins("LEFT JOIN categories c ON c.id = a.category_id").
+		Joins("LEFT JOIN departments d ON d.id = a.department_id")
+
+	// 应用过滤条件
+	query = applyInventoryFilters(query, req.Filters)
+
+	// 应用日期范围
 	if req.DateRange.StartDate != nil {
-		query = query.Where("created_at >= ?", req.DateRange.StartDate)
+		query = query.Where("ir.checked_at >= ?", *req.DateRange.StartDate)
 	}
 	if req.DateRange.EndDate != nil {
-		query = query.Where("created_at <= ?", req.DateRange.EndDate)
+		query = query.Where("ir.checked_at <= ?", *req.DateRange.EndDate)
 	}
-	
-	// 应用其他过滤条件
-	query = applyInventoryFilters(query, req.Filters)
-	
-	// 构建选择字段
-	selectFields := buildInventorySelectFields(req.Metrics, req.GroupBy)
-	
-	// 构建分组和排序
+
+	// 应用分组
 	if len(req.GroupBy) > 0 {
-		query = query.Group(strings.Join(req.GroupBy, ", "))
-	}
-	
-	if req.SortBy != "" {
-		order := req.SortBy
-		if req.SortOrder == "desc" {
-			order += " DESC"
+		groupFields := make([]string, len(req.GroupBy))
+		for i, field := range req.GroupBy {
+			groupFields[i] = mapInventoryGroupField(field)
 		}
-		query = query.Order(order)
+		query = query.Group(strings.Join(groupFields, ", "))
 	}
-	
+
+	// 应用排序
+	if req.SortBy != "" {
+		sortField := mapInventorySortField(req.SortBy)
+		sortOrder := "ASC"
+		if req.SortOrder == "desc" {
+			sortOrder = "DESC"
+		}
+		query = query.Order(fmt.Sprintf("%s %s", sortField, sortOrder))
+	}
+
+	// 获取总数
+	query.Count(&totalCount)
+
 	// 应用限制
 	if req.Limit > 0 {
 		query = query.Limit(req.Limit)
 	}
-	
+
 	// 执行查询
-	var data []map[string]interface{}
-	rows, err := query.Select(selectFields).Rows()
+	rows, err := query.Rows()
 	if err != nil {
-		return data, nil, 0
+		return data, summary, totalCount
 	}
 	defer rows.Close()
-	
-	// 获取列名
+
+	// 获取列信息
 	columns, _ := rows.Columns()
-	
-	// 读取数据
+	values := make([]interface{}, len(columns))
+	valuePtrs := make([]interface{}, len(columns))
+
 	for rows.Next() {
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
-		for i := range values {
+		for i := range columns {
 			valuePtrs[i] = &values[i]
 		}
-		
 		rows.Scan(valuePtrs...)
-		
-		row := make(map[string]interface{})
+
+		record := make(map[string]interface{})
 		for i, col := range columns {
-			row[col] = values[i]
+			val := values[i]
+			if b, ok := val.([]byte); ok {
+				record[col] = string(b)
+			} else {
+				record[col] = val
+			}
 		}
-		data = append(data, row)
+		data = append(data, record)
 	}
-	
+
 	// 生成汇总信息
-	summary := generateInventoryReportSummary(req)
-	
-	return data, summary, int64(len(data))
+	summary = generateInventorySummary(req)
+
+	return data, summary, totalCount
+}
+
+// buildAssetSelectFields 构建资产查询字段
+func buildAssetSelectFields(metrics []string) string {
+	if len(metrics) == 0 {
+		return "a.id, a.asset_no, a.name, a.purchase_price, a.purchase_date, a.status, c.name as category_name, d.name as department_name"
+	}
+
+	var fields []string
+	for _, metric := range metrics {
+		switch metric {
+		case "asset_no":
+			fields = append(fields, "a.asset_no")
+		case "name":
+			fields = append(fields, "a.name")
+		case "category_name":
+			fields = append(fields, "c.name as category_name")
+		case "department_name":
+			fields = append(fields, "d.name as department_name")
+		case "purchase_price":
+			fields = append(fields, "a.purchase_price")
+		case "purchase_date":
+			fields = append(fields, "a.purchase_date")
+		case "status":
+			fields = append(fields, "a.status")
+		case "brand":
+			fields = append(fields, "a.brand")
+		case "model":
+			fields = append(fields, "a.model")
+		case "location":
+			fields = append(fields, "a.location")
+		}
+	}
+
+	if len(fields) == 0 {
+		return "a.id"
+	}
+
+	return strings.Join(fields, ", ")
+}
+
+// buildBorrowSelectFields 构建借用查询字段
+func buildBorrowSelectFields(metrics []string) string {
+	if len(metrics) == 0 {
+		return "br.id, a.asset_no, a.name as asset_name, u.name as borrower_name, br.borrow_date, br.expected_return_date, br.actual_return_date, br.status, d.name as department_name"
+	}
+
+	var fields []string
+	for _, metric := range metrics {
+		switch metric {
+		case "asset_no":
+			fields = append(fields, "a.asset_no")
+		case "asset_name":
+			fields = append(fields, "a.name as asset_name")
+		case "borrower_name":
+			fields = append(fields, "u.name as borrower_name")
+		case "department_name":
+			fields = append(fields, "d.name as department_name")
+		case "borrow_date":
+			fields = append(fields, "br.borrow_date")
+		case "expected_return_date":
+			fields = append(fields, "br.expected_return_date")
+		case "actual_return_date":
+			fields = append(fields, "br.actual_return_date")
+		case "status":
+			fields = append(fields, "br.status")
+		case "purpose":
+			fields = append(fields, "br.purpose")
+		}
+	}
+
+	if len(fields) == 0 {
+		return "br.id"
+	}
+
+	return strings.Join(fields, ", ")
+}
+
+// buildInventorySelectFields 构建盘点查询字段
+func buildInventorySelectFields(metrics []string) string {
+	if len(metrics) == 0 {
+		return "ir.id, it.task_name, a.asset_no, a.name as asset_name, ir.result, ir.checked_at, ir.checked_by, c.name as category_name, d.name as department_name"
+	}
+
+	var fields []string
+	for _, metric := range metrics {
+		switch metric {
+		case "task_name":
+			fields = append(fields, "it.task_name")
+		case "asset_no":
+			fields = append(fields, "a.asset_no")
+		case "asset_name":
+			fields = append(fields, "a.name as asset_name")
+		case "category_name":
+			fields = append(fields, "c.name as category_name")
+		case "department_name":
+			fields = append(fields, "d.name as department_name")
+		case "result":
+			fields = append(fields, "ir.result")
+		case "checked_at":
+			fields = append(fields, "ir.checked_at")
+		case "checked_by":
+			fields = append(fields, "ir.checked_by")
+		case "notes":
+			fields = append(fields, "ir.notes")
+		}
+	}
+
+	if len(fields) == 0 {
+		return "ir.id"
+	}
+
+	return strings.Join(fields, ", ")
 }
 
 // applyAssetFilters 应用资产过滤条件
 func applyAssetFilters(query *gorm.DB, filters map[string]interface{}) *gorm.DB {
 	for key, value := range filters {
+		if value == nil || value == "" {
+			continue
+		}
+
 		switch key {
 		case "category_id":
-			if categoryID, ok := value.(float64); ok {
-				query = query.Where("category_id = ?", uint(categoryID))
+			if categoryID, err := strconv.Atoi(fmt.Sprintf("%v", value)); err == nil {
+				query = query.Where("a.category_id = ?", categoryID)
 			}
 		case "department_id":
-			if departmentID, ok := value.(float64); ok {
-				query = query.Where("department_id = ?", uint(departmentID))
+			if departmentID, err := strconv.Atoi(fmt.Sprintf("%v", value)); err == nil {
+				query = query.Where("a.department_id = ?", departmentID)
 			}
 		case "status":
-			if status, ok := value.(string); ok {
-				query = query.Where("status = ?", status)
-			}
-		case "location":
-			if location, ok := value.(string); ok {
-				query = query.Where("location LIKE ?", "%"+location+"%")
-			}
+			query = query.Where("a.status = ?", value)
+		case "brand":
+			query = query.Where("a.brand LIKE ?", "%"+fmt.Sprintf("%v", value)+"%")
+		case "name":
+			query = query.Where("a.name LIKE ?", "%"+fmt.Sprintf("%v", value)+"%")
 		}
 	}
 	return query
@@ -247,19 +415,19 @@ func applyAssetFilters(query *gorm.DB, filters map[string]interface{}) *gorm.DB 
 // applyBorrowFilters 应用借用过滤条件
 func applyBorrowFilters(query *gorm.DB, filters map[string]interface{}) *gorm.DB {
 	for key, value := range filters {
+		if value == nil || value == "" {
+			continue
+		}
+
 		switch key {
 		case "department_id":
-			if departmentID, ok := value.(float64); ok {
-				query = query.Where("department_id = ?", uint(departmentID))
+			if departmentID, err := strconv.Atoi(fmt.Sprintf("%v", value)); err == nil {
+				query = query.Where("br.department_id = ?", departmentID)
 			}
 		case "status":
-			if status, ok := value.(string); ok {
-				query = query.Where("status = ?", status)
-			}
+			query = query.Where("br.status = ?", value)
 		case "borrower_name":
-			if borrowerName, ok := value.(string); ok {
-				query = query.Where("borrower_name LIKE ?", "%"+borrowerName+"%")
-			}
+			query = query.Where("u.name LIKE ?", "%"+fmt.Sprintf("%v", value)+"%")
 		}
 	}
 	return query
@@ -268,194 +436,186 @@ func applyBorrowFilters(query *gorm.DB, filters map[string]interface{}) *gorm.DB
 // applyInventoryFilters 应用盘点过滤条件
 func applyInventoryFilters(query *gorm.DB, filters map[string]interface{}) *gorm.DB {
 	for key, value := range filters {
+		if value == nil || value == "" {
+			continue
+		}
+
 		switch key {
 		case "task_id":
-			if taskID, ok := value.(float64); ok {
-				query = query.Where("task_id = ?", uint(taskID))
+			if taskID, err := strconv.Atoi(fmt.Sprintf("%v", value)); err == nil {
+				query = query.Where("ir.task_id = ?", taskID)
 			}
 		case "result":
-			if result, ok := value.(string); ok {
-				query = query.Where("result = ?", result)
+			query = query.Where("ir.result = ?", value)
+		case "category_id":
+			if categoryID, err := strconv.Atoi(fmt.Sprintf("%v", value)); err == nil {
+				query = query.Where("a.category_id = ?", categoryID)
+			}
+		case "department_id":
+			if departmentID, err := strconv.Atoi(fmt.Sprintf("%v", value)); err == nil {
+				query = query.Where("a.department_id = ?", departmentID)
 			}
 		}
 	}
 	return query
 }
 
-// buildAssetSelectFields 构建资产查询字段
-func buildAssetSelectFields(metrics []string, groupBy []string) string {
-	var fields []string
-	
-	// 添加分组字段
-	for _, field := range groupBy {
-		fields = append(fields, field)
+// 字段映射函数
+func mapAssetGroupField(field string) string {
+	fieldMap := map[string]string{
+		"category_name":   "c.name",
+		"department_name": "d.name",
+		"status":          "a.status",
+		"brand":           "a.brand",
 	}
-	
-	// 添加指标字段
-	for _, metric := range metrics {
-		switch metric {
-		case "count":
-			fields = append(fields, "COUNT(*) as count")
-		case "total_value":
-			fields = append(fields, "SUM(purchase_price) as total_value")
-		case "avg_value":
-			fields = append(fields, "AVG(purchase_price) as avg_value")
-		default:
-			fields = append(fields, metric)
-		}
+	if mapped, ok := fieldMap[field]; ok {
+		return mapped
 	}
-	
-	if len(fields) == 0 {
-		return "*"
-	}
-	
-	return strings.Join(fields, ", ")
+	return "a." + field
 }
 
-// buildBorrowSelectFields 构建借用查询字段
-func buildBorrowSelectFields(metrics []string, groupBy []string) string {
-	var fields []string
-	
-	// 添加分组字段
-	for _, field := range groupBy {
-		fields = append(fields, field)
+func mapAssetSortField(field string) string {
+	fieldMap := map[string]string{
+		"category_name":   "c.name",
+		"department_name": "d.name",
+		"purchase_price":  "a.purchase_price",
+		"purchase_date":   "a.purchase_date",
 	}
-	
-	// 添加指标字段
-	for _, metric := range metrics {
-		switch metric {
-		case "count":
-			fields = append(fields, "COUNT(*) as count")
-		case "avg_days":
-			fields = append(fields, "AVG(julianday(COALESCE(actual_return_date, datetime('now'))) - julianday(borrow_date)) as avg_days")
-		default:
-			fields = append(fields, metric)
-		}
+	if mapped, ok := fieldMap[field]; ok {
+		return mapped
 	}
-	
-	if len(fields) == 0 {
-		return "*"
-	}
-	
-	return strings.Join(fields, ", ")
+	return "a." + field
 }
 
-// buildInventorySelectFields 构建盘点查询字段
-func buildInventorySelectFields(metrics []string, groupBy []string) string {
-	var fields []string
-	
-	// 添加分组字段
-	for _, field := range groupBy {
-		fields = append(fields, field)
+func mapBorrowGroupField(field string) string {
+	fieldMap := map[string]string{
+		"department_name": "d.name",
+		"borrower_name":   "u.name",
+		"status":          "br.status",
 	}
-	
-	// 添加指标字段
-	for _, metric := range metrics {
-		switch metric {
-		case "count":
-			fields = append(fields, "COUNT(*) as count")
-		case "accuracy_rate":
-			fields = append(fields, "ROUND(SUM(CASE WHEN result = 'normal' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as accuracy_rate")
-		default:
-			fields = append(fields, metric)
-		}
+	if mapped, ok := fieldMap[field]; ok {
+		return mapped
 	}
-	
-	if len(fields) == 0 {
-		return "*"
-	}
-	
-	return strings.Join(fields, ", ")
+	return "br." + field
 }
 
-// generateAssetReportSummary 生成资产报表汇总
-func generateAssetReportSummary(req CustomReportRequest) map[string]interface{} {
+func mapBorrowSortField(field string) string {
+	fieldMap := map[string]string{
+		"asset_name":      "a.name",
+		"borrower_name":   "u.name",
+		"department_name": "d.name",
+		"borrow_date":     "br.borrow_date",
+	}
+	if mapped, ok := fieldMap[field]; ok {
+		return mapped
+	}
+	return "br." + field
+}
+
+func mapInventoryGroupField(field string) string {
+	fieldMap := map[string]string{
+		"task_name":       "it.task_name",
+		"category_name":   "c.name",
+		"department_name": "d.name",
+		"result":          "ir.result",
+	}
+	if mapped, ok := fieldMap[field]; ok {
+		return mapped
+	}
+	return "ir." + field
+}
+
+func mapInventorySortField(field string) string {
+	fieldMap := map[string]string{
+		"task_name":       "it.task_name",
+		"asset_name":      "a.name",
+		"category_name":   "c.name",
+		"department_name": "d.name",
+		"checked_at":      "ir.checked_at",
+	}
+	if mapped, ok := fieldMap[field]; ok {
+		return mapped
+	}
+	return "ir." + field
+}
+
+// 汇总信息生成函数
+func generateAssetSummary(req CustomReportRequest) map[string]interface{} {
 	summary := make(map[string]interface{})
-	
+
+	var totalAssets, totalValue int64
+	var avgValue float64
+
 	query := global.DB.Model(&models.Asset{})
-	
-	// 应用相同的过滤条件
-	if req.DateRange.StartDate != nil {
-		query = query.Where("created_at >= ?", req.DateRange.StartDate)
-	}
-	if req.DateRange.EndDate != nil {
-		query = query.Where("created_at <= ?", req.DateRange.EndDate)
-	}
 	query = applyAssetFilters(query, req.Filters)
-	
-	// 计算汇总指标
-	var totalCount int64
-	var totalValue *float64
-	
-	query.Count(&totalCount)
-	query.Select("SUM(purchase_price)").Row().Scan(&totalValue)
-	
-	summary["total_count"] = totalCount
-	if totalValue != nil {
-		summary["total_value"] = *totalValue
-	} else {
-		summary["total_value"] = 0
+
+	query.Count(&totalAssets)
+
+	// 安全地获取总价值
+	row1 := query.Select("SUM(purchase_price)").Row()
+	if row1 != nil {
+		var totalValuePtr *float64
+		err := row1.Scan(&totalValuePtr)
+		if err == nil && totalValuePtr != nil {
+			totalValue = int64(*totalValuePtr)
+		}
 	}
-	
+
+	// 安全地获取平均价值
+	row2 := query.Select("AVG(purchase_price)").Row()
+	if row2 != nil {
+		var avgValuePtr *float64
+		err := row2.Scan(&avgValuePtr)
+		if err == nil && avgValuePtr != nil {
+			avgValue = *avgValuePtr
+		}
+	}
+
+	summary["total_assets"] = totalAssets
+	summary["total_value"] = totalValue
+	summary["average_value"] = avgValue
+
 	return summary
 }
 
-// generateBorrowReportSummary 生成借用报表汇总
-func generateBorrowReportSummary(req CustomReportRequest) map[string]interface{} {
+func generateBorrowSummary(req CustomReportRequest) map[string]interface{} {
 	summary := make(map[string]interface{})
-	
+
+	var totalBorrows, activeBorrows, returnedBorrows int64
+
 	query := global.DB.Model(&models.BorrowRecord{})
-	
-	// 应用相同的过滤条件
-	if req.DateRange.StartDate != nil {
-		query = query.Where("borrow_date >= ?", req.DateRange.StartDate)
-	}
-	if req.DateRange.EndDate != nil {
-		query = query.Where("borrow_date <= ?", req.DateRange.EndDate)
-	}
 	query = applyBorrowFilters(query, req.Filters)
-	
-	// 计算汇总指标
-	var totalCount, activeCount int64
-	
-	query.Count(&totalCount)
-	query.Where("status = ?", models.BorrowStatusBorrowed).Count(&activeCount)
-	
-	summary["total_count"] = totalCount
-	summary["active_count"] = activeCount
-	
+
+	query.Count(&totalBorrows)
+	query.Where("status = ?", models.BorrowStatusBorrowed).Count(&activeBorrows)
+	query.Where("status = ?", models.BorrowStatusReturned).Count(&returnedBorrows)
+
+	summary["total_borrows"] = totalBorrows
+	summary["active_borrows"] = activeBorrows
+	summary["returned_borrows"] = returnedBorrows
+
 	return summary
 }
 
-// generateInventoryReportSummary 生成盘点报表汇总
-func generateInventoryReportSummary(req CustomReportRequest) map[string]interface{} {
+func generateInventorySummary(req CustomReportRequest) map[string]interface{} {
 	summary := make(map[string]interface{})
-	
+
+	var totalRecords, normalCount int64
+
 	query := global.DB.Model(&models.InventoryRecord{})
-	
-	// 应用相同的过滤条件
-	if req.DateRange.StartDate != nil {
-		query = query.Where("created_at >= ?", req.DateRange.StartDate)
-	}
-	if req.DateRange.EndDate != nil {
-		query = query.Where("created_at <= ?", req.DateRange.EndDate)
-	}
 	query = applyInventoryFilters(query, req.Filters)
-	
-	// 计算汇总指标
-	var totalCount, normalCount int64
-	
-	query.Count(&totalCount)
+
+	query.Count(&totalRecords)
 	query.Where("result = ?", models.InventoryResultNormal).Count(&normalCount)
-	
-	summary["total_count"] = totalCount
-	summary["normal_count"] = normalCount
-	
-	if totalCount > 0 {
-		summary["accuracy_rate"] = float64(normalCount) / float64(totalCount) * 100
-	} else {
-		summary["accuracy_rate"] = 0
+
+	var accuracyRate float64
+	if totalRecords > 0 {
+		accuracyRate = float64(normalCount) / float64(totalRecords) * 100
 	}
-	
+
+	summary["total_records"] = totalRecords
+	summary["normal_count"] = normalCount
+	summary["accuracy_rate"] = accuracyRate
+
 	return summary
 }
