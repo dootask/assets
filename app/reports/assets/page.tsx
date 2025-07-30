@@ -170,7 +170,7 @@ export default function AssetReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {((summary.available_assets / summary.total_assets) * 100).toFixed(1)}%
+              {summary.total_assets > 0 ? ((summary.available_assets / summary.total_assets) * 100).toFixed(1) : '0.0'}%
             </div>
             <p className="text-muted-foreground text-xs">
               维护中: {summary.maintenance_assets} | 已报废: {summary.scrapped_assets}
@@ -213,7 +213,7 @@ export default function AssetReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {by_category.map(category => (
+                  {by_category?.map(category => (
                     <div key={category.category_id} className="flex items-center justify-between rounded-lg border p-3">
                       <div className="flex-1">
                         <h4 className="font-medium">{category.category_name}</h4>
@@ -244,7 +244,7 @@ export default function AssetReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {by_department.map((department, index) => (
+                {by_department?.map((department, index) => (
                   <div key={index} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex-1">
                       <h4 className="font-medium">{department.department_name}</h4>
@@ -272,7 +272,7 @@ export default function AssetReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
-                  {by_status.map(status => (
+                  {by_status?.map(status => (
                     <div key={status.status} className="rounded-lg border p-4 text-center">
                       <div className="text-primary text-2xl font-bold">{status.count}</div>
                       <div className="mt-1 text-sm font-medium">
@@ -333,7 +333,7 @@ export default function AssetReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {by_purchase_year.map(year => (
+                {by_purchase_year?.map(year => (
                   <div key={year.year} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex-1">
                       <h4 className="font-medium">{year.year}年</h4>

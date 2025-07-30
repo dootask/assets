@@ -9,15 +9,17 @@ import (
 )
 
 // getAssetSummary 获取资产汇总数据
-func getAssetSummary(query *gorm.DB) AssetSummary {
+func getAssetSummary(baseQuery *gorm.DB) AssetSummary {
 	var summary AssetSummary
 
 	// 总资产数
-	query.Count(&summary.TotalAssets)
+	query1 := baseQuery.Session(&gorm.Session{})
+	query1.Count(&summary.TotalAssets)
 
 	// 总价值
 	var totalValue *float64
-	row := query.Select("SUM(purchase_price)").Row()
+	query2 := baseQuery.Session(&gorm.Session{})
+	row := query2.Select("SUM(purchase_price)").Row()
 	if row != nil {
 		err := row.Scan(&totalValue)
 		if err == nil && totalValue != nil {
@@ -25,11 +27,18 @@ func getAssetSummary(query *gorm.DB) AssetSummary {
 		}
 	}
 
-	// 各状态资产数
-	query.Where("status = ?", models.AssetStatusAvailable).Count(&summary.AvailableAssets)
-	query.Where("status = ?", models.AssetStatusBorrowed).Count(&summary.BorrowedAssets)
-	query.Where("status = ?", models.AssetStatusMaintenance).Count(&summary.MaintenanceAssets)
-	query.Where("status = ?", models.AssetStatusScrapped).Count(&summary.ScrappedAssets)
+	// 各状态资产数 - 为每个查询创建新的session
+	query3 := baseQuery.Session(&gorm.Session{})
+	query3.Where("status = ?", models.AssetStatusAvailable).Count(&summary.AvailableAssets)
+
+	query4 := baseQuery.Session(&gorm.Session{})
+	query4.Where("status = ?", models.AssetStatusBorrowed).Count(&summary.BorrowedAssets)
+
+	query5 := baseQuery.Session(&gorm.Session{})
+	query5.Where("status = ?", models.AssetStatusMaintenance).Count(&summary.MaintenanceAssets)
+
+	query6 := baseQuery.Session(&gorm.Session{})
+	query6.Where("status = ?", models.AssetStatusScrapped).Count(&summary.ScrappedAssets)
 
 	return summary
 }
@@ -175,24 +184,29 @@ func getAssetsByPurchaseYear(query *gorm.DB) []PurchaseYearStats {
 }
 
 // getAssetValueAnalysis 获取资产价值分析
-func getAssetValueAnalysis(query *gorm.DB) ValueAnalysis {
+func getAssetValueAnalysis(baseQuery *gorm.DB) ValueAnalysis {
 	var analysis ValueAnalysis
 
 	// 高价值资产 (>10000)
-	query.Where("purchase_price > ?", 10000).Count(&analysis.HighValue)
+	query1 := baseQuery.Session(&gorm.Session{})
+	query1.Where("purchase_price > ?", 10000).Count(&analysis.HighValue)
 
 	// 中等价值资产 (1000-10000)
-	query.Where("purchase_price BETWEEN ? AND ?", 1000, 10000).Count(&analysis.MediumValue)
+	query2 := baseQuery.Session(&gorm.Session{})
+	query2.Where("purchase_price BETWEEN ? AND ?", 1000, 10000).Count(&analysis.MediumValue)
 
 	// 低价值资产 (<1000)
-	query.Where("purchase_price > 0 AND purchase_price < ?", 1000).Count(&analysis.LowValue)
+	query3 := baseQuery.Session(&gorm.Session{})
+	query3.Where("purchase_price > 0 AND purchase_price < ?", 1000).Count(&analysis.LowValue)
 
 	// 无价值信息资产
-	query.Where("purchase_price IS NULL OR purchase_price = 0").Count(&analysis.NoValue)
+	query4 := baseQuery.Session(&gorm.Session{})
+	query4.Where("purchase_price IS NULL OR purchase_price = 0").Count(&analysis.NoValue)
 
 	// 平均价值
 	var avgValue *float64
-	row := query.Where("purchase_price > 0").Select("AVG(purchase_price)").Row()
+	query5 := baseQuery.Session(&gorm.Session{})
+	row := query5.Where("purchase_price > 0").Select("AVG(purchase_price)").Row()
 	if row != nil {
 		err := row.Scan(&avgValue)
 		if err == nil && avgValue != nil {
@@ -204,27 +218,30 @@ func getAssetValueAnalysis(query *gorm.DB) ValueAnalysis {
 }
 
 // getAssetWarrantyStatus 获取资产保修状态
-func getAssetWarrantyStatus(query *gorm.DB) WarrantyStatus {
+func getAssetWarrantyStatus(baseQuery *gorm.DB) WarrantyStatus {
 	var status WarrantyStatus
 
 	now := time.Now()
 
 	// 保修期内 (purchase_date + warranty_period > now)
-	query.Where(`
+	query1 := baseQuery.Session(&gorm.Session{})
+	query1.Where(`
 		purchase_date IS NOT NULL 
 		AND warranty_period IS NOT NULL 
 		AND datetime(purchase_date, '+' || warranty_period || ' months') > ?
 	`, now).Count(&status.InWarranty)
 
 	// 保修期外
-	query.Where(`
+	query2 := baseQuery.Session(&gorm.Session{})
+	query2.Where(`
 		purchase_date IS NOT NULL 
 		AND warranty_period IS NOT NULL 
 		AND datetime(purchase_date, '+' || warranty_period || ' months') <= ?
-	`, now).Count(&status.OutOfWarranty)
+	`, now).Count(&status.ExpiredWarranty)
 
 	// 无保修信息
-	query.Where("purchase_date IS NULL OR warranty_period IS NULL").Count(&status.NoWarrantyInfo)
+	query3 := baseQuery.Session(&gorm.Session{})
+	query3.Where("purchase_date IS NULL OR warranty_period IS NULL").Count(&status.NoWarranty)
 
 	return status
 }

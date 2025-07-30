@@ -180,7 +180,7 @@ export default function InventoryReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {task_analysis.map(task => (
+                {task_analysis?.map(task => (
                   <div key={task.task_id} className="rounded-lg border p-4">
                     <div className="mb-3 flex items-center justify-between">
                       <div>
@@ -321,7 +321,7 @@ export default function InventoryReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {department_analysis.map((department, index) => (
+                {department_analysis?.map((department, index) => (
                   <div key={index} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex-1">
                       <h4 className="font-medium">{department.department_name}</h4>
@@ -349,7 +349,7 @@ export default function InventoryReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {category_analysis.map(category => (
+                {category_analysis?.map(category => (
                   <div key={category.category_id} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex-1">
                       <h4 className="font-medium">{category.category_name}</h4>
@@ -380,7 +380,7 @@ export default function InventoryReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {trend_analysis.map(trend => (
+                {trend_analysis?.map(trend => (
                   <div key={trend.month} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex-1">
                       <h4 className="font-medium">{trend.month}</h4>

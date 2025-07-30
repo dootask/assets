@@ -321,7 +321,7 @@ export const fetchBorrowReports = async (params?: ReportQueryParams): Promise<Bo
  */
 export const fetchAssetReports = async (params?: ReportQueryParams): Promise<AssetReportData> => {
   try {
-    const response = await apiClient.get<APIResponse<AssetReportData>>('/reports/asset', { params });
+    const response = await apiClient.get<APIResponse<AssetReportData>>('/reports/assets', { params });
     return response.data.data;
   } catch (error) {
     console.error('Failed to fetch asset reports:', error);
@@ -524,7 +524,7 @@ export const exportBorrowReports = async (format: string = 'excel', params?: Rep
  */
 export const exportAssetReports = async (format: string = 'excel', params?: ReportQueryParams): Promise<Blob> => {
   try {
-    const response = await apiClient.get('/reports/asset/export', {
+    const response = await apiClient.get('/reports/assets/export', {
       params: { format, ...params },
       responseType: 'blob',
     });

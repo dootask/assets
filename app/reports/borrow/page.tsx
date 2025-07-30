@@ -121,7 +121,7 @@ export default function BorrowReportsPage() {
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{summary.overdue_borrows}</div>
             <p className="text-muted-foreground text-xs">
-              超期率: {((summary.overdue_borrows / summary.active_borrows) * 100).toFixed(1)}%
+              超期率: {summary.active_borrows > 0 ? ((summary.overdue_borrows / summary.active_borrows) * 100).toFixed(1) : '0.0'}%
             </p>
           </CardContent>
         </Card>
@@ -170,7 +170,7 @@ export default function BorrowReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {by_department.map((department, index) => (
+                {by_department?.map((department, index) => (
                   <div key={index} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex-1">
                       <h4 className="font-medium">{department.department_name}</h4>
@@ -259,8 +259,8 @@ export default function BorrowReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {monthly_trend.map(month => (
-                  <div key={month.month} className="flex items-center justify-between rounded-lg border p-3">
+                {monthly_trend.map((month, index) => (
+                  <div key={index} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex-1">
                       <h4 className="font-medium">{month.month}</h4>
                       <p className="text-muted-foreground text-sm">
@@ -294,7 +294,7 @@ export default function BorrowReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {popular_assets.map(asset => (
+                {popular_assets?.map(asset => (
                   <div key={asset.asset_id} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex items-center space-x-3">
                       <div className="bg-primary/10 flex h-8 w-8 items-center justify-center rounded-full">
@@ -324,7 +324,7 @@ export default function BorrowReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {by_asset.slice(0, 10).map(asset => (
+                {by_asset?.slice(0, 10).map(asset => (
                   <div key={asset.asset_id} className="flex items-center justify-between rounded-lg border p-3">
                     <div className="flex-1">
                       <h4 className="font-medium">{asset.asset_name}</h4>

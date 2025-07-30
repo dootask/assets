@@ -79,9 +79,13 @@ func getDashboardBorrowOverview() BorrowOverview {
 func getDashboardInventoryOverview() InventoryOverview {
 	var overview InventoryOverview
 
-	// 各状态任务数
-	global.DB.Model(&models.InventoryTask{}).Where("status = ?", models.InventoryTaskStatusPending).Count(&overview.PendingTasks)
-	global.DB.Model(&models.InventoryTask{}).Where("status = ?", models.InventoryTaskStatusInProgress).Count(&overview.InProgressTasks)
+	// 计算活跃任务数（pending + in_progress）
+	var pendingTasks, inProgressTasks int64
+	global.DB.Model(&models.InventoryTask{}).Where("status = ?", models.InventoryTaskStatusPending).Count(&pendingTasks)
+	global.DB.Model(&models.InventoryTask{}).Where("status = ?", models.InventoryTaskStatusInProgress).Count(&inProgressTasks)
+	overview.ActiveTasks = pendingTasks + inProgressTasks
+
+	// 已完成任务数
 	global.DB.Model(&models.InventoryTask{}).Where("status = ?", models.InventoryTaskStatusCompleted).Count(&overview.CompletedTasks)
 
 	// 最近完成任务的准确率
@@ -98,7 +102,7 @@ func getDashboardInventoryOverview() InventoryOverview {
 			Count(&totalRecords)
 
 		if totalRecords > 0 {
-			overview.LastAccuracyRate = float64(normalCount) / float64(totalRecords) * 100
+			overview.AccuracyRate = float64(normalCount) / float64(totalRecords) * 100
 		}
 	}
 

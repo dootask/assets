@@ -12,9 +12,9 @@ import (
 )
 
 // generateCustomAssetReport 生成自定义资产报表
-func generateCustomAssetReport(req CustomReportRequest) ([]map[string]interface{}, map[string]interface{}, int64) {
+func generateCustomAssetReport(req CustomReportRequest) ([]map[string]interface{}, []CustomReportColumn, int64) {
 	var data []map[string]interface{}
-	var summary map[string]interface{}
+	var columns []CustomReportColumn
 	var totalCount int64
 
 	// 构建基础查询
@@ -64,23 +64,23 @@ func generateCustomAssetReport(req CustomReportRequest) ([]map[string]interface{
 	// 执行查询
 	rows, err := query.Rows()
 	if err != nil {
-		return data, summary, totalCount
+		return data, columns, totalCount
 	}
 	defer rows.Close()
 
 	// 获取列信息
-	columns, _ := rows.Columns()
-	values := make([]interface{}, len(columns))
-	valuePtrs := make([]interface{}, len(columns))
+	columnNames, _ := rows.Columns()
+	values := make([]interface{}, len(columnNames))
+	valuePtrs := make([]interface{}, len(columnNames))
 
 	for rows.Next() {
-		for i := range columns {
+		for i := range columnNames {
 			valuePtrs[i] = &values[i]
 		}
 		rows.Scan(valuePtrs...)
 
 		record := make(map[string]interface{})
-		for i, col := range columns {
+		for i, col := range columnNames {
 			val := values[i]
 			if b, ok := val.([]byte); ok {
 				record[col] = string(b)
@@ -91,16 +91,16 @@ func generateCustomAssetReport(req CustomReportRequest) ([]map[string]interface{
 		data = append(data, record)
 	}
 
-	// 生成汇总信息
-	summary = generateAssetSummary(req)
+	// 生成列定义
+	columns = generateAssetColumns(req.Metrics)
 
-	return data, summary, totalCount
+	return data, columns, totalCount
 }
 
 // generateCustomBorrowReport 生成自定义借用报表
-func generateCustomBorrowReport(req CustomReportRequest) ([]map[string]interface{}, map[string]interface{}, int64) {
+func generateCustomBorrowReport(req CustomReportRequest) ([]map[string]interface{}, []CustomReportColumn, int64) {
 	var data []map[string]interface{}
-	var summary map[string]interface{}
+	var columns []CustomReportColumn
 	var totalCount int64
 
 	// 构建基础查询
@@ -151,23 +151,23 @@ func generateCustomBorrowReport(req CustomReportRequest) ([]map[string]interface
 	// 执行查询
 	rows, err := query.Rows()
 	if err != nil {
-		return data, summary, totalCount
+		return data, columns, totalCount
 	}
 	defer rows.Close()
 
 	// 获取列信息
-	columns, _ := rows.Columns()
-	values := make([]interface{}, len(columns))
-	valuePtrs := make([]interface{}, len(columns))
+	columnNames, _ := rows.Columns()
+	values := make([]interface{}, len(columnNames))
+	valuePtrs := make([]interface{}, len(columnNames))
 
 	for rows.Next() {
-		for i := range columns {
+		for i := range columnNames {
 			valuePtrs[i] = &values[i]
 		}
 		rows.Scan(valuePtrs...)
 
 		record := make(map[string]interface{})
-		for i, col := range columns {
+		for i, col := range columnNames {
 			val := values[i]
 			if b, ok := val.([]byte); ok {
 				record[col] = string(b)
@@ -178,16 +178,16 @@ func generateCustomBorrowReport(req CustomReportRequest) ([]map[string]interface
 		data = append(data, record)
 	}
 
-	// 生成汇总信息
-	summary = generateBorrowSummary(req)
+	// 生成列定义
+	columns = generateBorrowColumns(req.Metrics)
 
-	return data, summary, totalCount
+	return data, columns, totalCount
 }
 
 // generateCustomInventoryReport 生成自定义盘点报表
-func generateCustomInventoryReport(req CustomReportRequest) ([]map[string]interface{}, map[string]interface{}, int64) {
+func generateCustomInventoryReport(req CustomReportRequest) ([]map[string]interface{}, []CustomReportColumn, int64) {
 	var data []map[string]interface{}
-	var summary map[string]interface{}
+	var columns []CustomReportColumn
 	var totalCount int64
 
 	// 构建基础查询
@@ -239,23 +239,23 @@ func generateCustomInventoryReport(req CustomReportRequest) ([]map[string]interf
 	// 执行查询
 	rows, err := query.Rows()
 	if err != nil {
-		return data, summary, totalCount
+		return data, columns, totalCount
 	}
 	defer rows.Close()
 
 	// 获取列信息
-	columns, _ := rows.Columns()
-	values := make([]interface{}, len(columns))
-	valuePtrs := make([]interface{}, len(columns))
+	columnNames, _ := rows.Columns()
+	values := make([]interface{}, len(columnNames))
+	valuePtrs := make([]interface{}, len(columnNames))
 
 	for rows.Next() {
-		for i := range columns {
+		for i := range columnNames {
 			valuePtrs[i] = &values[i]
 		}
 		rows.Scan(valuePtrs...)
 
 		record := make(map[string]interface{})
-		for i, col := range columns {
+		for i, col := range columnNames {
 			val := values[i]
 			if b, ok := val.([]byte); ok {
 				record[col] = string(b)
@@ -266,10 +266,10 @@ func generateCustomInventoryReport(req CustomReportRequest) ([]map[string]interf
 		data = append(data, record)
 	}
 
-	// 生成汇总信息
-	summary = generateInventorySummary(req)
+	// 生成列定义
+	columns = generateInventoryColumns(req.Metrics)
 
-	return data, summary, totalCount
+	return data, columns, totalCount
 }
 
 // buildAssetSelectFields 构建资产查询字段
@@ -618,4 +618,122 @@ func generateInventorySummary(req CustomReportRequest) map[string]interface{} {
 	summary["accuracy_rate"] = accuracyRate
 
 	return summary
+}
+
+// generateAssetColumns 生成资产报表列定义
+func generateAssetColumns(metrics []string) []CustomReportColumn {
+	var columns []CustomReportColumn
+
+	if len(metrics) == 0 {
+		// 默认列
+		columns = []CustomReportColumn{
+			{Key: "id", Label: "ID", Type: "number"},
+			{Key: "asset_no", Label: "资产编号", Type: "string"},
+			{Key: "name", Label: "资产名称", Type: "string"},
+			{Key: "purchase_price", Label: "采购价格", Type: "number"},
+			{Key: "purchase_date", Label: "采购日期", Type: "date"},
+			{Key: "status", Label: "状态", Type: "string"},
+			{Key: "category_name", Label: "分类", Type: "string"},
+			{Key: "department_name", Label: "部门", Type: "string"},
+		}
+	} else {
+		for _, metric := range metrics {
+			switch metric {
+			case "asset_no":
+				columns = append(columns, CustomReportColumn{Key: "asset_no", Label: "资产编号", Type: "string"})
+			case "name":
+				columns = append(columns, CustomReportColumn{Key: "name", Label: "资产名称", Type: "string"})
+			case "category_name":
+				columns = append(columns, CustomReportColumn{Key: "category_name", Label: "分类", Type: "string"})
+			case "department_name":
+				columns = append(columns, CustomReportColumn{Key: "department_name", Label: "部门", Type: "string"})
+			case "purchase_price":
+				columns = append(columns, CustomReportColumn{Key: "purchase_price", Label: "采购价格", Type: "number"})
+			case "purchase_date":
+				columns = append(columns, CustomReportColumn{Key: "purchase_date", Label: "采购日期", Type: "date"})
+			case "status":
+				columns = append(columns, CustomReportColumn{Key: "status", Label: "状态", Type: "string"})
+			}
+		}
+	}
+
+	return columns
+}
+
+// generateBorrowColumns 生成借用报表列定义
+func generateBorrowColumns(metrics []string) []CustomReportColumn {
+	var columns []CustomReportColumn
+
+	if len(metrics) == 0 {
+		columns = []CustomReportColumn{
+			{Key: "id", Label: "ID", Type: "number"},
+			{Key: "asset_no", Label: "资产编号", Type: "string"},
+			{Key: "asset_name", Label: "资产名称", Type: "string"},
+			{Key: "borrower_name", Label: "借用人", Type: "string"},
+			{Key: "borrow_date", Label: "借用日期", Type: "date"},
+			{Key: "expected_return_date", Label: "预期归还日期", Type: "date"},
+			{Key: "actual_return_date", Label: "实际归还日期", Type: "date"},
+			{Key: "status", Label: "状态", Type: "string"},
+		}
+	} else {
+		for _, metric := range metrics {
+			switch metric {
+			case "asset_no":
+				columns = append(columns, CustomReportColumn{Key: "asset_no", Label: "资产编号", Type: "string"})
+			case "asset_name":
+				columns = append(columns, CustomReportColumn{Key: "asset_name", Label: "资产名称", Type: "string"})
+			case "borrower_name":
+				columns = append(columns, CustomReportColumn{Key: "borrower_name", Label: "借用人", Type: "string"})
+			case "borrow_date":
+				columns = append(columns, CustomReportColumn{Key: "borrow_date", Label: "借用日期", Type: "date"})
+			case "expected_return_date":
+				columns = append(columns, CustomReportColumn{Key: "expected_return_date", Label: "预期归还日期", Type: "date"})
+			case "actual_return_date":
+				columns = append(columns, CustomReportColumn{Key: "actual_return_date", Label: "实际归还日期", Type: "date"})
+			case "status":
+				columns = append(columns, CustomReportColumn{Key: "status", Label: "状态", Type: "string"})
+			}
+		}
+	}
+
+	return columns
+}
+
+// generateInventoryColumns 生成盘点报表列定义
+func generateInventoryColumns(metrics []string) []CustomReportColumn {
+	var columns []CustomReportColumn
+
+	if len(metrics) == 0 {
+		columns = []CustomReportColumn{
+			{Key: "id", Label: "ID", Type: "number"},
+			{Key: "task_name", Label: "盘点任务", Type: "string"},
+			{Key: "asset_no", Label: "资产编号", Type: "string"},
+			{Key: "asset_name", Label: "资产名称", Type: "string"},
+			{Key: "category_name", Label: "分类", Type: "string"},
+			{Key: "department_name", Label: "部门", Type: "string"},
+			{Key: "result", Label: "盘点结果", Type: "string"},
+			{Key: "check_date", Label: "盘点日期", Type: "date"},
+		}
+	} else {
+		for _, metric := range metrics {
+			switch metric {
+			case "task_name":
+				columns = append(columns, CustomReportColumn{Key: "task_name", Label: "盘点任务", Type: "string"})
+			case "asset_no":
+				columns = append(columns, CustomReportColumn{Key: "asset_no", Label: "资产编号", Type: "string"})
+			case "asset_name":
+				columns = append(columns, CustomReportColumn{Key: "asset_name", Label: "资产名称", Type: "string"})
+			case "category_name":
+				columns = append(columns, CustomReportColumn{Key: "category_name", Label: "分类", Type: "string"})
+			case "department_name":
+				columns = append(columns, CustomReportColumn{Key: "department_name", Label: "部门", Type: "string"})
+			case "result":
+				columns = append(columns, CustomReportColumn{Key: "result", Label: "盘点结果", Type: "string"})
+			case "check_date":
+				columns = append(columns, CustomReportColumn{Key: "check_date", Label: "盘点日期", Type: "date"})
+			}
+		}
+	}
+
+	return columns
 }

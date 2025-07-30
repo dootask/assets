@@ -121,24 +121,27 @@ func getBorrowsByAsset(query *gorm.DB) []BorrowAssetStats {
 }
 
 // getBorrowOverdueAnalysis 获取借用超期分析
-func getBorrowOverdueAnalysis(query *gorm.DB) OverdueAnalysis {
+func getBorrowOverdueAnalysis(baseQuery *gorm.DB) OverdueAnalysis {
 	var analysis OverdueAnalysis
 
 	now := time.Now()
 
 	// 总超期数
-	query.Where("status = ? AND expected_return_date < ?", models.BorrowStatusBorrowed, now).Count(&analysis.TotalOverdue)
+	query1 := baseQuery.Session(&gorm.Session{})
+	query1.Where("status = ? AND expected_return_date < ?", models.BorrowStatusBorrowed, now).Count(&analysis.TotalOverdue)
 
 	// 超期率
 	var totalActive int64
-	query.Where("status = ?", models.BorrowStatusBorrowed).Count(&totalActive)
+	query2 := baseQuery.Session(&gorm.Session{})
+	query2.Where("status = ?", models.BorrowStatusBorrowed).Count(&totalActive)
 	if totalActive > 0 {
 		analysis.OverdueRate = float64(analysis.TotalOverdue) / float64(totalActive) * 100
 	}
 
 	// 平均超期天数
 	var avgOverdueDays *float64
-	row := query.Where("status = ? AND expected_return_date < ?", models.BorrowStatusBorrowed, now).
+	query3 := baseQuery.Session(&gorm.Session{})
+	row := query3.Where("status = ? AND expected_return_date < ?", models.BorrowStatusBorrowed, now).
 		Select("AVG(julianday('now') - julianday(expected_return_date))").
 		Row()
 
@@ -150,20 +153,21 @@ func getBorrowOverdueAnalysis(query *gorm.DB) OverdueAnalysis {
 	}
 
 	// 按超期天数分组统计
-	analysis.ByOverdueDays = getBorrowOverdueDaysStats(query)
+	analysis.ByOverdueDays = getBorrowOverdueDaysStats(baseQuery)
 
 	return analysis
 }
 
 // getBorrowOverdueDaysStats 获取按超期天数统计
-func getBorrowOverdueDaysStats(query *gorm.DB) []OverdueDaysStats {
+func getBorrowOverdueDaysStats(baseQuery *gorm.DB) []OverdueDaysStats {
 	var stats []OverdueDaysStats
 
 	now := time.Now()
 
 	// 1-7天
 	var count1to7 int64
-	query.Where(`
+	query1 := baseQuery.Session(&gorm.Session{})
+	query1.Where(`
 		status = ? AND expected_return_date < ? 
 		AND julianday(?) - julianday(expected_return_date) BETWEEN 1 AND 7
 	`, models.BorrowStatusBorrowed, now, now).Count(&count1to7)
@@ -171,7 +175,8 @@ func getBorrowOverdueDaysStats(query *gorm.DB) []OverdueDaysStats {
 
 	// 8-30天
 	var count8to30 int64
-	query.Where(`
+	query2 := baseQuery.Session(&gorm.Session{})
+	query2.Where(`
 		status = ? AND expected_return_date < ? 
 		AND julianday(?) - julianday(expected_return_date) BETWEEN 8 AND 30
 	`, models.BorrowStatusBorrowed, now, now).Count(&count8to30)
@@ -179,7 +184,8 @@ func getBorrowOverdueDaysStats(query *gorm.DB) []OverdueDaysStats {
 
 	// 31-90天
 	var count31to90 int64
-	query.Where(`
+	query3 := baseQuery.Session(&gorm.Session{})
+	query3.Where(`
 		status = ? AND expected_return_date < ? 
 		AND julianday(?) - julianday(expected_return_date) BETWEEN 31 AND 90
 	`, models.BorrowStatusBorrowed, now, now).Count(&count31to90)
@@ -187,7 +193,8 @@ func getBorrowOverdueDaysStats(query *gorm.DB) []OverdueDaysStats {
 
 	// 90天以上
 	var countOver90 int64
-	query.Where(`
+	query4 := baseQuery.Session(&gorm.Session{})
+	query4.Where(`
 		status = ? AND expected_return_date < ? 
 		AND julianday(?) - julianday(expected_return_date) > 90
 	`, models.BorrowStatusBorrowed, now, now).Count(&countOver90)
@@ -198,40 +205,8 @@ func getBorrowOverdueDaysStats(query *gorm.DB) []OverdueDaysStats {
 
 // getBorrowMonthlyTrend 获取借用月度趋势
 func getBorrowMonthlyTrend(query *gorm.DB) []MonthlyBorrowStats {
-	var stats []MonthlyBorrowStats
-
-	// 获取最近12个月的借用趋势
-	rows, err := global.DB.Raw(`
-		WITH months AS (
-			SELECT date('now', '-' || (value-1) || ' months', 'start of month') as month_start,
-				   strftime('%Y-%m', date('now', '-' || (value-1) || ' months')) as month_label
-			FROM generate_series(0, 11)
-		)
-		SELECT 
-			m.month_label as month,
-			COALESCE(COUNT(br.id), 0) as borrow_count,
-			COALESCE(COUNT(CASE WHEN br.actual_return_date IS NOT NULL 
-				AND date(br.actual_return_date) BETWEEN m.month_start 
-				AND date(m.month_start, '+1 month', '-1 day') THEN 1 END), 0) as return_count
-		FROM months m
-		LEFT JOIN borrow_records br ON strftime('%Y-%m', br.borrow_date) = m.month_label
-		GROUP BY m.month_label, m.month_start
-		ORDER BY m.month_start
-	`).Rows()
-
-	if err != nil {
-		// 如果上面的查询失败，使用简化版本
-		return getBorrowMonthlyTrendSimple()
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var stat MonthlyBorrowStats
-		rows.Scan(&stat.Month, &stat.BorrowCount, &stat.ReturnCount)
-		stats = append(stats, stat)
-	}
-
-	return stats
+	// 直接使用简化版本，避免复杂的SQL查询
+	return getBorrowMonthlyTrendSimple()
 }
 
 // getBorrowMonthlyTrendSimple 获取借用月度趋势（简化版本）
@@ -240,18 +215,21 @@ func getBorrowMonthlyTrendSimple() []MonthlyBorrowStats {
 
 	// 获取最近6个月的数据
 	for i := 5; i >= 0; i-- {
-		monthStart := time.Now().AddDate(0, -i, 0)
-		monthStart = time.Date(monthStart.Year(), monthStart.Month(), 1, 0, 0, 0, 0, monthStart.Location())
+		// 计算目标月份
+		targetTime := time.Now().AddDate(0, -i, 0)
+		monthStart := time.Date(targetTime.Year(), targetTime.Month(), 1, 0, 0, 0, 0, time.UTC)
 		monthEnd := monthStart.AddDate(0, 1, 0).Add(-time.Second)
 
 		var borrowCount, returnCount int64
 
+		// 查询借用数据
 		global.DB.Model(&models.BorrowRecord{}).
-			Where("borrow_date BETWEEN ? AND ?", monthStart, monthEnd).
+			Where("borrow_date >= ? AND borrow_date <= ?", monthStart, monthEnd).
 			Count(&borrowCount)
 
+		// 查询归还数据
 		global.DB.Model(&models.BorrowRecord{}).
-			Where("actual_return_date BETWEEN ? AND ?", monthStart, monthEnd).
+			Where("actual_return_date >= ? AND actual_return_date <= ?", monthStart, monthEnd).
 			Count(&returnCount)
 
 		stats = append(stats, MonthlyBorrowStats{

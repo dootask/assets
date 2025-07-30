@@ -9,7 +9,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 
 // 资产分类图表组件
 export function AssetCategoryChart({ data }: { data: Array<{ category_name: string; asset_count: number; percentage: number }> }) {
-  const chartData = data.map((item, index) => ({
+  const chartData = data?.map((item, index) => ({
     name: item.category_name,
     value: item.asset_count,
     percentage: item.percentage,
@@ -39,7 +39,7 @@ export function AssetCategoryChart({ data }: { data: Array<{ category_name: stri
                 fill="#8884d8"
                 dataKey="value"
               >
-                {chartData.map((entry, index) => (
+                {chartData?.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -55,7 +55,7 @@ export function AssetCategoryChart({ data }: { data: Array<{ category_name: stri
 
 // 资产部门图表组件
 export function AssetDepartmentChart({ data }: { data: Array<{ department_name: string; asset_count: number; total_value: number }> }) {
-  const chartData = data.map((item, index) => ({
+  const chartData = data?.map((item, index) => ({
     name: item.department_name,
     assets: item.asset_count,
     value: Math.round(item.total_value / 10000), // 转换为万元
@@ -85,7 +85,7 @@ export function AssetDepartmentChart({ data }: { data: Array<{ department_name: 
                 fill="#8884d8"
                 dataKey="assets"
               >
-                {chartData.map((entry, index) => (
+                {chartData?.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -114,7 +114,7 @@ export function AssetStatusChart({ data }: { data: Array<{ status: string; count
     scrapped: '已报废',
   };
 
-  const chartData = data.map((item, index) => ({
+  const chartData = data?.map((item, index) => ({
     name: statusMap[item.status as keyof typeof statusMap] || item.status,
     value: item.count,
     percentage: item.percentage,
@@ -144,7 +144,7 @@ export function AssetStatusChart({ data }: { data: Array<{ status: string; count
                 fill="#8884d8"
                 dataKey="value"
               >
-                {chartData.map((entry, index) => (
+                {chartData?.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -190,7 +190,7 @@ export function AssetValueAnalysisChart({ data }: { data: { high_value: number; 
                 fill="#8884d8"
                 dataKey="value"
               >
-                {chartData.map((entry, index) => (
+                {chartData?.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -206,7 +206,7 @@ export function AssetValueAnalysisChart({ data }: { data: { high_value: number; 
 
 // 资产采购趋势图表组件
 export function AssetPurchaseTrendChart({ data }: { data: Array<{ year: number; count: number; total_value: number }> }) {
-  const chartData = data.map(item => ({
+  const chartData = data?.map(item => ({
     year: item.year.toString(),
     count: item.count,
     value: Math.round(item.total_value / 10000), // 转换为万元
@@ -235,7 +235,7 @@ export function AssetPurchaseTrendChart({ data }: { data: Array<{ year: number; 
                 fill="#8884d8"
                 dataKey="count"
               >
-                {chartData.map((entry, index) => (
+                {chartData?.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
