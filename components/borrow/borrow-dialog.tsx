@@ -11,15 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { createBorrowRecord, getAvailableAssets, updateBorrowRecord } from '@/lib/api/borrow';
 import { getDepartments } from '@/lib/api/departments';
 import type {
-  AvailableAssetResponse,
-  BorrowResponse,
-  CreateBorrowRequest,
-  DepartmentResponse,
-  UpdateBorrowRequest,
+    AvailableAssetResponse,
+    BorrowResponse,
+    CreateBorrowRequest,
+    DepartmentResponse,
+    UpdateBorrowRequest,
 } from '@/lib/types';
-import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format } from 'date-fns';
 import { ChevronDownIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -32,7 +30,7 @@ const borrowSchema = z.object({
   borrower_name: z.string().min(1, '借用人姓名不能为空').max(100, '借用人姓名不能超过100个字符'),
   borrower_contact: z.string().max(100, '联系方式不能超过100个字符').optional(),
   department_id: z.number().optional(),
-  borrow_date: z.date(),
+  borrow_date: z.date({ required_error: '请选择借用时间' }),
   expected_return_date: z.date().optional(),
   purpose: z.string().optional(),
   notes: z.string().optional(),
@@ -66,6 +64,8 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
       purpose: '',
       notes: '',
     },
+    mode: 'onBlur', // 改为失焦验证模式
+    reValidateMode: 'onBlur',
   });
 
   // 加载部门列表
@@ -112,8 +112,8 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
 
   // 当borrow改变时，更新表单值
   useEffect(() => {
-    if (open && borrow) {
-      if (isEditing) {
+    if (open) {
+      if (borrow && isEditing) {
         // 编辑模式：填充现有数据
         form.reset({
           asset_id: borrow.asset_id,
@@ -125,19 +125,19 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
           purpose: borrow.purpose || '',
           notes: borrow.notes || '',
         });
+      } else {
+        // 新建模式：重置表单
+        form.reset({
+          asset_id: 0,
+          borrower_name: '',
+          borrower_contact: '',
+          department_id: undefined,
+          borrow_date: new Date(),
+          expected_return_date: undefined,
+          purpose: '',
+          notes: '',
+        });
       }
-    } else if (open) {
-      // 新建模式：重置表单
-      form.reset({
-        asset_id: 0,
-        borrower_name: '',
-        borrower_contact: '',
-        department_id: undefined,
-        borrow_date: new Date(),
-        expected_return_date: undefined,
-        purpose: '',
-        notes: '',
-      });
     }
   }, [open, borrow, form, isEditing]);
 
@@ -150,12 +150,12 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
         // 更新借用记录
         const updateData: UpdateBorrowRequest = {
           borrower_name: data.borrower_name,
-          borrower_contact: data.borrower_contact || undefined,
+          borrower_contact: data.borrower_contact || '',
           department_id: data.department_id || undefined,
           borrow_date: data.borrow_date.toISOString(),
           expected_return_date: data.expected_return_date ? data.expected_return_date.toISOString() : undefined,
-          purpose: data.purpose || undefined,
-          notes: data.notes || undefined,
+          purpose: data.purpose || '',
+          notes: data.notes || '',
         };
 
         const response = await updateBorrowRecord(borrow.id, updateData);
@@ -199,7 +199,16 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
   // 关闭对话框时重置表单
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      form.reset();
+      form.reset({
+        asset_id: 0,
+        borrower_name: '',
+        borrower_contact: '',
+        department_id: undefined,
+        borrow_date: new Date(),
+        expected_return_date: undefined,
+        purpose: '',
+        notes: '',
+      });
     }
     onOpenChange(newOpen);
   };
@@ -308,18 +317,26 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                           <FormControl>
                             <Button
                               variant="outline"
-                              className={cn(
-                                'w-[240px] justify-start text-left font-normal',
-                                !field.value && 'text-muted-foreground'
-                              )}
+                              className="w-full justify-between font-normal"
                             >
-                              {field.value ? format(field.value, 'PPP') : <span>选择借用时间</span>}
-                              <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
+                              {field.value ? field.value.toLocaleDateString() : '请选择借用时间'}
+                              <ChevronDownIcon className="h-4 w-4" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            captionLayout="dropdown"
+                            onSelect={(date) => {
+                              if (date) {
+                                field.onChange(date);
+                              }
+                            }}
+                            initialFocus
+                            disabled={false}
+                          />
                         </PopoverContent>
                       </Popover>
                     </FormControl>
@@ -340,18 +357,23 @@ export function BorrowDialog({ open, onOpenChange, borrow, onSuccess }: BorrowDi
                           <FormControl>
                             <Button
                               variant="outline"
-                              className={cn(
-                                'w-[240px] justify-start text-left font-normal',
-                                !field.value && 'text-muted-foreground'
-                              )}
+                              className="w-full justify-between font-normal"
                             >
-                              {field.value ? format(field.value, 'PPP') : <span>选择预期归还时间</span>}
-                              <ChevronDownIcon className="ml-auto h-4 w-4 opacity-50" />
+                              {field.value ? field.value.toLocaleDateString() : '请选择预期归还时间'}
+                              <ChevronDownIcon className="h-4 w-4" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            captionLayout="dropdown"
+                            onSelect={(date) => {
+                              field.onChange(date);
+                            }}
+                            initialFocus
+                          />
                         </PopoverContent>
                       </Popover>
                     </FormControl>

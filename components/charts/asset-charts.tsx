@@ -58,7 +58,9 @@ export function AssetDepartmentChart({ data }: { data: Array<{ department_name: 
   const chartData = data?.map((item, index) => ({
     name: item.department_name,
     assets: item.asset_count,
-    value: Math.round(item.total_value / 10000), // 转换为万元
+    value: item.total_value >= 1000000 
+      ? Math.round(item.total_value / 1000000) // 转换为百万元
+      : Math.round(item.total_value / 10000), // 转换为万元
     color: COLORS[index % COLORS.length],
   }));
 
@@ -209,7 +211,9 @@ export function AssetPurchaseTrendChart({ data }: { data: Array<{ year: number; 
   const chartData = data?.map(item => ({
     year: item.year.toString(),
     count: item.count,
-    value: Math.round(item.total_value / 10000), // 转换为万元
+    value: item.total_value >= 1000000 
+      ? Math.round(item.total_value / 1000000) // 转换为百万元
+      : Math.round(item.total_value / 10000), // 转换为万元
   }));
 
   return (

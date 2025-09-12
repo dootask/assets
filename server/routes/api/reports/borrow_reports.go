@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"fmt"
 	"time"
 
 	"asset-management-system/server/global"
@@ -19,8 +20,9 @@ func getBorrowSummary(query *gorm.DB) BorrowSummary {
 	// 活跃借用数
 	query.Where("status = ?", models.BorrowStatusBorrowed).Count(&summary.ActiveBorrows)
 
-	// 已归还借用数
-	query.Where("status = ?", models.BorrowStatusReturned).Count(&summary.ReturnedBorrows)
+	// 已归还借用数 - 对于已归还记录，应该统计所有已归还的记录，不受时间过滤影响
+	// 因为时间过滤是基于borrow_date的，但已归还记录应该基于actual_return_date
+	global.DB.Model(&models.BorrowRecord{}).Where("status = ?", models.BorrowStatusReturned).Count(&summary.ReturnedBorrows)
 
 	// 超期借用数
 	now := time.Now()
@@ -271,6 +273,231 @@ func getBorrowPopularAssets(query *gorm.DB) []PopularAssetStats {
 		stat.Rank = rank
 		rank++
 		stats = append(stats, stat)
+	}
+
+	return stats
+}
+
+// getBorrowsByBorrower 获取按借用人统计的借用数据
+func getBorrowsByBorrower(query *gorm.DB) []BorrowerStats {
+	var stats []BorrowerStats
+
+	rows, err := query.Select(`
+		borrower_name,
+		COUNT(*) as borrow_count,
+		SUM(CASE WHEN status = 'borrowed' THEN 1 ELSE 0 END) as active_count,
+		SUM(CASE WHEN status = 'borrowed' AND expected_return_date < datetime('now') THEN 1 ELSE 0 END) as overdue_count
+	`).
+		Group("borrower_name").
+		Order("borrow_count DESC").
+		Limit(20).
+		Rows()
+
+	if err != nil {
+		return stats
+	}
+	defer rows.Close()
+
+	var totalBorrows int64
+	query.Count(&totalBorrows)
+
+	for rows.Next() {
+		var stat BorrowerStats
+		rows.Scan(&stat.BorrowerName, &stat.BorrowCount, &stat.ActiveCount, &stat.OverdueCount)
+
+		if totalBorrows > 0 {
+			stat.Percentage = float64(stat.BorrowCount) / float64(totalBorrows) * 100
+		}
+
+		stats = append(stats, stat)
+	}
+
+	return stats
+}
+
+// getBorrowsByAssetCategory 获取按资产分类统计的借用数据
+func getBorrowsByAssetCategory(query *gorm.DB) []BorrowCategoryStats {
+	var stats []BorrowCategoryStats
+
+	rows, err := query.Select(`
+		c.id as category_id,
+		c.name as category_name,
+		COUNT(br.id) as borrow_count,
+		SUM(CASE WHEN br.status = 'borrowed' THEN 1 ELSE 0 END) as active_count,
+		SUM(CASE WHEN br.status = 'borrowed' AND br.expected_return_date < datetime('now') THEN 1 ELSE 0 END) as overdue_count
+	`).
+		Table("borrow_records br").
+		Joins("JOIN assets a ON a.id = br.asset_id").
+		Joins("JOIN categories c ON c.id = a.category_id").
+		Group("c.id, c.name").
+		Order("borrow_count DESC").
+		Rows()
+
+	if err != nil {
+		return stats
+	}
+	defer rows.Close()
+
+	var totalBorrows int64
+	query.Count(&totalBorrows)
+
+	for rows.Next() {
+		var stat BorrowCategoryStats
+		rows.Scan(&stat.CategoryID, &stat.CategoryName, &stat.BorrowCount, &stat.ActiveCount, &stat.OverdueCount)
+
+		if totalBorrows > 0 {
+			stat.Percentage = float64(stat.BorrowCount) / float64(totalBorrows) * 100
+		}
+
+		stats = append(stats, stat)
+	}
+
+	return stats
+}
+
+// getBorrowsByDuration 获取按借用时长统计的数据
+func getBorrowsByDuration(query *gorm.DB) []BorrowDurationStats {
+	var stats []BorrowDurationStats
+
+	now := time.Now()
+
+	// 短期借用 (1-7天)
+	var shortCount int64
+	query.Where("julianday(?) - julianday(borrow_date) BETWEEN 1 AND 7", now).Count(&shortCount)
+
+	// 中期借用 (8-30天)
+	var mediumCount int64
+	query.Where("julianday(?) - julianday(borrow_date) BETWEEN 8 AND 30", now).Count(&mediumCount)
+
+	// 长期借用 (31-90天)
+	var longCount int64
+	query.Where("julianday(?) - julianday(borrow_date) BETWEEN 31 AND 90", now).Count(&longCount)
+
+	// 超长期借用 (90天以上)
+	var veryLongCount int64
+	query.Where("julianday(?) - julianday(borrow_date) > 90", now).Count(&veryLongCount)
+
+	var totalBorrows int64
+	query.Count(&totalBorrows)
+
+	// 构建统计结果
+	durations := []struct {
+		range_ string
+		count  int64
+	}{
+		{"1-7天", shortCount},
+		{"8-30天", mediumCount},
+		{"31-90天", longCount},
+		{"90天以上", veryLongCount},
+	}
+
+	for _, duration := range durations {
+		stat := BorrowDurationStats{
+			DurationRange: duration.range_,
+			BorrowCount:   duration.count,
+		}
+		if totalBorrows > 0 {
+			stat.Percentage = float64(duration.count) / float64(totalBorrows) * 100
+		}
+		stats = append(stats, stat)
+	}
+
+	return stats
+}
+
+// getBorrowTrends 获取借用趋势分析
+func getBorrowTrends(query *gorm.DB) BorrowTrends {
+	return BorrowTrends{
+		WeeklyTrend:   getBorrowWeeklyTrend(query),
+		DailyTrend:    getBorrowDailyTrend(query),
+		HourlyPattern: getBorrowHourlyPattern(query),
+	}
+}
+
+// getBorrowWeeklyTrend 获取周度借用趋势
+func getBorrowWeeklyTrend(query *gorm.DB) []WeeklyBorrowStats {
+	var stats []WeeklyBorrowStats
+
+	// 获取最近8周的数据
+	for i := 7; i >= 0; i-- {
+		weekStart := time.Now().AddDate(0, 0, -i*7)
+		weekEnd := weekStart.AddDate(0, 0, 6)
+
+		var borrowCount, returnCount int64
+
+		global.DB.Model(&models.BorrowRecord{}).
+			Where("borrow_date >= ? AND borrow_date <= ?", weekStart, weekEnd).
+			Count(&borrowCount)
+
+		global.DB.Model(&models.BorrowRecord{}).
+			Where("actual_return_date >= ? AND actual_return_date <= ?", weekStart, weekEnd).
+			Count(&returnCount)
+
+		stats = append(stats, WeeklyBorrowStats{
+			Week:        weekStart.Format("2006-01-02"),
+			BorrowCount: borrowCount,
+			ReturnCount: returnCount,
+			NetBorrows:  borrowCount - returnCount,
+		})
+	}
+
+	return stats
+}
+
+// getBorrowDailyTrend 获取日度借用趋势
+func getBorrowDailyTrend(query *gorm.DB) []DailyBorrowStats {
+	var stats []DailyBorrowStats
+
+	// 获取最近30天的数据
+	for i := 29; i >= 0; i-- {
+		date := time.Now().AddDate(0, 0, -i)
+		dateStart := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+		dateEnd := dateStart.Add(24*time.Hour - time.Second)
+
+		var borrowCount, returnCount int64
+
+		global.DB.Model(&models.BorrowRecord{}).
+			Where("borrow_date >= ? AND borrow_date <= ?", dateStart, dateEnd).
+			Count(&borrowCount)
+
+		global.DB.Model(&models.BorrowRecord{}).
+			Where("actual_return_date >= ? AND actual_return_date <= ?", dateStart, dateEnd).
+			Count(&returnCount)
+
+		stats = append(stats, DailyBorrowStats{
+			Date:        dateStart.Format("2006-01-02"),
+			BorrowCount: borrowCount,
+			ReturnCount: returnCount,
+			NetBorrows:  borrowCount - returnCount,
+		})
+	}
+
+	return stats
+}
+
+// getBorrowHourlyPattern 获取小时借用模式
+func getBorrowHourlyPattern(query *gorm.DB) []HourlyBorrowStats {
+	var stats []HourlyBorrowStats
+
+	// 获取最近30天的小时模式
+	for hour := 0; hour < 24; hour++ {
+		var borrowCount, returnCount int64
+
+		global.DB.Model(&models.BorrowRecord{}).
+			Where("strftime('%H', borrow_date) = ? AND borrow_date >= date('now', '-30 days')",
+				fmt.Sprintf("%02d", hour)).
+			Count(&borrowCount)
+
+		global.DB.Model(&models.BorrowRecord{}).
+			Where("strftime('%H', actual_return_date) = ? AND actual_return_date >= date('now', '-30 days')",
+				fmt.Sprintf("%02d", hour)).
+			Count(&returnCount)
+
+		stats = append(stats, HourlyBorrowStats{
+			Hour:        hour,
+			BorrowCount: borrowCount,
+			ReturnCount: returnCount,
+		})
 	}
 
 	return stats

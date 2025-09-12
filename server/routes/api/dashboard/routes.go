@@ -28,13 +28,15 @@ func RegisterRoutes(router *gin.RouterGroup) {
 // GetDashboardStats 获取仪表板统计数据
 func GetDashboardStats(c *gin.Context) {
 	stats := map[string]interface{}{
-		"assets":        getAssetStats(),
-		"categories":    getCategoryStats(),
-		"departments":   getDepartmentStats(),
-		"borrow":        getBorrowStats(),
-		"inventory":     getInventoryStats(),
-		"system_status": getSystemStatusInfo(),
-		"last_updated":  time.Now(),
+		"assets":         getAssetStats(),
+		"categories":     getCategoryStats(),
+		"departments":    getDepartmentStats(),
+		"borrow":         getBorrowStats(),
+		"inventory":      getInventoryStats(),
+		"recent_assets":  getRecentAssets(),
+		"recent_borrows": getRecentBorrows(),
+		"system_status":  getSystemStatusInfo(),
+		"last_updated":   time.Now(),
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -203,16 +205,21 @@ func getDepartmentStats() map[string]interface{} {
 
 // getBorrowStats 获取借用统计
 func getBorrowStats() map[string]interface{} {
-	var total, active, overdue int64
+	var total, active, overdue, todayReturns int64
 
 	global.DB.Model(&models.BorrowRecord{}).Count(&total)
 	global.DB.Model(&models.BorrowRecord{}).Where("status = ?", "borrowed").Count(&active)
 	global.DB.Model(&models.BorrowRecord{}).Where("status = ? AND expected_return_date < ?", "borrowed", time.Now()).Count(&overdue)
 
+	// 计算今日归还数量
+	today := time.Now().Format("2006-01-02")
+	global.DB.Model(&models.BorrowRecord{}).Where("status = ? AND DATE(return_date) = ?", "returned", today).Count(&todayReturns)
+
 	return map[string]interface{}{
-		"total":   total,
-		"active":  active,
-		"overdue": overdue,
+		"total":         total,
+		"active":        active,
+		"overdue":       overdue,
+		"today_returns": todayReturns,
 	}
 }
 
@@ -333,11 +340,11 @@ func getRecentBorrows() []map[string]interface{} {
 	var borrows []map[string]interface{}
 
 	rows, err := global.DB.Raw(`
-		SELECT br.id, br.borrower_name, br.borrow_date, br.status,
+		SELECT br.id, br.borrower_name, br.borrow_date, br.status, br.expected_return_date,
 		       a.asset_no, a.name as asset_name
 		FROM borrow_records br
 		JOIN assets a ON a.id = br.asset_id AND a.deleted_at IS NULL
-		WHERE br.deleted_at IS NULL
+		WHERE br.deleted_at IS NULL AND br.status = 'borrowed'
 		ORDER BY br.borrow_date DESC
 		LIMIT 5
 	`).Rows()
@@ -350,20 +357,25 @@ func getRecentBorrows() []map[string]interface{} {
 	for rows.Next() {
 		var id int64
 		var borrowerName, status, assetNo, assetName string
-		var borrowDate time.Time
+		var borrowDate, expectedReturnDate time.Time
 
-		if err := rows.Scan(&id, &borrowerName, &borrowDate, &status,
+		if err := rows.Scan(&id, &borrowerName, &borrowDate, &status, &expectedReturnDate,
 			&assetNo, &assetName); err != nil {
 			continue
 		}
 
+		// 计算是否超期
+		isOverdue := status == "borrowed" && expectedReturnDate.Before(time.Now())
+
 		borrows = append(borrows, map[string]interface{}{
-			"id":            id,
-			"borrower_name": borrowerName,
-			"asset_no":      assetNo,
-			"asset_name":    assetName,
-			"status":        status,
-			"borrow_date":   borrowDate,
+			"id":                   id,
+			"borrower_name":        borrowerName,
+			"asset_no":             assetNo,
+			"asset_name":           assetName,
+			"status":               status,
+			"borrow_date":          borrowDate,
+			"expected_return_date": expectedReturnDate,
+			"is_overdue":           isOverdue,
 		})
 	}
 

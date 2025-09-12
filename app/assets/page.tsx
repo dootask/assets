@@ -153,24 +153,22 @@ export default function AssetsPage() {
   // 导出资产
   const handleExport = async () => {
     try {
-      const response = await exportAssets({
+      const blob = await exportAssets({
         ...filters,
         ...(searchTerm && { name: searchTerm }),
       });
 
       // 创建下载链接
-      const dataStr = JSON.stringify(response.data, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `assets_${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `资产清单_${new Date().toISOString().split('T')[0]}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showSuccess('资产数据导出成功', '文件已保存到下载目录');
+      showSuccess('资产数据导出成功', 'Excel文件已保存到下载目录');
     } catch (error) {
       console.error('导出资产失败:', error);
       showError('导出资产失败', '请稍后重试');

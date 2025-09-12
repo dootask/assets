@@ -30,6 +30,17 @@ const statusColors = {
   completed: 'bg-green-100 text-green-800',
 };
 
+// 资产状态中文映射
+const getAssetStatusLabel = (status: string) => {
+  const statusMap: Record<string, string> = {
+    available: '可用',
+    borrowed: '借用中',
+    maintenance: '维修中',
+    scrapped: '已报废',
+  };
+  return statusMap[status] || status;
+};
+
 const taskTypeLabels = {
   full: '全盘',
   category: '按分类',
@@ -394,8 +405,8 @@ export default function InventoryTaskDetailPage() {
                             <TableCell>{record.asset?.name}</TableCell>
                             <TableCell>{record.asset?.category?.name || '-'}</TableCell>
                             <TableCell>{record.asset?.department?.name || '-'}</TableCell>
-                            <TableCell>{record.expected_status}</TableCell>
-                            <TableCell>{record.actual_status}</TableCell>
+                            <TableCell>{getAssetStatusLabel(record.expected_status)}</TableCell>
+                            <TableCell>{getAssetStatusLabel(record.actual_status)}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <ResultIcon className="h-4 w-4" />

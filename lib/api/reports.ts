@@ -102,6 +102,13 @@ export interface AssetReportData {
     expired_warranty: number;
     no_warranty: number;
   };
+  utilization_rate: {
+    total_assets: number;
+    borrowed_assets: number;
+    available_assets: number;
+    utilization_rate: number;
+    borrow_rate: number;
+  };
 }
 
 // 盘点报表数据类型
@@ -272,47 +279,54 @@ export const fetchBorrowReports = async (params?: ReportQueryParams): Promise<Bo
     return response.data.data;
   } catch (error) {
     console.error('Failed to fetch borrow reports:', error);
-    // 返回模拟数据以确保页面正常显示
-    return {
-      summary: {
-        total_borrows: 856,
-        active_borrows: 156,
-        returned_borrows: 700,
-        overdue_borrows: 12,
-        average_return_days: 7.5,
-      },
-      by_department: [
-        { department_name: 'IT部门', borrow_count: 245, active_count: 45, overdue_count: 3, percentage: 28.6 },
-        { department_name: '财务部门', borrow_count: 178, active_count: 32, overdue_count: 2, percentage: 20.8 },
-        { department_name: '人事部门', borrow_count: 134, active_count: 25, overdue_count: 1, percentage: 15.7 },
-        { department_name: '市场部门', borrow_count: 156, active_count: 28, overdue_count: 4, percentage: 18.2 },
-        { department_name: '行政部门', borrow_count: 143, active_count: 26, overdue_count: 2, percentage: 16.7 },
-      ],
-      by_asset: [
-        { asset_id: 1, asset_name: '笔记本电脑 ThinkPad X1', asset_no: 'NB-001', borrow_count: 45, total_days: 680 },
-        { asset_id: 2, asset_name: '投影仪 EPSON EB-U05', asset_no: 'PJ-001', borrow_count: 38, total_days: 456 },
-      ],
-      overdue_analysis: {
-        total_overdue: 12,
-        overdue_rate: 7.7,
-        average_overdue_days: 3.2,
-        by_overdue_days: [
-          { days_range: '1-3天', count: 8 },
-          { days_range: '4-7天', count: 3 },
-          { days_range: '8-15天', count: 1 },
+    
+    // 检查是否是网络错误
+    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+      // 只有在后端服务不可用时才使用模拟数据
+      return {
+        summary: {
+          total_borrows: 856,
+          active_borrows: 156,
+          returned_borrows: 700,
+          overdue_borrows: 12,
+          average_return_days: 7.5,
+        },
+        by_department: [
+          { department_name: 'IT部门', borrow_count: 245, active_count: 45, overdue_count: 3, percentage: 28.6 },
+          { department_name: '财务部门', borrow_count: 178, active_count: 32, overdue_count: 2, percentage: 20.8 },
+          { department_name: '人事部门', borrow_count: 134, active_count: 25, overdue_count: 1, percentage: 15.7 },
+          { department_name: '市场部门', borrow_count: 156, active_count: 28, overdue_count: 4, percentage: 18.2 },
+          { department_name: '行政部门', borrow_count: 143, active_count: 26, overdue_count: 2, percentage: 16.7 },
         ],
-      },
-      monthly_trend: [
-        { month: '2024-01', borrow_count: 78, return_count: 72 },
-        { month: '2024-02', borrow_count: 89, return_count: 85 },
-        { month: '2024-03', borrow_count: 95, return_count: 92 },
-      ],
-      popular_assets: [
-        { asset_id: 1, asset_name: '笔记本电脑 ThinkPad X1', asset_no: 'NB-001', borrow_count: 45, rank: 1 },
-        { asset_id: 2, asset_name: '投影仪 EPSON EB-U05', asset_no: 'PJ-001', borrow_count: 38, rank: 2 },
-        { asset_id: 3, asset_name: '数码相机 Canon EOS', asset_no: 'CM-001', borrow_count: 32, rank: 3 },
-      ],
-    };
+        by_asset: [
+          { asset_id: 1, asset_name: '笔记本电脑 ThinkPad X1', asset_no: 'NB-001', borrow_count: 45, total_days: 680 },
+          { asset_id: 2, asset_name: '投影仪 EPSON EB-U05', asset_no: 'PJ-001', borrow_count: 38, total_days: 456 },
+        ],
+        overdue_analysis: {
+          total_overdue: 12,
+          overdue_rate: 7.7,
+          average_overdue_days: 3.2,
+          by_overdue_days: [
+            { days_range: '1-3天', count: 8 },
+            { days_range: '4-7天', count: 3 },
+            { days_range: '8-15天', count: 1 },
+          ],
+        },
+        monthly_trend: [
+          { month: '2024-01', borrow_count: 78, return_count: 72 },
+          { month: '2024-02', borrow_count: 89, return_count: 85 },
+          { month: '2024-03', borrow_count: 95, return_count: 92 },
+        ],
+        popular_assets: [
+          { asset_id: 1, asset_name: '笔记本电脑 ThinkPad X1', asset_no: 'NB-001', borrow_count: 45, rank: 1 },
+          { asset_id: 2, asset_name: '投影仪 EPSON EB-U05', asset_no: 'PJ-001', borrow_count: 38, rank: 2 },
+          { asset_id: 3, asset_name: '数码相机 Canon EOS', asset_no: 'CM-001', borrow_count: 32, rank: 3 },
+        ],
+      };
+    }
+    
+    // 对于其他错误，直接抛出异常让上层处理
+    throw error;
   }
 };
 
@@ -325,6 +339,11 @@ export const fetchAssetReports = async (params?: ReportQueryParams): Promise<Ass
     return response.data.data;
   } catch (error) {
     console.error('Failed to fetch asset reports:', error);
+    
+    // 检查是否是网络错误
+    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+    }
+    
     // 返回模拟数据
     return {
       summary: {
@@ -373,6 +392,13 @@ export const fetchAssetReports = async (params?: ReportQueryParams): Promise<Ass
         in_warranty: 856,
         expired_warranty: 245,
         no_warranty: 133,
+      },
+      utilization_rate: {
+        total_assets: 1234,
+        borrowed_assets: 156,
+        available_assets: 1048,
+        utilization_rate: 12.6,
+        borrow_rate: 12.6,
       },
     };
   }

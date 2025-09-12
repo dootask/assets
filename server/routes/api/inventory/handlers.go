@@ -120,11 +120,7 @@ func CreateInventoryTask(c *gin.Context) {
 		return
 	}
 
-	// 如果任务类型不是全盘，需要根据范围过滤条件生成盘点记录
-	if err := generateInventoryRecords(&task); err != nil {
-		utils.InternalError(c, "生成盘点记录失败")
-		return
-	}
+	// 注意：不再自动生成盘点记录，盘点记录应该在用户实际进行盘点时创建
 
 	// 重新加载任务数据
 	if err := global.DB.Preload("Records").First(&task, task.ID).Error; err != nil {
@@ -579,18 +575,20 @@ func buildInventoryTaskResponse(task *models.InventoryTask) InventoryTaskRespons
 	// 根据任务类型和范围过滤条件计算总资产数
 	totalAssets = calculateTotalAssets(task)
 
-	// 统计已盘点的资产
+	// 统计已盘点的资产（只有checked_at不为空的记录才算已盘点）
 	for _, record := range task.Records {
-		checkedAssets++
-		switch record.Result {
-		case models.InventoryResultNormal:
-			normalAssets++
-		case models.InventoryResultSurplus:
-			surplusAssets++
-		case models.InventoryResultDeficit:
-			deficitAssets++
-		case models.InventoryResultDamaged:
-			damagedAssets++
+		if record.CheckedAt != nil {
+			checkedAssets++
+			switch record.Result {
+			case models.InventoryResultNormal:
+				normalAssets++
+			case models.InventoryResultSurplus:
+				surplusAssets++
+			case models.InventoryResultDeficit:
+				deficitAssets++
+			case models.InventoryResultDamaged:
+				damagedAssets++
+			}
 		}
 	}
 
@@ -646,68 +644,6 @@ func calculateTotalAssets(task *models.InventoryTask) int64 {
 	return count
 }
 
-// generateInventoryRecords 根据盘点任务生成初始盘点记录
-func generateInventoryRecords(task *models.InventoryTask) error {
-	// 解析范围过滤条件
-	var scopeFilter models.InventoryScopeFilter
-	if len(task.ScopeFilter) > 0 {
-		if err := json.Unmarshal(task.ScopeFilter, &scopeFilter); err != nil {
-			return err
-		}
-	}
-
-	// 构建资产查询
-	db := global.DB.Model(&models.Asset{})
-
-	// 根据任务类型和范围过滤条件构建查询
-	switch task.TaskType {
-	case models.InventoryTaskTypeCategory:
-		if len(scopeFilter.CategoryIDs) > 0 {
-			db = db.Where("category_id IN ?", scopeFilter.CategoryIDs)
-		}
-	case models.InventoryTaskTypeDepartment:
-		if len(scopeFilter.DepartmentIDs) > 0 {
-			db = db.Where("department_id IN ?", scopeFilter.DepartmentIDs)
-		}
-	}
-
-	// 状态过滤
-	if len(scopeFilter.AssetStatuses) > 0 {
-		db = db.Where("status IN ?", scopeFilter.AssetStatuses)
-	}
-
-	// 位置过滤
-	if scopeFilter.LocationFilter != "" {
-		db = db.Where("location LIKE ?", "%"+scopeFilter.LocationFilter+"%")
-	}
-
-	// 获取符合条件的资产
-	var assets []models.Asset
-	if err := db.Find(&assets).Error; err != nil {
-		return err
-	}
-
-	// 为每个资产创建盘点记录
-	var records []models.InventoryRecord
-	for _, asset := range assets {
-		record := models.InventoryRecord{
-			TaskID:         task.ID,
-			AssetID:        asset.ID,
-			ExpectedStatus: asset.Status,
-			Result:         models.InventoryResultNormal, // 默认为正常
-		}
-		records = append(records, record)
-	}
-
-	// 批量创建盘点记录
-	if len(records) > 0 {
-		if err := global.DB.CreateInBatches(records, 100).Error; err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
 
 // generateCategoryStats 生成分类盘点统计
 func generateCategoryStats(taskID uint) ([]CategoryInventoryStats, error) {

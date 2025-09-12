@@ -107,7 +107,6 @@ func generateCustomBorrowReport(req CustomReportRequest) ([]map[string]interface
 	query := global.DB.Table("borrow_records br").
 		Select(buildBorrowSelectFields(req.Metrics)).
 		Joins("JOIN assets a ON a.id = br.asset_id").
-		Joins("JOIN users u ON u.id = br.borrower_id").
 		Joins("LEFT JOIN departments d ON d.id = br.department_id")
 
 	// 应用过滤条件
@@ -279,6 +278,9 @@ func buildAssetSelectFields(metrics []string) string {
 	}
 
 	var fields []string
+	// 总是包含id字段
+	fields = append(fields, "a.id")
+
 	for _, metric := range metrics {
 		switch metric {
 		case "asset_no":
@@ -304,20 +306,19 @@ func buildAssetSelectFields(metrics []string) string {
 		}
 	}
 
-	if len(fields) == 0 {
-		return "a.id"
-	}
-
 	return strings.Join(fields, ", ")
 }
 
 // buildBorrowSelectFields 构建借用查询字段
 func buildBorrowSelectFields(metrics []string) string {
 	if len(metrics) == 0 {
-		return "br.id, a.asset_no, a.name as asset_name, u.name as borrower_name, br.borrow_date, br.expected_return_date, br.actual_return_date, br.status, d.name as department_name"
+		return "br.id, a.asset_no, a.name as asset_name, br.borrower_name, br.borrow_date, br.expected_return_date, br.actual_return_date, br.status, d.name as department_name"
 	}
 
 	var fields []string
+	// 总是包含id字段
+	fields = append(fields, "br.id")
+
 	for _, metric := range metrics {
 		switch metric {
 		case "asset_no":
@@ -325,7 +326,7 @@ func buildBorrowSelectFields(metrics []string) string {
 		case "asset_name":
 			fields = append(fields, "a.name as asset_name")
 		case "borrower_name":
-			fields = append(fields, "u.name as borrower_name")
+			fields = append(fields, "br.borrower_name")
 		case "department_name":
 			fields = append(fields, "d.name as department_name")
 		case "borrow_date":
@@ -339,10 +340,6 @@ func buildBorrowSelectFields(metrics []string) string {
 		case "purpose":
 			fields = append(fields, "br.purpose")
 		}
-	}
-
-	if len(fields) == 0 {
-		return "br.id"
 	}
 
 	return strings.Join(fields, ", ")

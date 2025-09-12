@@ -1,27 +1,34 @@
 'use client';
 
+import { ExportDialog, type ExportOptions } from '@/components/reports/export-dialog';
+import { ReportFilter, type FilterOptions, type ReportFilterParams } from '@/components/reports/report-filter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BorrowReportData, downloadFile, exportBorrowReports, fetchBorrowReports } from '@/lib/api/reports';
-import { Activity, AlertTriangle, BarChart3, Calendar, Clock, Download, Filter, Loader2, TrendingUp, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { getAllCategories } from '@/lib/api/categories';
+import { getAllDepartments } from '@/lib/api/departments';
+import { BorrowReportData, downloadFile, exportBorrowReports, fetchBorrowReports, ReportQueryParams } from '@/lib/api/reports';
+import { Activity, AlertTriangle, BarChart3, Clock, Download, Loader2, TrendingUp, Users } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function BorrowReportsPage() {
   const [reportData, setReportData] = useState<BorrowReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [filters, setFilters] = useState<ReportFilterParams>({});
+  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
 
   useEffect(() => {
     loadReportData();
+    loadFilterOptions();
   }, []);
 
-  const loadReportData = async () => {
+  const loadReportData = async (queryParams?: ReportQueryParams) => {
     try {
       setLoading(true);
-      const data = await fetchBorrowReports();
+      const data = await fetchBorrowReports(queryParams);
       setReportData(data);
     } catch (error) {
       console.error('Failed to load borrow reports:', error);
@@ -31,11 +38,91 @@ export default function BorrowReportsPage() {
     }
   };
 
-  const handleExport = async (format: string) => {
+  const loadFilterOptions = async () => {
+    try {
+      // 从API获取筛选选项
+      const [categoriesData, departmentsData] = await Promise.all([
+        getAllCategories(),
+        getAllDepartments()
+      ]);
+      
+      const options: FilterOptions = {
+        categories: categoriesData?.map((cat: { id: number; name: string }) => ({ id: cat.id.toString(), name: cat.name })) || [],
+        departments: departmentsData.data?.data?.map((dept: { id: number; name: string }) => ({ id: dept.id.toString(), name: dept.name })) || [],
+        statuses: [
+          { value: 'active', label: '进行中' },
+          { value: 'returned', label: '已归还' },
+          { value: 'overdue', label: '已超期' },
+        ],
+        valueRanges: [],
+        warrantyStatuses: [],
+        borrowDurations: [
+          { value: 'short', label: '短期 (1-7天)' },
+          { value: 'medium', label: '中期 (8-30天)' },
+          { value: 'long', label: '长期 (31-90天)' },
+          { value: 'very_long', label: '超长期 (90天以上)' },
+        ],
+        taskTypes: [],
+      };
+      setFilterOptions(options);
+    } catch (error) {
+      console.error('Failed to load filter options:', error);
+      // 如果API调用失败，使用默认值
+      const options: FilterOptions = {
+        categories: [],
+        departments: [],
+        statuses: [
+          { value: 'active', label: '进行中' },
+          { value: 'returned', label: '已归还' },
+          { value: 'overdue', label: '已超期' },
+        ],
+        valueRanges: [],
+        warrantyStatuses: [],
+        borrowDurations: [
+          { value: 'short', label: '短期 (1-7天)' },
+          { value: 'medium', label: '中期 (8-30天)' },
+          { value: 'long', label: '长期 (31-90天)' },
+          { value: 'very_long', label: '超长期 (90天以上)' },
+        ],
+        taskTypes: [],
+      };
+      setFilterOptions(options);
+    }
+  };
+
+  const handleFilterChange = useCallback((newFilters: ReportFilterParams) => {
+    setFilters(newFilters);
+    const queryParams: ReportQueryParams = {
+      start_date: newFilters.start_date,
+      end_date: newFilters.end_date,
+      category_id: newFilters.category_id,
+      department_id: newFilters.department_id,
+      status: newFilters.status,
+    };
+    loadReportData(queryParams);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setFilters({});
+    loadReportData();
+  }, []);
+
+  const handleExport = async (options: ExportOptions) => {
     try {
       setExporting(true);
-      const blob = await exportBorrowReports(format);
-      const filename = `借用统计报表_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+
+      // 转换filters类型以匹配ReportQueryParams
+      const filters = (options.filters as Record<string, unknown>) || {};
+      const queryParams: ReportQueryParams = {
+        start_date: options.dateRange?.start_date,
+        end_date: options.dateRange?.end_date,
+        category_id: filters.category_id ? String(filters.category_id) : undefined,
+        department_id: filters.department_id ? String(filters.department_id) : undefined,
+        status: filters.status as string,
+      };
+
+      const blob = await exportBorrowReports(options.format, queryParams);
+      const filename = `借用统计报表_${new Date().toISOString().split('T')[0]}.${options.format === 'excel' ? 'xlsx' : 'csv'}`;
       downloadFile(blob, filename);
       toast.success('报表导出成功');
     } catch (error) {
@@ -83,20 +170,25 @@ export default function BorrowReportsPage() {
           <p className="text-muted-foreground">分析借用趋势、超期情况、热门资产等信息</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" />
-            筛选
-          </Button>
-          <Button variant="outline" size="sm">
-            <Calendar className="mr-2 h-4 w-4" />
-            时间范围
-          </Button>
-          <Button onClick={() => handleExport('excel')} disabled={exporting} size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            {exporting ? '导出中...' : '导出Excel'}
-          </Button>
+          <ExportDialog reportType="borrow" onExport={handleExport}>
+            <Button size="sm" disabled={exporting}>
+              <Download className="mr-2 h-4 w-4" />
+              {exporting ? '导出中...' : '导出报表'}
+            </Button>
+          </ExportDialog>
         </div>
       </div>
+
+      {/* 筛选组件 */}
+      {filterOptions && (
+        <ReportFilter
+          reportType="borrow"
+          onFilterChange={handleFilterChange}
+          onReset={handleFilterReset}
+          initialFilters={filters}
+          options={filterOptions}
+        />
+      )}
 
       {/* 概览卡片 */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

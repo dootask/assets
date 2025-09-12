@@ -36,9 +36,9 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
   const [format, setFormat] = useState<'excel' | 'csv' | 'pdf'>('excel');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
@@ -52,9 +52,9 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
           end_date: endDate,
         } : undefined,
         filters: {
-          ...(categoryFilter && { category_id: categoryFilter }),
-          ...(departmentFilter && { department_id: departmentFilter }),
-          ...(statusFilter && { status: statusFilter }),
+          ...(categoryFilter && categoryFilter !== 'all' && { category_id: categoryFilter }),
+          ...(departmentFilter && departmentFilter !== 'all' && { department_id: departmentFilter }),
+          ...(statusFilter && statusFilter !== 'all' && { status: statusFilter }),
         },
       };
 
@@ -192,7 +192,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
                         <SelectValue placeholder="选择分类" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">全部分类</SelectItem>
+                        <SelectItem value="all">全部分类</SelectItem>
                         <SelectItem value="1">电脑设备</SelectItem>
                         <SelectItem value="2">办公设备</SelectItem>
                         <SelectItem value="3">网络设备</SelectItem>
@@ -210,7 +210,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
                         <SelectValue placeholder="选择状态" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">全部状态</SelectItem>
+                        <SelectItem value="all">全部状态</SelectItem>
                         <SelectItem value="available">可用</SelectItem>
                         <SelectItem value="borrowed">借用中</SelectItem>
                         <SelectItem value="maintenance">维护中</SelectItem>
@@ -233,7 +233,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
                       <SelectValue placeholder="选择状态" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="all">全部状态</SelectItem>
                       <SelectItem value="active">进行中</SelectItem>
                       <SelectItem value="returned">已归还</SelectItem>
                       <SelectItem value="overdue">已超期</SelectItem>
@@ -254,7 +254,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
                       <SelectValue placeholder="选择状态" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">全部状态</SelectItem>
+                      <SelectItem value="all">全部状态</SelectItem>
                       <SelectItem value="pending">待开始</SelectItem>
                       <SelectItem value="in_progress">进行中</SelectItem>
                       <SelectItem value="completed">已完成</SelectItem>
@@ -273,7 +273,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
                   <SelectValue placeholder="选择部门" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">全部部门</SelectItem>
+                  <SelectItem value="all">全部部门</SelectItem>
                   <SelectItem value="1">IT部门</SelectItem>
                   <SelectItem value="2">财务部门</SelectItem>
                   <SelectItem value="3">人事部门</SelectItem>

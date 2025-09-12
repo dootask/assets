@@ -6,13 +6,17 @@ import (
 
 // AssetReportData 资产报表数据
 type AssetReportData struct {
-	Summary        AssetSummary        `json:"summary"`
-	ByCategory     []CategoryStats     `json:"by_category"`
-	ByDepartment   []DepartmentStats   `json:"by_department"`
-	ByStatus       []StatusStats       `json:"by_status"`
-	ByPurchaseYear []PurchaseYearStats `json:"by_purchase_year"`
-	ValueAnalysis  ValueAnalysis       `json:"value_analysis"`
-	WarrantyStatus WarrantyStatus      `json:"warranty_status"`
+	Summary         AssetSummary         `json:"summary"`
+	ByCategory      []CategoryStats      `json:"by_category"`
+	ByDepartment    []DepartmentStats    `json:"by_department"`
+	ByStatus        []StatusStats        `json:"by_status"`
+	ByPurchaseYear  []PurchaseYearStats  `json:"by_purchase_year"`
+	ValueAnalysis   ValueAnalysis        `json:"value_analysis"`
+	WarrantyStatus  WarrantyStatus       `json:"warranty_status"`
+	ByLocation      []LocationStats      `json:"by_location"`
+	BySupplier      []SupplierStats      `json:"by_supplier"`
+	ByPurchaseMonth []PurchaseMonthStats `json:"by_purchase_month"`
+	UtilizationRate UtilizationRate      `json:"utilization_rate"`
 }
 
 // AssetSummary 资产汇总
@@ -75,12 +79,16 @@ type WarrantyStatus struct {
 
 // BorrowReportData 借用报表数据
 type BorrowReportData struct {
-	Summary         BorrowSummary           `json:"summary"`
-	ByDepartment    []BorrowDepartmentStats `json:"by_department"`
-	ByAsset         []BorrowAssetStats      `json:"by_asset"`
-	OverdueAnalysis OverdueAnalysis         `json:"overdue_analysis"`
-	MonthlyTrend    []MonthlyBorrowStats    `json:"monthly_trend"`
-	PopularAssets   []PopularAssetStats     `json:"popular_assets"`
+	Summary          BorrowSummary           `json:"summary"`
+	ByDepartment     []BorrowDepartmentStats `json:"by_department"`
+	ByAsset          []BorrowAssetStats      `json:"by_asset"`
+	OverdueAnalysis  OverdueAnalysis         `json:"overdue_analysis"`
+	MonthlyTrend     []MonthlyBorrowStats    `json:"monthly_trend"`
+	PopularAssets    []PopularAssetStats     `json:"popular_assets"`
+	ByBorrower       []BorrowerStats         `json:"by_borrower"`
+	ByAssetCategory  []BorrowCategoryStats   `json:"by_asset_category"`
+	ByBorrowDuration []BorrowDurationStats   `json:"by_borrow_duration"`
+	BorrowTrends     BorrowTrends            `json:"borrow_trends"`
 }
 
 // BorrowSummary 借用汇总
@@ -139,6 +147,62 @@ type PopularAssetStats struct {
 	AssetName   string `json:"asset_name"`
 	BorrowCount int64  `json:"borrow_count"`
 	Rank        int    `json:"rank"`
+}
+
+// BorrowerStats 借用人统计
+type BorrowerStats struct {
+	BorrowerName string  `json:"borrower_name"`
+	BorrowCount  int64   `json:"borrow_count"`
+	ActiveCount  int64   `json:"active_count"`
+	OverdueCount int64   `json:"overdue_count"`
+	Percentage   float64 `json:"percentage"`
+}
+
+// BorrowCategoryStats 资产分类借用统计
+type BorrowCategoryStats struct {
+	CategoryID   uint    `json:"category_id"`
+	CategoryName string  `json:"category_name"`
+	BorrowCount  int64   `json:"borrow_count"`
+	ActiveCount  int64   `json:"active_count"`
+	OverdueCount int64   `json:"overdue_count"`
+	Percentage   float64 `json:"percentage"`
+}
+
+// BorrowDurationStats 借用时长统计
+type BorrowDurationStats struct {
+	DurationRange string  `json:"duration_range"`
+	BorrowCount   int64   `json:"borrow_count"`
+	Percentage    float64 `json:"percentage"`
+}
+
+// BorrowTrends 借用趋势分析
+type BorrowTrends struct {
+	WeeklyTrend   []WeeklyBorrowStats `json:"weekly_trend"`
+	DailyTrend    []DailyBorrowStats  `json:"daily_trend"`
+	HourlyPattern []HourlyBorrowStats `json:"hourly_pattern"`
+}
+
+// WeeklyBorrowStats 周度借用统计
+type WeeklyBorrowStats struct {
+	Week        string `json:"week"`
+	BorrowCount int64  `json:"borrow_count"`
+	ReturnCount int64  `json:"return_count"`
+	NetBorrows  int64  `json:"net_borrows"`
+}
+
+// DailyBorrowStats 日度借用统计
+type DailyBorrowStats struct {
+	Date        string `json:"date"`
+	BorrowCount int64  `json:"borrow_count"`
+	ReturnCount int64  `json:"return_count"`
+	NetBorrows  int64  `json:"net_borrows"`
+}
+
+// HourlyBorrowStats 小时借用统计
+type HourlyBorrowStats struct {
+	Hour        int   `json:"hour"`
+	BorrowCount int64 `json:"borrow_count"`
+	ReturnCount int64 `json:"return_count"`
 }
 
 // InventoryReportData 盘点报表数据
@@ -301,11 +365,11 @@ type SystemAlert struct {
 
 // CustomReportRequest 自定义报表请求
 type CustomReportRequest struct {
-	ReportType string                 `json:"report_type"` // asset, borrow, inventory
+	ReportType string                 `json:"type"` // asset, borrow, inventory
 	DateRange  DateRange              `json:"date_range"`
 	Filters    map[string]interface{} `json:"filters"`
 	GroupBy    []string               `json:"group_by"`
-	Metrics    []string               `json:"metrics"`
+	Metrics    []string               `json:"fields"`
 	SortBy     string                 `json:"sort_by"`
 	SortOrder  string                 `json:"sort_order"` // asc, desc
 	Limit      int                    `json:"limit"`
@@ -329,6 +393,39 @@ type CustomReportColumn struct {
 	Key   string `json:"key"`
 	Label string `json:"label"`
 	Type  string `json:"type"`
+}
+
+// LocationStats 位置统计
+type LocationStats struct {
+	Location   string  `json:"location"`
+	AssetCount int64   `json:"asset_count"`
+	TotalValue float64 `json:"total_value"`
+	Percentage float64 `json:"percentage"`
+}
+
+// SupplierStats 供应商统计
+type SupplierStats struct {
+	Supplier   string  `json:"supplier"`
+	AssetCount int64   `json:"asset_count"`
+	TotalValue float64 `json:"total_value"`
+	Percentage float64 `json:"percentage"`
+}
+
+// PurchaseMonthStats 采购月份统计
+type PurchaseMonthStats struct {
+	Month        string  `json:"month"`
+	AssetCount   int64   `json:"asset_count"`
+	TotalValue   float64 `json:"total_value"`
+	AverageValue float64 `json:"average_value"`
+}
+
+// UtilizationRate 利用率统计
+type UtilizationRate struct {
+	TotalAssets     int64   `json:"total_assets"`
+	BorrowedAssets  int64   `json:"borrowed_assets"`
+	AvailableAssets int64   `json:"available_assets"`
+	UtilizationRate float64 `json:"utilization_rate"`
+	BorrowRate      float64 `json:"borrow_rate"`
 }
 
 // ExportRequest 导出请求

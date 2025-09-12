@@ -4,12 +4,12 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,12 +21,12 @@ import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { batchDeleteAssets, batchUpdateAssets } from '@/lib/api/assets';
 import { getDepartments } from '@/lib/api/departments';
 import type {
-  AssetResponse,
-  AssetStatus,
-  BatchDeleteAssetsResponse,
-  BatchUpdateAssetsData,
-  BatchUpdateAssetsResponse,
-  Department,
+    AssetResponse,
+    AssetStatus,
+    BatchDeleteAssetsResponse,
+    BatchUpdateAssetsData,
+    BatchUpdateAssetsResponse,
+    Department,
 } from '@/lib/types';
 
 interface BatchOperationsDialogProps {

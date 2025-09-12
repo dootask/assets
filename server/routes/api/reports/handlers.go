@@ -17,10 +17,15 @@ func GetAssetReports(c *gin.Context) {
 	endDate := c.Query("end_date")
 	categoryID := c.Query("category_id")
 	departmentID := c.Query("department_id")
+	status := c.Query("status")
+	valueRange := c.Query("value_range")
+	warrantyStatus := c.Query("warranty_status")
+	includeSubCategories := c.DefaultQuery("include_sub_categories", "false")
 
 	// 构建查询条件
 	query := global.DB.Model(&models.Asset{})
 
+	// 时间范围筛选
 	if startDate != "" {
 		if start, err := time.Parse("2006-01-02", startDate); err == nil {
 			query = query.Where("created_at >= ?", start)
@@ -33,12 +38,59 @@ func GetAssetReports(c *gin.Context) {
 		}
 	}
 
+	// 分类筛选
 	if categoryID != "" {
-		query = query.Where("category_id = ?", categoryID)
+		if includeSubCategories == "true" {
+			// 包含子分类的筛选
+			query = query.Where("category_id IN (SELECT id FROM categories WHERE id = ? OR parent_id = ?)", categoryID, categoryID)
+		} else {
+			query = query.Where("category_id = ?", categoryID)
+		}
 	}
 
+	// 部门筛选
 	if departmentID != "" {
 		query = query.Where("department_id = ?", departmentID)
+	}
+
+	// 状态筛选
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	// 价值范围筛选
+	if valueRange != "" {
+		switch valueRange {
+		case "high":
+			query = query.Where("purchase_price > ?", 10000)
+		case "medium":
+			query = query.Where("purchase_price BETWEEN ? AND ?", 1000, 10000)
+		case "low":
+			query = query.Where("purchase_price > 0 AND purchase_price < ?", 1000)
+		case "no_value":
+			query = query.Where("purchase_price IS NULL OR purchase_price = 0")
+		}
+	}
+
+	// 保修状态筛选
+	if warrantyStatus != "" {
+		now := time.Now()
+		switch warrantyStatus {
+		case "in_warranty":
+			query = query.Where(`
+				purchase_date IS NOT NULL 
+				AND warranty_period IS NOT NULL 
+				AND datetime(purchase_date, '+' || warranty_period || ' months') > ?
+			`, now)
+		case "expired":
+			query = query.Where(`
+				purchase_date IS NOT NULL 
+				AND warranty_period IS NOT NULL 
+				AND datetime(purchase_date, '+' || warranty_period || ' months') <= ?
+			`, now)
+		case "no_warranty":
+			query = query.Where("purchase_date IS NULL OR warranty_period IS NULL")
+		}
 	}
 
 	// 获取资产汇总数据
@@ -60,16 +112,26 @@ func GetAssetReports(c *gin.Context) {
 	valueAnalysis := getAssetValueAnalysis(query)
 
 	// 获取保修状态
-	warrantyStatus := getAssetWarrantyStatus(query)
+	warrantyStatusData := getAssetWarrantyStatus(query)
+
+	// 获取新增统计维度
+	byLocation := getAssetsByLocation(query)
+	bySupplier := getAssetsBySupplier(query)
+	byPurchaseMonth := getAssetsByPurchaseMonth(query)
+	utilizationRate := getAssetUtilizationRate(query)
 
 	reportData := AssetReportData{
-		Summary:        summary,
-		ByCategory:     byCategory,
-		ByDepartment:   byDepartment,
-		ByStatus:       byStatus,
-		ByPurchaseYear: byPurchaseYear,
-		ValueAnalysis:  valueAnalysis,
-		WarrantyStatus: warrantyStatus,
+		Summary:         summary,
+		ByCategory:      byCategory,
+		ByDepartment:    byDepartment,
+		ByStatus:        byStatus,
+		ByPurchaseYear:  byPurchaseYear,
+		ValueAnalysis:   valueAnalysis,
+		WarrantyStatus:  warrantyStatusData,
+		ByLocation:      byLocation,
+		BySupplier:      bySupplier,
+		ByPurchaseMonth: byPurchaseMonth,
+		UtilizationRate: utilizationRate,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -86,10 +148,15 @@ func GetBorrowReports(c *gin.Context) {
 	endDate := c.Query("end_date")
 	departmentID := c.Query("department_id")
 	status := c.Query("status")
+	borrowerName := c.Query("borrower_name")
+	assetCategoryID := c.Query("asset_category_id")
+	overdueOnly := c.DefaultQuery("overdue_only", "false")
+	borrowDuration := c.Query("borrow_duration")
 
 	// 构建查询条件
 	query := global.DB.Model(&models.BorrowRecord{})
 
+	// 时间范围筛选
 	if startDate != "" {
 		if start, err := time.Parse("2006-01-02", startDate); err == nil {
 			query = query.Where("borrow_date >= ?", start)
@@ -102,12 +169,44 @@ func GetBorrowReports(c *gin.Context) {
 		}
 	}
 
+	// 部门筛选
 	if departmentID != "" {
 		query = query.Where("department_id = ?", departmentID)
 	}
 
+	// 状态筛选
 	if status != "" {
 		query = query.Where("status = ?", status)
+	}
+
+	// 借用人筛选
+	if borrowerName != "" {
+		query = query.Where("borrower_name LIKE ?", "%"+borrowerName+"%")
+	}
+
+	// 资产分类筛选
+	if assetCategoryID != "" {
+		query = query.Joins("JOIN assets a ON a.id = borrow_records.asset_id").
+			Where("a.category_id = ?", assetCategoryID)
+	}
+
+	// 超期筛选
+	if overdueOnly == "true" {
+		now := time.Now()
+		query = query.Where("status = ? AND expected_return_date < ?", models.BorrowStatusBorrowed, now)
+	}
+
+	// 借用时长筛选
+	if borrowDuration != "" {
+		now := time.Now()
+		switch borrowDuration {
+		case "short":
+			query = query.Where("julianday(?) - julianday(borrow_date) <= 7", now)
+		case "medium":
+			query = query.Where("julianday(?) - julianday(borrow_date) BETWEEN 8 AND 30", now)
+		case "long":
+			query = query.Where("julianday(?) - julianday(borrow_date) > 30", now)
+		}
 	}
 
 	// 获取借用汇总数据
@@ -128,13 +227,23 @@ func GetBorrowReports(c *gin.Context) {
 	// 获取热门资产
 	popularAssets := getBorrowPopularAssets(query)
 
+	// 获取新增统计维度
+	byBorrower := getBorrowsByBorrower(query)
+	byAssetCategory := getBorrowsByAssetCategory(query)
+	byBorrowDuration := getBorrowsByDuration(query)
+	borrowTrends := getBorrowTrends(query)
+
 	reportData := BorrowReportData{
-		Summary:         summary,
-		ByDepartment:    byDepartment,
-		ByAsset:         byAsset,
-		OverdueAnalysis: overdueAnalysis,
-		MonthlyTrend:    monthlyTrend,
-		PopularAssets:   popularAssets,
+		Summary:          summary,
+		ByDepartment:     byDepartment,
+		ByAsset:          byAsset,
+		OverdueAnalysis:  overdueAnalysis,
+		MonthlyTrend:     monthlyTrend,
+		PopularAssets:    popularAssets,
+		ByBorrower:       byBorrower,
+		ByAssetCategory:  byAssetCategory,
+		ByBorrowDuration: byBorrowDuration,
+		BorrowTrends:     borrowTrends,
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -283,6 +392,29 @@ func GetCustomReports(c *gin.Context) {
 		"code":    "SUCCESS",
 		"message": "获取自定义报表成功",
 		"data":    response,
+	})
+}
+
+// GetRecentReports 获取最近生成的报表
+func GetRecentReports(c *gin.Context) {
+	// 这里应该从数据库或文件系统中获取最近生成的报表列表
+	// 暂时返回空数组，实际项目中需要实现相应的存储和查询逻辑
+	recentReports := []map[string]interface{}{
+		// 示例数据，实际应该从数据库查询
+		// {
+		// 	"id": "1",
+		// 	"name": "2024年1月资产统计报表.xlsx",
+		// 	"type": "资产报表",
+		// 	"date": "2024-01-28 14:30",
+		// 	"size": "2.3 MB",
+		// 	"download_url": "/api/reports/download/1",
+		// },
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    "SUCCESS",
+		"message": "获取最近报表成功",
+		"data":    recentReports,
 	})
 }
 

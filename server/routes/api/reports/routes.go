@@ -31,5 +31,8 @@ func RegisterRoutes(router *gin.RouterGroup) {
 		// 新增功能
 		reportsGroup.POST("/monthly", GenerateMonthlyReport)
 		reportsGroup.GET("/asset-inventory/export", ExportAssetInventory)
+
+		// 最近生成的报表
+		reportsGroup.GET("/recent", GetRecentReports)
 	}
 }

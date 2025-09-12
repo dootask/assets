@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -189,6 +191,12 @@ func CreateAsset(c *gin.Context) {
 		}
 	}
 
+	// 转换采购日期
+	var purchaseDate *time.Time
+	if req.PurchaseDate != nil && !req.PurchaseDate.Time.IsZero() {
+		purchaseDate = &req.PurchaseDate.Time
+	}
+
 	// 创建资产
 	asset := models.Asset{
 		AssetNo:           req.AssetNo,
@@ -198,7 +206,7 @@ func CreateAsset(c *gin.Context) {
 		Brand:             req.Brand,
 		Model:             req.Model,
 		SerialNumber:      req.SerialNumber,
-		PurchaseDate:      req.PurchaseDate,
+		PurchaseDate:      purchaseDate,
 		PurchasePrice:     req.PurchasePrice,
 		Supplier:          req.Supplier,
 		WarrantyPeriod:    req.WarrantyPeriod,
@@ -321,42 +329,28 @@ func UpdateAsset(c *gin.Context) {
 	if req.DepartmentID != nil {
 		updates["department_id"] = *req.DepartmentID
 	}
-	if req.Brand != nil {
-		updates["brand"] = *req.Brand
-	}
-	if req.Model != nil {
-		updates["model"] = *req.Model
-	}
-	if req.SerialNumber != nil {
-		updates["serial_number"] = *req.SerialNumber
-	}
-	if req.PurchaseDate != nil {
-		updates["purchase_date"] = *req.PurchaseDate
+	updates["brand"] = req.Brand
+	updates["model"] = req.Model
+	updates["serial_number"] = req.SerialNumber
+	if req.PurchaseDate != nil && !req.PurchaseDate.Time.IsZero() {
+		updates["purchase_date"] = req.PurchaseDate.Time
+	} else if req.PurchaseDate != nil && req.PurchaseDate.Time.IsZero() {
+		updates["purchase_date"] = nil
 	}
 	if req.PurchasePrice != nil {
 		updates["purchase_price"] = *req.PurchasePrice
 	}
-	if req.Supplier != nil {
-		updates["supplier"] = *req.Supplier
-	}
+	updates["supplier"] = req.Supplier
 	if req.WarrantyPeriod != nil {
 		updates["warranty_period"] = *req.WarrantyPeriod
 	}
 	if req.Status != nil {
 		updates["status"] = *req.Status
 	}
-	if req.Location != nil {
-		updates["location"] = *req.Location
-	}
-	if req.ResponsiblePerson != nil {
-		updates["responsible_person"] = *req.ResponsiblePerson
-	}
-	if req.Description != nil {
-		updates["description"] = *req.Description
-	}
-	if req.ImageURL != nil {
-		updates["image_url"] = *req.ImageURL
-	}
+	updates["location"] = req.Location
+	updates["responsible_person"] = req.ResponsiblePerson
+	updates["description"] = req.Description
+	updates["image_url"] = req.ImageURL
 	if req.CustomAttributes != nil {
 		customAttributesJSON, err := json.Marshal(req.CustomAttributes)
 		if err != nil {
@@ -554,6 +548,12 @@ func ImportAssets(c *gin.Context) {
 			}
 		}
 
+		// 转换采购日期
+		var purchaseDate *time.Time
+		if assetReq.PurchaseDate != nil && !assetReq.PurchaseDate.Time.IsZero() {
+			purchaseDate = &assetReq.PurchaseDate.Time
+		}
+
 		// 创建资产
 		asset := models.Asset{
 			AssetNo:           assetReq.AssetNo,
@@ -563,7 +563,7 @@ func ImportAssets(c *gin.Context) {
 			Brand:             assetReq.Brand,
 			Model:             assetReq.Model,
 			SerialNumber:      assetReq.SerialNumber,
-			PurchaseDate:      assetReq.PurchaseDate,
+			PurchaseDate:      purchaseDate,
 			PurchasePrice:     assetReq.PurchasePrice,
 			Supplier:          assetReq.Supplier,
 			WarrantyPeriod:    assetReq.WarrantyPeriod,
@@ -628,21 +628,121 @@ func ExportAssets(c *gin.Context) {
 		return
 	}
 
-	// 转换为响应格式
-	assetResponses := make([]AssetResponse, len(assets))
+	// 创建Excel文件
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	// 设置工作表名称
+	sheetName := "资产清单"
+	f.SetSheetName("Sheet1", sheetName)
+
+	// 设置表头
+	headers := []string{
+		"资产编号", "资产名称", "分类", "部门", "品牌", "型号", "序列号",
+		"采购日期", "采购价格", "供应商", "保修期(月)", "状态", "位置",
+		"责任人", "描述", "保修到期", "是否在保修期", "创建时间", "更新时间",
+	}
+
+	// 写入表头
+	for i, header := range headers {
+		cell := fmt.Sprintf("%c1", 'A'+i)
+		f.SetCellValue(sheetName, cell, header)
+	}
+
+	// 写入数据
 	for i, asset := range assets {
-		assetResponses[i] = AssetResponse{
-			Asset:           asset,
-			WarrantyEndDate: asset.GetWarrantyEndDate(),
-			IsUnderWarranty: asset.IsUnderWarranty(),
+		row := i + 2 // 从第2行开始写入数据
+
+		// 获取分类和部门名称
+		categoryName := ""
+		if asset.Category.ID != 0 {
+			categoryName = asset.Category.Name
+		}
+
+		departmentName := ""
+		if asset.Department.ID != 0 {
+			departmentName = asset.Department.Name
+		}
+
+		// 格式化采购日期
+		purchaseDateStr := ""
+		if asset.PurchaseDate != nil {
+			purchaseDateStr = asset.PurchaseDate.Format("2006-01-02")
+		}
+
+		// 格式化保修到期日期
+		warrantyEndDateStr := ""
+		if warrantyEndDate := asset.GetWarrantyEndDate(); warrantyEndDate != nil {
+			warrantyEndDateStr = warrantyEndDate.Format("2006-01-02")
+		}
+
+		// 状态映射
+		statusMap := map[string]string{
+			"available":   "可用",
+			"borrowed":    "借用中",
+			"maintenance": "维护中",
+			"scrapped":    "已报废",
+		}
+		statusText := statusMap[string(asset.Status)]
+		if statusText == "" {
+			statusText = string(asset.Status)
+		}
+
+		// 是否在保修期
+		isUnderWarrantyText := "否"
+		if asset.IsUnderWarranty() {
+			isUnderWarrantyText = "是"
+		}
+
+		// 写入数据行
+		data := []interface{}{
+			asset.AssetNo,
+			asset.Name,
+			categoryName,
+			departmentName,
+			asset.Brand,
+			asset.Model,
+			asset.SerialNumber,
+			purchaseDateStr,
+			asset.PurchasePrice,
+			asset.Supplier,
+			asset.WarrantyPeriod,
+			statusText,
+			asset.Location,
+			asset.ResponsiblePerson,
+			asset.Description,
+			warrantyEndDateStr,
+			isUnderWarrantyText,
+			asset.CreatedAt.Format("2006-01-02 15:04:05"),
+			asset.UpdatedAt.Format("2006-01-02 15:04:05"),
+		}
+
+		for j, value := range data {
+			cell := fmt.Sprintf("%c%d", 'A'+j, row)
+			f.SetCellValue(sheetName, cell, value)
 		}
 	}
 
-	// 设置响应头
-	c.Header("Content-Type", "application/json")
-	c.Header("Content-Disposition", "attachment; filename=assets.json")
+	// 设置列宽
+	columnWidths := []float64{15, 20, 15, 15, 12, 15, 15, 12, 12, 15, 10, 10, 15, 12, 30, 12, 10, 20, 20}
+	for i, width := range columnWidths {
+		col := fmt.Sprintf("%c:%c", 'A'+i, 'A'+i)
+		f.SetColWidth(sheetName, col, col, width)
+	}
 
-	utils.Success(c, assetResponses)
+	// 设置响应头
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename=资产清单.xlsx")
+
+	// 写入响应
+	if err := f.Write(c.Writer); err != nil {
+		utils.InternalError(c, err)
+		return
+	}
 }
 
 // BatchUpdateAssets 批量更新资产
@@ -876,6 +976,10 @@ func BatchDeleteAssets(c *gin.Context) {
 
 // applyAssetFilters 应用资产筛选条件
 func applyAssetFilters(query *gorm.DB, filters AssetFilters) *gorm.DB {
+	// 通用搜索关键词（同时搜索名称和编号）
+	if filters.Keyword != nil && *filters.Keyword != "" {
+		query = query.Where("(name LIKE ? OR asset_no LIKE ?)", "%"+*filters.Keyword+"%", "%"+*filters.Keyword+"%")
+	}
 	if filters.Name != nil && *filters.Name != "" {
 		query = query.Where("name LIKE ?", "%"+*filters.Name+"%")
 	}

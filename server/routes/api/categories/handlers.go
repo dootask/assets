@@ -28,7 +28,7 @@ func GetCategories(c *gin.Context) {
 
 	// 应用筛选条件
 	if filters.Name != nil && *filters.Name != "" {
-		query = query.Where("name LIKE ?", "%"+*filters.Name+"%")
+		query = query.Where("name LIKE ? OR code LIKE ?", "%"+*filters.Name+"%", "%"+*filters.Name+"%")
 	}
 	if filters.Code != nil && *filters.Code != "" {
 		query = query.Where("code LIKE ?", "%"+*filters.Code+"%")
@@ -55,10 +55,41 @@ func GetCategories(c *gin.Context) {
 		categoryAssetCounts[category.ID] = int(count)
 	}
 
-	// 构建树形结构
-	tree := buildCategoryTree(categories, categoryAssetCounts, nil)
+	// 检查是否有搜索条件
+	hasSearchFilter := (filters.Name != nil && *filters.Name != "") ||
+		(filters.Code != nil && *filters.Code != "") ||
+		(filters.ParentID != nil)
 
-	utils.Success(c, tree)
+	if hasSearchFilter {
+		// 有搜索条件时，返回扁平化结果
+		var flatResults []CategoryTreeResponse
+		for _, category := range categories {
+			// 解析属性JSON
+			var attributes interface{}
+			if len(category.Attributes) > 0 {
+				json.Unmarshal(category.Attributes, &attributes)
+			}
+
+			node := CategoryTreeResponse{
+				ID:          category.ID,
+				Name:        category.Name,
+				Code:        category.Code,
+				ParentID:    category.ParentID,
+				Description: category.Description,
+				Attributes:  attributes,
+				AssetCount:  categoryAssetCounts[category.ID],
+				CreatedAt:   category.CreatedAt,
+				UpdatedAt:   category.UpdatedAt,
+				Children:    []CategoryTreeResponse{}, // 扁平化结果不包含子分类
+			}
+			flatResults = append(flatResults, node)
+		}
+		utils.Success(c, flatResults)
+	} else {
+		// 无搜索条件时，返回树形结构
+		tree := buildCategoryTree(categories, categoryAssetCounts, nil)
+		utils.Success(c, tree)
+	}
 }
 
 // GetCategory 获取分类详情

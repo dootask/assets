@@ -233,6 +233,7 @@ func UpdateDepartment(c *gin.Context) {
 	if req.Code != nil {
 		updates["code"] = *req.Code
 	}
+	// 对于非必填字段，允许空字符串清空字段
 	if req.Manager != nil {
 		updates["manager"] = *req.Manager
 	}
@@ -398,7 +399,7 @@ func GetDepartmentStats(c *gin.Context) {
 // applyDepartmentFilters 应用部门筛选条件
 func applyDepartmentFilters(query *gorm.DB, filters DepartmentFilters) *gorm.DB {
 	if filters.Name != nil && *filters.Name != "" {
-		query = query.Where("name LIKE ?", "%"+*filters.Name+"%")
+		query = query.Where("name LIKE ? OR code LIKE ?", "%"+*filters.Name+"%", "%"+*filters.Name+"%")
 	}
 	if filters.Code != nil && *filters.Code != "" {
 		query = query.Where("code LIKE ?", "%"+*filters.Code+"%")

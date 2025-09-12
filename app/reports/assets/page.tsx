@@ -1,52 +1,65 @@
 'use client';
 
+import { AdvancedBarChart } from '@/components/charts/advanced-charts';
 import {
-  AssetCategoryChart,
-  AssetDepartmentChart,
-  AssetPurchaseTrendChart,
-  AssetStatusChart,
-  AssetValueAnalysisChart,
+    AssetCategoryChart,
+    AssetDepartmentChart,
+    AssetPurchaseTrendChart,
+    AssetStatusChart,
+    AssetValueAnalysisChart,
 } from '@/components/charts/asset-charts';
+import {
+    InteractiveAreaChart,
+    InteractiveBarChart,
+    InteractiveLineChart,
+} from '@/components/charts/interactive-charts';
 import { ExportDialog, type ExportOptions } from '@/components/reports/export-dialog';
+import { ReportFilter, type FilterOptions, type ReportFilterParams } from '@/components/reports/report-filter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getAllCategories } from '@/lib/api/categories';
+import { getAllDepartments } from '@/lib/api/departments';
 import {
-  AssetReportData,
-  downloadFile,
-  exportAssetReports,
-  fetchAssetReports,
-  ReportQueryParams,
+    AssetReportData,
+    downloadFile,
+    exportAssetReports,
+    fetchAssetReports,
+    ReportQueryParams,
 } from '@/lib/api/reports';
 import {
-  AlertCircle,
-  BarChart3,
-  Calendar,
-  DollarSign,
-  Download,
-  Filter,
-  Loader2,
-  Package,
-  PieChart,
-  TrendingUp,
+    AlertCircle,
+    BarChart3,
+    Building2,
+    Clock,
+    DollarSign,
+    Download,
+    Loader2,
+    MapPin,
+    Package,
+    PieChart,
+    Zap
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function AssetReportsPage() {
   const [reportData, setReportData] = useState<AssetReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [filters, setFilters] = useState<ReportFilterParams>({});
+  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
 
   useEffect(() => {
     loadReportData();
+    loadFilterOptions();
   }, []);
 
-  const loadReportData = async () => {
+  const loadReportData = async (queryParams?: ReportQueryParams) => {
     try {
       setLoading(true);
-      const data = await fetchAssetReports();
+      const data = await fetchAssetReports(queryParams);
       setReportData(data);
     } catch (error) {
       console.error('Failed to load asset reports:', error);
@@ -55,6 +68,85 @@ export default function AssetReportsPage() {
       setLoading(false);
     }
   };
+
+  const loadFilterOptions = async () => {
+    try {
+      // 从API获取筛选选项
+      const [categoriesData, departmentsData] = await Promise.all([
+        getAllCategories(),
+        getAllDepartments()
+      ]);
+      
+      const options: FilterOptions = {
+        categories: categoriesData?.map((cat: any) => ({ id: cat.id.toString(), name: cat.name })) || [],
+        departments: departmentsData.data?.data?.map((dept: any) => ({ id: dept.id.toString(), name: dept.name })) || [],
+        statuses: [
+          { value: 'available', label: '可用' },
+          { value: 'borrowed', label: '借用中' },
+          { value: 'maintenance', label: '维护中' },
+          { value: 'scrapped', label: '已报废' },
+        ],
+        valueRanges: [
+          { value: 'high', label: '高价值 (>¥10,000)' },
+          { value: 'medium', label: '中等价值 (¥1,000-¥10,000)' },
+          { value: 'low', label: '低价值 (<¥1,000)' },
+          { value: 'no_value', label: '无价值信息' },
+        ],
+        warrantyStatuses: [
+          { value: 'in_warranty', label: '保修期内' },
+          { value: 'expired', label: '保修期外' },
+          { value: 'no_warranty', label: '无保修信息' },
+        ],
+        borrowDurations: [],
+        taskTypes: [],
+      };
+      setFilterOptions(options);
+    } catch (error) {
+      console.error('Failed to load filter options:', error);
+      // 如果API调用失败，使用默认值
+      const options: FilterOptions = {
+        categories: [],
+        departments: [],
+        statuses: [
+          { value: 'available', label: '可用' },
+          { value: 'borrowed', label: '借用中' },
+          { value: 'maintenance', label: '维护中' },
+          { value: 'scrapped', label: '已报废' },
+        ],
+        valueRanges: [
+          { value: 'high', label: '高价值 (>¥10,000)' },
+          { value: 'medium', label: '中等价值 (¥1,000-¥10,000)' },
+          { value: 'low', label: '低价值 (<¥1,000)' },
+          { value: 'no_value', label: '无价值信息' },
+        ],
+        warrantyStatuses: [
+          { value: 'in_warranty', label: '保修期内' },
+          { value: 'expired', label: '保修期外' },
+          { value: 'no_warranty', label: '无保修信息' },
+        ],
+        borrowDurations: [],
+        taskTypes: [],
+      };
+      setFilterOptions(options);
+    }
+  };
+
+  const handleFilterChange = useCallback((newFilters: ReportFilterParams) => {
+    setFilters(newFilters);
+    const queryParams: ReportQueryParams = {
+      start_date: newFilters.start_date,
+      end_date: newFilters.end_date,
+      category_id: newFilters.category_id,
+      department_id: newFilters.department_id,
+      status: newFilters.status,
+    };
+    loadReportData(queryParams);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setFilters({});
+    loadReportData();
+  }, []);
 
   const handleExport = async (options: ExportOptions) => {
     try {
@@ -108,8 +200,19 @@ export default function AssetReportsPage() {
     );
   }
 
-  const { summary, by_category, by_department, by_status, by_purchase_year, value_analysis, warranty_status } =
-    reportData;
+  const { 
+    summary, 
+    by_category, 
+    by_department, 
+    by_status, 
+    by_purchase_year, 
+    value_analysis, 
+    warranty_status,
+    by_location,
+    by_supplier,
+    by_purchase_month,
+    utilization_rate
+  } = reportData;
 
   return (
     <div className="container mx-auto space-y-6 p-6">
@@ -120,14 +223,6 @@ export default function AssetReportsPage() {
           <p className="text-muted-foreground">查看资产分布、价值分析、状态统计等详细信息</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" />
-            筛选
-          </Button>
-          <Button variant="outline" size="sm">
-            <Calendar className="mr-2 h-4 w-4" />
-            时间范围
-          </Button>
           <ExportDialog reportType="asset" onExport={handleExport}>
             <Button size="sm" disabled={exporting}>
               <Download className="mr-2 h-4 w-4" />
@@ -136,6 +231,17 @@ export default function AssetReportsPage() {
           </ExportDialog>
         </div>
       </div>
+
+      {/* 筛选组件 */}
+      {filterOptions && (
+        <ReportFilter
+          reportType="asset"
+          onFilterChange={handleFilterChange}
+          onReset={handleFilterReset}
+          initialFilters={filters}
+          options={filterOptions}
+        />
+      )}
 
       {/* 概览卡片 */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -158,22 +264,28 @@ export default function AssetReportsPage() {
             <DollarSign className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">¥{(summary.total_value / 10000).toFixed(1)}万</div>
+            <div className="text-2xl font-bold">
+              {summary.total_value >= 1000000 
+                ? `¥${(summary.total_value / 1000000).toFixed(1)}M`
+                : summary.total_value >= 10000
+                ? `¥${(summary.total_value / 10000).toFixed(1)}万`
+                : `¥${summary.total_value.toFixed(1)}`}
+            </div>
             <p className="text-muted-foreground text-xs">平均价值: ¥{value_analysis.average_value.toLocaleString()}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">可用率</CardTitle>
-            <TrendingUp className="text-muted-foreground h-4 w-4" />
+            <CardTitle className="text-sm font-medium">利用率</CardTitle>
+            <Zap className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {summary.total_assets > 0 ? ((summary.available_assets / summary.total_assets) * 100).toFixed(1) : '0.0'}%
+              {utilization_rate.utilization_rate.toFixed(1)}%
             </div>
             <p className="text-muted-foreground text-xs">
-              维护中: {summary.maintenance_assets} | 已报废: {summary.scrapped_assets}
+              借用率: {utilization_rate.borrow_rate.toFixed(1)}%
             </p>
           </CardContent>
         </Card>
@@ -190,6 +302,53 @@ export default function AssetReportsPage() {
         </Card>
       </div>
 
+      {/* 新增统计卡片 */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">位置分布</CardTitle>
+            <MapPin className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{by_location?.length || 0}</div>
+            <p className="text-muted-foreground text-xs">不同位置数量</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">供应商</CardTitle>
+            <Building2 className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{by_supplier?.length || 0}</div>
+            <p className="text-muted-foreground text-xs">不同供应商数量</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">采购月份</CardTitle>
+            <Clock className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{by_purchase_month?.length || 0}</div>
+            <p className="text-muted-foreground text-xs">有采购记录的月份</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">状态分布</CardTitle>
+            <BarChart3 className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{by_status?.length || 0}</div>
+            <p className="text-muted-foreground text-xs">不同状态数量</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* 详细统计 */}
       <Tabs defaultValue="category" className="space-y-4">
         <TabsList className="gap-2">
@@ -198,6 +357,9 @@ export default function AssetReportsPage() {
           <TabsTrigger value="status">按状态统计</TabsTrigger>
           <TabsTrigger value="value">价值分析</TabsTrigger>
           <TabsTrigger value="trend">采购趋势</TabsTrigger>
+          <TabsTrigger value="location">位置分析</TabsTrigger>
+          <TabsTrigger value="supplier">供应商分析</TabsTrigger>
+          <TabsTrigger value="interactive">交互图表</TabsTrigger>
         </TabsList>
 
         <TabsContent value="category" className="space-y-4">
@@ -347,6 +509,125 @@ export default function AssetReportsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="location" className="space-y-4">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <AdvancedBarChart
+              data={by_location || []}
+              title="按位置统计"
+              description="资产在不同位置的分布情况"
+              dataKey="asset_count"
+              xAxisKey="location"
+              height={300}
+            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MapPin className="mr-2 h-5 w-5" />
+                  位置详细数据
+                </CardTitle>
+                <CardDescription>查看不同位置的资产分布情况</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {by_location?.map((location, index) => (
+                    <div key={index} className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{location.location}</h4>
+                        <p className="text-muted-foreground text-sm">
+                          {location.asset_count} 个资产 • ¥{location.total_value.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="secondary">{location.percentage.toFixed(1)}%</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="supplier" className="space-y-4">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <AdvancedBarChart
+              data={by_supplier || []}
+              title="按供应商统计"
+              description="不同供应商的资产分布情况"
+              dataKey="asset_count"
+              xAxisKey="supplier"
+              height={300}
+            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Building2 className="mr-2 h-5 w-5" />
+                  供应商详细数据
+                </CardTitle>
+                <CardDescription>查看不同供应商的资产分布情况</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {by_supplier?.map((supplier, index) => (
+                    <div key={index} className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{supplier.supplier}</h4>
+                        <p className="text-muted-foreground text-sm">
+                          {supplier.asset_count} 个资产 • ¥{supplier.total_value.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="secondary">{supplier.percentage.toFixed(1)}%</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="interactive" className="space-y-4">
+          <div className="grid grid-cols-1 gap-6">
+            <InteractiveLineChart
+              data={by_purchase_month || []}
+              title="采购趋势分析"
+              description="按月份查看资产采购趋势"
+              dataKeys={[
+                { key: 'asset_count', name: '采购数量', color: '#0088FE' },
+                { key: 'total_value', name: '采购价值', color: '#00C49F' }
+              ]}
+              xAxisKey="month"
+              height={400}
+              showBrush={true}
+            />
+            
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <InteractiveAreaChart
+                data={by_purchase_year || []}
+                title="年度采购面积图"
+                description="按年份的采购价值分布"
+                dataKeys={[
+                  { key: 'total_value', name: '采购价值', color: '#FFBB28' }
+                ]}
+                xAxisKey="year"
+                height={300}
+              />
+              
+              <InteractiveBarChart
+                data={by_category || []}
+                title="分类统计柱状图"
+                description="按分类的资产数量对比"
+                dataKeys={[
+                  { key: 'asset_count', name: '资产数量', color: '#FF8042' }
+                ]}
+                xAxisKey="category_name"
+                height={300}
+              />
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

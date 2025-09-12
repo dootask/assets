@@ -135,7 +135,7 @@ export { apiClient as axiosInstance };
 
 // 构建完整的图片URL
 export const buildImageUrl = (imagePath: string | null | undefined): string | null => {
-  if (!imagePath) return null;
+  if (!imagePath || imagePath.trim() === '') return null;
   
   // 如果已经是完整URL或blob URL，直接返回
   if (imagePath.startsWith('http') || imagePath.startsWith('blob:')) {

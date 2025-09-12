@@ -77,9 +77,9 @@ export function DepartmentDialog({ open, onOpenChange, department, onSuccess }: 
         const updateData: UpdateDepartmentRequest = {
           name: data.name,
           code: data.code,
-          manager: data.manager || undefined,
-          contact: data.contact || undefined,
-          description: data.description || undefined,
+          manager: data.manager === '' ? '' : data.manager,
+          contact: data.contact === '' ? '' : data.contact,
+          description: data.description === '' ? '' : data.description,
         };
 
         const response = await updateDepartment(department.id, updateData);

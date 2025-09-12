@@ -430,7 +430,9 @@ export interface AssetDashboardStats {
     asset_no: string;
     borrower_name: string;
     borrow_date: string;
-    is_overdue?: boolean;
+    expected_return_date: string;
+    status: string;
+    is_overdue: boolean;
   }>;
 }
 
@@ -633,6 +635,7 @@ export interface BorrowRecord {
 
 // 资产筛选条件
 export interface AssetFilters extends Record<string, unknown> {
+  keyword?: string;
   name?: string;
   asset_no?: string;
   category_id?: number;

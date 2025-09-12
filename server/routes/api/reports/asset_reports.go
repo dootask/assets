@@ -245,3 +245,125 @@ func getAssetWarrantyStatus(baseQuery *gorm.DB) WarrantyStatus {
 
 	return status
 }
+
+// getAssetsByLocation 获取按位置统计的资产数据
+func getAssetsByLocation(query *gorm.DB) []LocationStats {
+	var stats []LocationStats
+
+	rows, err := query.Select(`
+		COALESCE(location, '未设置') as location,
+		COUNT(*) as asset_count,
+		COALESCE(SUM(purchase_price), 0) as total_value
+	`).
+		Group("location").
+		Order("asset_count DESC").
+		Rows()
+
+	if err != nil {
+		return stats
+	}
+	defer rows.Close()
+
+	var totalAssets int64
+	query.Count(&totalAssets)
+
+	for rows.Next() {
+		var stat LocationStats
+		rows.Scan(&stat.Location, &stat.AssetCount, &stat.TotalValue)
+
+		if totalAssets > 0 {
+			stat.Percentage = float64(stat.AssetCount) / float64(totalAssets) * 100
+		}
+
+		stats = append(stats, stat)
+	}
+
+	return stats
+}
+
+// getAssetsBySupplier 获取按供应商统计的资产数据
+func getAssetsBySupplier(query *gorm.DB) []SupplierStats {
+	var stats []SupplierStats
+
+	rows, err := query.Select(`
+		COALESCE(supplier, '未设置') as supplier,
+		COUNT(*) as asset_count,
+		COALESCE(SUM(purchase_price), 0) as total_value
+	`).
+		Group("supplier").
+		Order("asset_count DESC").
+		Rows()
+
+	if err != nil {
+		return stats
+	}
+	defer rows.Close()
+
+	var totalAssets int64
+	query.Count(&totalAssets)
+
+	for rows.Next() {
+		var stat SupplierStats
+		rows.Scan(&stat.Supplier, &stat.AssetCount, &stat.TotalValue)
+
+		if totalAssets > 0 {
+			stat.Percentage = float64(stat.AssetCount) / float64(totalAssets) * 100
+		}
+
+		stats = append(stats, stat)
+	}
+
+	return stats
+}
+
+// getAssetsByPurchaseMonth 获取按采购月份统计的资产数据
+func getAssetsByPurchaseMonth(query *gorm.DB) []PurchaseMonthStats {
+	var stats []PurchaseMonthStats
+
+	rows, err := query.Select(`
+		strftime('%Y-%m', purchase_date) as month,
+		COUNT(*) as asset_count,
+		COALESCE(SUM(purchase_price), 0) as total_value,
+		COALESCE(AVG(purchase_price), 0) as average_value
+	`).
+		Where("purchase_date IS NOT NULL").
+		Group("strftime('%Y-%m', purchase_date)").
+		Order("month DESC").
+		Limit(12).
+		Rows()
+
+	if err != nil {
+		return stats
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var stat PurchaseMonthStats
+		rows.Scan(&stat.Month, &stat.AssetCount, &stat.TotalValue, &stat.AverageValue)
+		stats = append(stats, stat)
+	}
+
+	return stats
+}
+
+// getAssetUtilizationRate 获取资产利用率统计
+func getAssetUtilizationRate(query *gorm.DB) UtilizationRate {
+	var rate UtilizationRate
+
+	// 总资产数
+	query.Count(&rate.TotalAssets)
+
+	// 借用中资产数
+	query.Where("status = ?", models.AssetStatusBorrowed).Count(&rate.BorrowedAssets)
+
+	// 可用资产数
+	query.Where("status = ?", models.AssetStatusAvailable).Count(&rate.AvailableAssets)
+
+	// 计算利用率
+	if rate.TotalAssets > 0 {
+		rate.UtilizationRate = float64(rate.BorrowedAssets) / float64(rate.TotalAssets) * 100
+		rate.BorrowRate = float64(rate.BorrowedAssets) / float64(rate.TotalAssets) * 100
+	}
+
+	return rate
+}

@@ -24,11 +24,11 @@ import { getDepartments } from '@/lib/api/departments';
 import { buildImageUrl } from '@/lib/axios';
 import { showError, showSuccess } from '@/lib/notifications';
 import type {
-  AssetResponse,
-  AssetStatus,
-  CreateAssetRequest,
-  DepartmentResponse,
-  UpdateAssetRequest,
+    AssetResponse,
+    AssetStatus,
+    CreateAssetRequest,
+    DepartmentResponse,
+    UpdateAssetRequest,
 } from '@/lib/types';
 
 // 表单验证模式 - 添加自定义属性支持
@@ -464,7 +464,9 @@ export function AssetForm({
                         const currentCustomAttributes = form.getValues('custom_attributes') || {};
                         form.setValue('custom_attributes', {
                           ...currentCustomAttributes,
-                          [attribute.name]: date?.toISOString().split('T')[0],
+                          [attribute.name]: date ? 
+                            `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : 
+                            undefined,
                         }, { shouldValidate: true, shouldDirty: true });
                       }}
                     />
@@ -592,16 +594,18 @@ export function AssetForm({
         ...data,
         category_id: data.category_id || undefined,
         department_id: data.department_id || undefined,
-        purchase_date: data.purchase_date ? data.purchase_date.toISOString().split('T')[0] : undefined,
+        purchase_date: data.purchase_date ? 
+          `${data.purchase_date.getFullYear()}-${String(data.purchase_date.getMonth() + 1).padStart(2, '0')}-${String(data.purchase_date.getDate()).padStart(2, '0')}` : 
+          undefined,
         purchase_price: data.purchase_price || undefined,
         warranty_period: data.warranty_period || undefined,
-        brand: data.brand || undefined,
-        model: data.model || undefined,
-        serial_number: data.serial_number || undefined,
-        supplier: data.supplier || undefined,
-        location: data.location || undefined,
-        responsible_person: data.responsible_person || undefined,
-        description: data.description || undefined,
+        brand: data.brand || '',
+        model: data.model || '',
+        serial_number: data.serial_number || '',
+        supplier: data.supplier || '',
+        location: data.location || '',
+        responsible_person: data.responsible_person || '',
+        description: data.description || '',
         image_url: finalImageUrl,
         custom_attributes:
           data.custom_attributes && Object.keys(data.custom_attributes).length > 0 ? data.custom_attributes : undefined,

@@ -1,19 +1,19 @@
 import apiClient from '@/lib/axios';
 import type {
-  APIResponse,
-  AssetFilters,
-  AssetResponse,
-  BatchDeleteAssetsRequest,
-  BatchDeleteAssetsResponse,
-  BatchUpdateAssetsRequest,
-  BatchUpdateAssetsResponse,
-  CheckAssetNoResponse,
-  CreateAssetRequest,
-  ImportAssetRequest,
-  ImportAssetResponse,
-  PaginationRequest,
-  PaginationResponse,
-  UpdateAssetRequest,
+    APIResponse,
+    AssetFilters,
+    AssetResponse,
+    BatchDeleteAssetsRequest,
+    BatchDeleteAssetsResponse,
+    BatchUpdateAssetsRequest,
+    BatchUpdateAssetsResponse,
+    CheckAssetNoResponse,
+    CreateAssetRequest,
+    ImportAssetRequest,
+    ImportAssetResponse,
+    PaginationRequest,
+    PaginationResponse,
+    UpdateAssetRequest,
 } from '@/lib/types';
 
 // 获取资产列表
@@ -84,7 +84,7 @@ export const importAssets = async (data: ImportAssetRequest) => {
 };
 
 // 导出资产
-export const exportAssets = async (filters?: AssetFilters) => {
+export const exportAssets = async (filters?: AssetFilters): Promise<Blob> => {
   const queryParams = new URLSearchParams();
 
   // 添加筛选参数
@@ -96,7 +96,9 @@ export const exportAssets = async (filters?: AssetFilters) => {
     });
   }
 
-  const response = await apiClient.get<APIResponse<AssetResponse[]>>(`/assets/export?${queryParams.toString()}`);
+  const response = await apiClient.get(`/assets/export?${queryParams.toString()}`, {
+    responseType: 'blob',
+  });
   return response.data;
 };
 

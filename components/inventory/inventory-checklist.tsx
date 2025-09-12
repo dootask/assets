@@ -21,6 +21,17 @@ interface InventoryChecklistProps {
   onAssetSelect?: (asset: AssetResponse) => void;
 }
 
+// 资产状态中文映射
+const getAssetStatusLabel = (status: AssetStatus): string => {
+  const statusMap: Record<AssetStatus, string> = {
+    available: '可用',
+    borrowed: '借用中',
+    maintenance: '维护中',
+    scrapped: '已报废',
+  };
+  return statusMap[status] || status;
+};
+
 export function InventoryChecklist({ task, onAssetSelect }: InventoryChecklistProps) {
   const [assets, setAssets] = useState<AssetResponse[]>([]);
   const [checkedAssets, setCheckedAssets] = useState<Set<number>>(new Set());
@@ -47,7 +58,8 @@ export function InventoryChecklist({ task, onAssetSelect }: InventoryChecklistPr
       // 构建筛选条件
       const filters: AssetFilters = {};
       if (keyword) {
-        filters.name = keyword;
+        // 使用通用搜索关键词，同时搜索资产名称和资产编号
+        filters.keyword = keyword;
       }
       if (statusFilter && statusFilter !== 'all') {
         filters.status = statusFilter as AssetStatus;
@@ -258,7 +270,7 @@ export function InventoryChecklist({ task, onAssetSelect }: InventoryChecklistPr
                         <TableCell>{asset.category?.name || '-'}</TableCell>
                         <TableCell>{asset.department?.name || '-'}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{asset.status}</Badge>
+                          <Badge variant="outline">{getAssetStatusLabel(asset.status)}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

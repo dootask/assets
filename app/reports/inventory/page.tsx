@@ -1,38 +1,43 @@
 'use client';
 
+import { ExportDialog, type ExportOptions } from '@/components/reports/export-dialog';
+import { ReportFilter, type FilterOptions, type ReportFilterParams } from '@/components/reports/report-filter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { downloadFile, exportInventoryReports, fetchInventoryReports, InventoryReportData } from '@/lib/api/reports';
+import { getAllCategories } from '@/lib/api/categories';
+import { getAllDepartments } from '@/lib/api/departments';
+import { downloadFile, exportInventoryReports, fetchInventoryReports, InventoryReportData, ReportQueryParams } from '@/lib/api/reports';
 import {
-  AlertTriangle,
-  BarChart3,
-  Calendar,
-  CheckCircle,
-  ClipboardList,
-  Download,
-  Filter,
-  Loader2,
-  Target,
-  TrendingUp,
+    AlertTriangle,
+    BarChart3,
+    CheckCircle,
+    ClipboardList,
+    Download,
+    Loader2,
+    Target,
+    TrendingUp,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export default function InventoryReportsPage() {
   const [reportData, setReportData] = useState<InventoryReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [filters, setFilters] = useState<ReportFilterParams>({});
+  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
 
   useEffect(() => {
     loadReportData();
+    loadFilterOptions();
   }, []);
 
-  const loadReportData = async () => {
+  const loadReportData = async (queryParams?: ReportQueryParams) => {
     try {
       setLoading(true);
-      const data = await fetchInventoryReports();
+      const data = await fetchInventoryReports(queryParams);
       setReportData(data);
     } catch (error) {
       console.error('Failed to load inventory reports:', error);
@@ -42,11 +47,91 @@ export default function InventoryReportsPage() {
     }
   };
 
-  const handleExport = async (format: string) => {
+  const loadFilterOptions = async () => {
+    try {
+      // 从API获取筛选选项
+      const [categoriesData, departmentsData] = await Promise.all([
+        getAllCategories(),
+        getAllDepartments()
+      ]);
+      
+      const options: FilterOptions = {
+        categories: categoriesData?.map((cat: { id: number; name: string }) => ({ id: cat.id.toString(), name: cat.name })) || [],
+        departments: departmentsData.data?.data?.map((dept: { id: number; name: string }) => ({ id: dept.id.toString(), name: dept.name })) || [],
+        statuses: [
+          { value: 'pending', label: '待开始' },
+          { value: 'in_progress', label: '进行中' },
+          { value: 'completed', label: '已完成' },
+        ],
+        valueRanges: [],
+        warrantyStatuses: [],
+        borrowDurations: [],
+        taskTypes: [
+          { value: 'full', label: '全盘' },
+          { value: 'department', label: '部门盘点' },
+          { value: 'category', label: '分类盘点' },
+          { value: 'spot', label: '抽查' },
+        ],
+      };
+      setFilterOptions(options);
+    } catch (error) {
+      console.error('Failed to load filter options:', error);
+      // 如果API调用失败，使用默认值
+      const options: FilterOptions = {
+        categories: [],
+        departments: [],
+        statuses: [
+          { value: 'pending', label: '待开始' },
+          { value: 'in_progress', label: '进行中' },
+          { value: 'completed', label: '已完成' },
+        ],
+        valueRanges: [],
+        warrantyStatuses: [],
+        borrowDurations: [],
+        taskTypes: [
+          { value: 'full', label: '全盘' },
+          { value: 'department', label: '部门盘点' },
+          { value: 'category', label: '分类盘点' },
+          { value: 'spot', label: '抽查' },
+        ],
+      };
+      setFilterOptions(options);
+    }
+  };
+
+  const handleFilterChange = useCallback((newFilters: ReportFilterParams) => {
+    setFilters(newFilters);
+    const queryParams: ReportQueryParams = {
+      start_date: newFilters.start_date,
+      end_date: newFilters.end_date,
+      category_id: newFilters.category_id,
+      department_id: newFilters.department_id,
+      status: newFilters.status,
+    };
+    loadReportData(queryParams);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setFilters({});
+    loadReportData();
+  }, []);
+
+  const handleExport = async (options: ExportOptions) => {
     try {
       setExporting(true);
-      const blob = await exportInventoryReports(format);
-      const filename = `盘点统计报表_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+
+      // 转换filters类型以匹配ReportQueryParams
+      const filters = (options.filters as Record<string, unknown>) || {};
+      const queryParams: ReportQueryParams = {
+        start_date: options.dateRange?.start_date,
+        end_date: options.dateRange?.end_date,
+        category_id: filters.category_id ? String(filters.category_id) : undefined,
+        department_id: filters.department_id ? String(filters.department_id) : undefined,
+        status: filters.status as string,
+      };
+
+      const blob = await exportInventoryReports(options.format, queryParams);
+      const filename = `盘点统计报表_${new Date().toISOString().split('T')[0]}.${options.format === 'excel' ? 'xlsx' : 'csv'}`;
       downloadFile(blob, filename);
       toast.success('报表导出成功');
     } catch (error) {
@@ -95,20 +180,25 @@ export default function InventoryReportsPage() {
           <p className="text-muted-foreground">查看盘点任务执行情况、准确率分析等信息</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" />
-            筛选
-          </Button>
-          <Button variant="outline" size="sm">
-            <Calendar className="mr-2 h-4 w-4" />
-            时间范围
-          </Button>
-          <Button onClick={() => handleExport('excel')} disabled={exporting} size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            {exporting ? '导出中...' : '导出Excel'}
-          </Button>
+          <ExportDialog reportType="inventory" onExport={handleExport}>
+            <Button size="sm" disabled={exporting}>
+              <Download className="mr-2 h-4 w-4" />
+              {exporting ? '导出中...' : '导出报表'}
+            </Button>
+          </ExportDialog>
         </div>
       </div>
+
+      {/* 筛选组件 */}
+      {filterOptions && (
+        <ReportFilter
+          reportType="inventory"
+          onFilterChange={handleFilterChange}
+          onReset={handleFilterReset}
+          initialFilters={filters}
+          options={filterOptions}
+        />
+      )}
 
       {/* 概览卡片 */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -3,6 +3,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { fetchAssetReports, fetchBorrowReports, fetchInventoryReports, ReportQueryParams } from '@/lib/api/reports';
 import {
     BarChart3,
     Calendar,
@@ -10,15 +14,156 @@ import {
     Download,
     FileText,
     Filter,
+    Loader2,
     Package,
     TrendingUp,
     Users,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+interface ReportSummary {
+  assetSummary: {
+    total_assets: number;
+    available_assets: number;
+    borrowed_assets: number;
+    maintenance_assets: number;
+    total_value: number;
+  };
+  borrowSummary: {
+    active_borrows: number;
+    overdue_borrows: number;
+    total_borrows: number;
+  };
+  inventorySummary: {
+    completed_tasks: number;
+    active_tasks: number;
+    accuracy_rate: number;
+  };
+}
+
+interface RecentReport {
+  id: string;
+  name: string;
+  type: string;
+  date: string;
+  size: string;
+  downloadUrl?: string;
+}
 
 export default function ReportsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [loading, setLoading] = useState(true);
+  const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
+  const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
+  const [customDateRange, setCustomDateRange] = useState({
+    startDate: '',
+    endDate: '',
+  });
+  const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
+
+  const buildQueryParams = useCallback((): ReportQueryParams => {
+    const params: ReportQueryParams = {};
+    
+    // 如果设置了自定义时间范围，优先使用自定义时间范围
+    if (customDateRange.startDate && customDateRange.endDate) {
+      params.start_date = customDateRange.startDate;
+      params.end_date = customDateRange.endDate;
+    } else {
+      // 否则根据统计周期设置时间范围
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (selectedPeriod) {
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'quarter':
+          const quarter = Math.floor(now.getMonth() / 3);
+          startDate = new Date(now.getFullYear(), quarter * 3, 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+      
+      params.start_date = startDate.toISOString().split('T')[0];
+      params.end_date = now.toISOString().split('T')[0];
+    }
+    
+    return params;
+  }, [selectedPeriod, customDateRange.startDate, customDateRange.endDate]);
+
+  const loadReportSummary = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // 根据选择的统计周期和时间范围构建查询参数
+      const queryParams = buildQueryParams();
+      
+      const [assetData, borrowData, inventoryData] = await Promise.all([
+        fetchAssetReports(queryParams),
+        fetchBorrowReports(queryParams),
+        fetchInventoryReports(queryParams),
+        // fetchDashboardReports() // 这个API不支持参数，暂时不使用
+      ]);
+
+      setReportSummary({
+        assetSummary: {
+          total_assets: assetData.summary.total_assets,
+          available_assets: assetData.summary.available_assets,
+          borrowed_assets: assetData.summary.borrowed_assets,
+          maintenance_assets: assetData.summary.maintenance_assets,
+          total_value: assetData.summary.total_value,
+        },
+        borrowSummary: {
+          active_borrows: borrowData.summary.active_borrows,
+          overdue_borrows: borrowData.summary.overdue_borrows,
+          total_borrows: borrowData.summary.total_borrows,
+        },
+        inventorySummary: {
+          completed_tasks: inventoryData.summary.completed_tasks,
+          active_tasks: inventoryData.summary.in_progress_tasks,
+          accuracy_rate: inventoryData.summary.accuracy_rate,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to load report summary:', error);
+      toast.error('加载报表概览失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [buildQueryParams]);
+
+  useEffect(() => {
+    loadReportSummary();
+    loadRecentReports();
+  }, [selectedPeriod, loadReportSummary]); // 只在统计周期变化时触发
+
+  const loadRecentReports = async () => {
+    try {
+      // 这里应该从API获取最近生成的报表列表
+      // 暂时使用空数组，实际项目中需要实现相应的API接口
+      const response = await fetch('/api/reports/recent');
+      if (response.ok) {
+        const data = await response.json();
+        setRecentReports(data.data || []);
+      } else {
+        // 如果API不存在，使用空数组
+        setRecentReports([]);
+      }
+    } catch (error) {
+      console.error('Failed to load recent reports:', error);
+      // 如果API调用失败，使用空数组
+      setRecentReports([]);
+    }
+  };
 
   const reportCategories = [
     {
@@ -27,10 +172,20 @@ export default function ReportsPage() {
       icon: Package,
       href: '/reports/assets',
       color: 'bg-blue-500',
-      stats: [
-        { label: '总资产', value: '1,234' },
-        { label: '总价值', value: '¥2.5M' },
-        { label: '可用率', value: '85%' },
+      stats: reportSummary ? [
+        { label: '总资产', value: reportSummary.assetSummary.total_assets.toLocaleString() },
+        { label: '总价值', value: reportSummary.assetSummary.total_value >= 1000000 
+          ? `¥${(reportSummary.assetSummary.total_value / 1000000).toFixed(1)}M`
+          : reportSummary.assetSummary.total_value >= 10000
+          ? `¥${(reportSummary.assetSummary.total_value / 10000).toFixed(1)}万`
+          : `¥${reportSummary.assetSummary.total_value.toFixed(1)}` },
+        { label: '可用率', value: reportSummary.assetSummary.total_assets > 0 
+          ? `${((reportSummary.assetSummary.available_assets / reportSummary.assetSummary.total_assets) * 100).toFixed(1)}%`
+          : '0%' },
+      ] : [
+        { label: '总资产', value: '-' },
+        { label: '总价值', value: '-' },
+        { label: '可用率', value: '-' },
       ],
     },
     {
@@ -39,10 +194,16 @@ export default function ReportsPage() {
       icon: Users,
       href: '/reports/borrow',
       color: 'bg-green-500',
-      stats: [
-        { label: '活跃借用', value: '156' },
-        { label: '超期数量', value: '12' },
-        { label: '超期率', value: '7.7%' },
+      stats: reportSummary ? [
+        { label: '活跃借用', value: reportSummary.borrowSummary.active_borrows.toString() },
+        { label: '超期数量', value: reportSummary.borrowSummary.overdue_borrows.toString() },
+        { label: '超期率', value: reportSummary.borrowSummary.active_borrows > 0 
+          ? `${((reportSummary.borrowSummary.overdue_borrows / reportSummary.borrowSummary.active_borrows) * 100).toFixed(1)}%`
+          : '0%' },
+      ] : [
+        { label: '活跃借用', value: '-' },
+        { label: '超期数量', value: '-' },
+        { label: '超期率', value: '-' },
       ],
     },
     {
@@ -51,10 +212,14 @@ export default function ReportsPage() {
       icon: ClipboardList,
       href: '/reports/inventory',
       color: 'bg-purple-500',
-      stats: [
-        { label: '完成任务', value: '8' },
-        { label: '准确率', value: '96.5%' },
-        { label: '待处理', value: '2' },
+      stats: reportSummary ? [
+        { label: '完成任务', value: reportSummary.inventorySummary.completed_tasks.toString() },
+        { label: '准确率', value: `${reportSummary.inventorySummary.accuracy_rate.toFixed(1)}%` },
+        { label: '进行中', value: reportSummary.inventorySummary.active_tasks.toString() },
+      ] : [
+        { label: '完成任务', value: '-' },
+        { label: '准确率', value: '-' },
+        { label: '进行中', value: '-' },
       ],
     },
   ];
@@ -80,6 +245,37 @@ export default function ReportsPage() {
     },
   ];
 
+  const handleDateRangeApply = () => {
+    if (customDateRange.startDate && customDateRange.endDate) {
+      // 验证日期范围
+      const startDate = new Date(customDateRange.startDate);
+      const endDate = new Date(customDateRange.endDate);
+      
+      if (startDate > endDate) {
+        toast.error('开始日期不能晚于结束日期');
+        return;
+      }
+      
+      // 应用时间范围并重新加载数据
+      toast.success(`已设置时间范围: ${customDateRange.startDate} 至 ${customDateRange.endDate}`);
+      setIsDateRangeOpen(false);
+      // 手动触发数据重新加载
+      loadReportSummary();
+    } else {
+      toast.error('请选择开始和结束日期');
+    }
+  };
+
+  const handleDateRangeReset = () => {
+    setCustomDateRange({
+      startDate: '',
+      endDate: '',
+    });
+    toast.success('已重置时间范围，将使用当前统计周期');
+    // 手动触发数据重新加载
+    loadReportSummary();
+  };
+
   const handleQuickAction = async (action: string) => {
     switch (action) {
       case 'export-assets':
@@ -89,8 +285,7 @@ export default function ReportsPage() {
           const blob = await exportAssetInventory();
           const filename = `资产清单_${new Date().toISOString().split('T')[0]}.xlsx`;
           downloadFile(blob, filename);
-          // 临时使用toast模拟，实际项目中应使用toast库
-          console.log('资产清单导出成功');
+          toast.success('资产清单导出成功');
         } catch (error) {
           console.error('导出资产清单失败:', error);
         }
@@ -103,7 +298,7 @@ export default function ReportsPage() {
           const blob = await generateMonthlyReport(currentMonth);
           const filename = `月度报告_${currentMonth}.pdf`;
           downloadFile(blob, filename);
-          console.log('月度报告生成成功');
+          toast.success('月度报告生成成功');
         } catch (error) {
           console.error('生成月度报告失败:', error);
         }
@@ -115,6 +310,19 @@ export default function ReportsPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex h-64 items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">加载报表数据中...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto space-y-6 p-6">
       {/* 页面标题 */}
@@ -124,14 +332,60 @@ export default function ReportsPage() {
           <p className="text-muted-foreground">查看和分析资产管理系统的各项统计数据</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={loadReportSummary}>
             <Filter className="mr-2 h-4 w-4" />
-            筛选
+            刷新数据
           </Button>
-          <Button variant="outline">
-            <Calendar className="mr-2 h-4 w-4" />
-            时间范围
-          </Button>
+          <Dialog open={isDateRangeOpen} onOpenChange={setIsDateRangeOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Calendar className="mr-2 h-4 w-4" />
+                时间范围
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>设置时间范围</DialogTitle>
+                <DialogDescription>
+                  选择自定义的时间范围来筛选报表数据
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="start-date" className="text-right">
+                    开始日期
+                  </Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={customDateRange.startDate}
+                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="end-date" className="text-right">
+                    结束日期
+                  </Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={customDateRange.endDate}
+                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={handleDateRangeReset}>
+                  重置
+                </Button>
+                <Button onClick={handleDateRangeApply}>
+                  应用
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -233,41 +487,42 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[
-              {
-                name: '2024年1月资产统计报表.xlsx',
-                type: '资产报表',
-                date: '2024-01-28 14:30',
-                size: '2.3 MB',
-              },
-              {
-                name: '借用情况月度分析.pdf',
-                type: '借用报表',
-                date: '2024-01-27 09:15',
-                size: '1.8 MB',
-              },
-              {
-                name: '盘点结果汇总.xlsx',
-                type: '盘点报表',
-                date: '2024-01-26 16:45',
-                size: '3.1 MB',
-              },
-            ].map((report, index) => (
-              <div key={index} className="flex items-center justify-between rounded-lg border p-3">
-                <div className="flex items-center space-x-3">
-                  <FileText className="text-muted-foreground h-5 w-5" />
-                  <div>
-                    <h4 className="font-medium">{report.name}</h4>
-                    <p className="text-muted-foreground text-sm">
-                      {report.type} • {report.date} • {report.size}
-                    </p>
+            {recentReports.length > 0 ? (
+              recentReports.map((report) => (
+                <div key={report.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="text-muted-foreground h-5 w-5" />
+                    <div>
+                      <h4 className="font-medium">{report.name}</h4>
+                      <p className="text-muted-foreground text-sm">
+                        {report.type} • {report.date} • {report.size}
+                      </p>
+                    </div>
                   </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      if (report.downloadUrl) {
+                        window.open(report.downloadUrl, '_blank');
+                      } else {
+                        toast.info('下载链接不可用');
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm">
-                  <Download className="h-4 w-4" />
-                </Button>
+              ))
+            ) : (
+              <div className="flex h-32 items-center justify-center">
+                <div className="text-center">
+                  <FileText className="text-muted-foreground mx-auto mb-2 h-8 w-8" />
+                  <p className="text-muted-foreground">暂无最近生成的报表</p>
+                  <p className="text-muted-foreground text-sm">生成报表后将显示在这里</p>
+                </div>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
