@@ -2,11 +2,13 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Filter, RotateCcw, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useDebounce } from '@/hooks/use-debounce';
+import { Calendar, Filter, RotateCcw, Settings, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // 筛选参数接口
 export interface ReportFilterParams {
@@ -43,6 +45,7 @@ interface ReportFilterProps {
   initialFilters?: ReportFilterParams;
   options?: FilterOptions;
   className?: string;
+  useDialog?: boolean; // 是否使用弹窗模式
 }
 
 export function ReportFilter({
@@ -52,10 +55,18 @@ export function ReportFilter({
   initialFilters = {},
   options,
   className,
+  useDialog = false,
 }: ReportFilterProps) {
   const [filters, setFilters] = useState<ReportFilterParams>(initialFilters);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true); // 默认展开
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [tempFilters, setTempFilters] = useState<ReportFilterParams>(initialFilters); // 弹窗中的临时筛选条件
+
+  // 只有在非弹窗模式下才使用防抖
+  const debouncedFilters = useDebounce(filters, useDialog ? 0 : 500);
+  const isInitialMount = useRef(true);
 
   // 默认选项
   const defaultOptions: FilterOptions = {
@@ -114,28 +125,97 @@ export function ReportFilter({
     setHasActiveFilters(hasFilters);
   }, [filters]);
 
+  // 防抖筛选效果（仅在非弹窗模式下使用）
+  useEffect(() => {
+    if (useDialog) return; // 弹窗模式下不使用防抖
+
+    // 跳过初始挂载，避免不必要的API调用
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // 只有当筛选条件真正改变时才触发
+    const hasChanges = JSON.stringify(debouncedFilters) !== JSON.stringify(initialFilters);
+    if (hasChanges) {
+      setIsLoading(true);
+      onFilterChange(debouncedFilters);
+      // 模拟加载完成
+      setTimeout(() => setIsLoading(false), 300);
+    }
+  }, [debouncedFilters, onFilterChange, initialFilters, useDialog]);
+
   // 处理筛选条件变化
-  const handleFilterChange = useCallback((key: keyof ReportFilterParams, value: string | boolean | undefined) => {
+  const handleFilterChange = useCallback((key: keyof ReportFilterParams, value: string | boolean | undefined, isTemp = false) => {
     // 如果值是 "all"，则清除该筛选条件
     const filterValue = value === 'all' ? undefined : value;
+
+    if (useDialog && isTemp) {
+      // 弹窗模式下的临时筛选
+      const newFilters = { ...tempFilters, [key]: filterValue };
+      setTempFilters(newFilters);
+    } else {
+      // 非弹窗模式或直接应用
     const newFilters = { ...filters, [key]: filterValue };
     setFilters(newFilters);
-    onFilterChange(newFilters);
-  }, [filters, onFilterChange]);
+    // 不再立即调用 onFilterChange，而是通过防抖效果触发
+    }
+  }, [filters, tempFilters, useDialog]);
 
   // 重置筛选条件
   const handleReset = useCallback(() => {
     setFilters({});
+    setIsLoading(true);
     onReset();
+    // 模拟加载完成
+    setTimeout(() => setIsLoading(false), 300);
   }, [onReset]);
 
+  // 弹窗相关处理函数
+  const handleOpenDialog = useCallback(() => {
+    setTempFilters({ ...filters }); // 将当前筛选条件复制到临时筛选
+    setIsDialogOpen(true);
+  }, [filters]);
+
+  const handleApplyFilters = useCallback(() => {
+    setFilters({ ...tempFilters }); // 应用临时筛选条件
+    setIsDialogOpen(false);
+    setIsLoading(true);
+    onFilterChange(tempFilters);
+    // 模拟加载完成
+    setTimeout(() => setIsLoading(false), 300);
+  }, [tempFilters, onFilterChange]);
+
+  const handleResetTempFilters = useCallback(() => {
+    setTempFilters({});
+  }, []);
+
+  const handleDialogClose = useCallback((open: boolean) => {
+    if (open) {
+      // 打开时设置临时筛选为当前筛选条件
+      setTempFilters({ ...filters });
+    } else {
+      // 关闭时恢复临时筛选为当前筛选条件
+      setTempFilters({ ...filters });
+    }
+    setIsDialogOpen(open);
+  }, [filters]);
+
   // 清除单个筛选条件
-  const handleClearFilter = useCallback((key: keyof ReportFilterParams) => {
+  const handleClearFilter = useCallback((key: keyof ReportFilterParams, isTemp = false) => {
+    if (useDialog && isTemp) {
+      // 弹窗模式下的临时清除
+      const newFilters = { ...tempFilters };
+      delete newFilters[key];
+      setTempFilters(newFilters);
+    } else {
+      // 非弹窗模式或直接清除
     const newFilters = { ...filters };
     delete newFilters[key];
     setFilters(newFilters);
-    onFilterChange(newFilters);
-  }, [filters, onFilterChange]);
+    // 通过防抖效果触发筛选
+    }
+  }, [filters, tempFilters, useDialog]);
 
   // 获取日期范围预设
   const getDatePresets = () => [
@@ -149,16 +229,17 @@ export function ReportFilter({
   ];
 
   // 渲染筛选标签
-  const renderFilterTags = () => {
+  const renderFilterTags = (useTempFilters = false) => {
+    const currentFilters = useTempFilters ? tempFilters : filters;
     const tags = [];
-    
-    if (filters.start_date && filters.end_date) {
+
+    if (currentFilters.start_date && currentFilters.end_date) {
       tags.push(
         <span key="date-range" className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
           <Calendar className="h-3 w-3" />
-          {filters.start_date} ~ {filters.end_date}
+          {currentFilters.start_date} ~ {currentFilters.end_date}
           <button
-            onClick={() => handleClearFilter('start_date')}
+            onClick={() => handleClearFilter('start_date', useTempFilters)}
             className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
           >
             <X className="h-3 w-3" />
@@ -167,13 +248,13 @@ export function ReportFilter({
       );
     }
 
-    if (filters.category_id) {
-      const category = filterOptions.categories.find(c => c.id === filters.category_id);
+    if (currentFilters.category_id) {
+      const category = filterOptions.categories.find(c => c.id === currentFilters.category_id);
       tags.push(
         <span key="category" className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-          分类: {category?.name || filters.category_id}
+          分类: {category?.name || currentFilters.category_id}
           <button
-            onClick={() => handleClearFilter('category_id')}
+            onClick={() => handleClearFilter('category_id', useTempFilters)}
             className="ml-1 hover:bg-green-200 rounded-full p-0.5"
           >
             <X className="h-3 w-3" />
@@ -182,13 +263,13 @@ export function ReportFilter({
       );
     }
 
-    if (filters.department_id) {
-      const department = filterOptions.departments.find(d => d.id === filters.department_id);
+    if (currentFilters.department_id) {
+      const department = filterOptions.departments.find(d => d.id === currentFilters.department_id);
       tags.push(
         <span key="department" className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-          部门: {department?.name || filters.department_id}
+          部门: {department?.name || currentFilters.department_id}
           <button
-            onClick={() => handleClearFilter('department_id')}
+            onClick={() => handleClearFilter('department_id', useTempFilters)}
             className="ml-1 hover:bg-purple-200 rounded-full p-0.5"
           >
             <X className="h-3 w-3" />
@@ -197,14 +278,139 @@ export function ReportFilter({
       );
     }
 
-    if (filters.status) {
-      const status = filterOptions.statuses.find(s => s.value === filters.status);
+    if (currentFilters.status) {
+      const status = filterOptions.statuses.find(s => s.value === currentFilters.status);
       tags.push(
         <span key="status" className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
-          状态: {status?.label || filters.status}
+          状态: {status?.label || currentFilters.status}
           <button
-            onClick={() => handleClearFilter('status')}
+            onClick={() => handleClearFilter('status', useTempFilters)}
             className="ml-1 hover:bg-orange-200 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      );
+    }
+
+    // 价值范围标签
+    if (currentFilters.value_range) {
+      const valueRange = filterOptions.valueRanges.find(v => v.value === currentFilters.value_range);
+      tags.push(
+        <span key="value_range" className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+          价值: {valueRange?.label || currentFilters.value_range}
+          <button
+            onClick={() => handleClearFilter('value_range', useTempFilters)}
+            className="ml-1 hover:bg-yellow-200 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      );
+    }
+
+    // 保修状态标签
+    if (currentFilters.warranty_status) {
+      const warrantyStatus = filterOptions.warrantyStatuses.find(w => w.value === currentFilters.warranty_status);
+      tags.push(
+        <span key="warranty_status" className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
+          保修: {warrantyStatus?.label || currentFilters.warranty_status}
+          <button
+            onClick={() => handleClearFilter('warranty_status', useTempFilters)}
+            className="ml-1 hover:bg-indigo-200 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      );
+    }
+
+    // 包含子分类标签
+    if (currentFilters.include_sub_categories) {
+      tags.push(
+        <span key="include_sub_categories" className="inline-flex items-center gap-1 px-2 py-1 bg-teal-100 text-teal-800 text-xs rounded-full">
+          包含子分类
+          <button
+            onClick={() => handleClearFilter('include_sub_categories', useTempFilters)}
+            className="ml-1 hover:bg-teal-200 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      );
+    }
+
+    // 借用人标签
+    if (currentFilters.borrower_name) {
+      tags.push(
+        <span key="borrower_name" className="inline-flex items-center gap-1 px-2 py-1 bg-cyan-100 text-cyan-800 text-xs rounded-full">
+          借用人: {currentFilters.borrower_name}
+          <button
+            onClick={() => handleClearFilter('borrower_name', useTempFilters)}
+            className="ml-1 hover:bg-cyan-200 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      );
+    }
+
+    // 资产分类标签（借用报表专用）
+    if (currentFilters.asset_category_id) {
+      const assetCategory = filterOptions.categories.find(c => c.id === currentFilters.asset_category_id);
+      tags.push(
+        <span key="asset_category" className="inline-flex items-center gap-1 px-2 py-1 bg-lime-100 text-lime-800 text-xs rounded-full">
+          资产分类: {assetCategory?.name || currentFilters.asset_category_id}
+          <button
+            onClick={() => handleClearFilter('asset_category_id', useTempFilters)}
+            className="ml-1 hover:bg-lime-200 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      );
+    }
+
+    // 借用时长标签
+    if (currentFilters.borrow_duration) {
+      const duration = filterOptions.borrowDurations.find(d => d.value === currentFilters.borrow_duration);
+      tags.push(
+        <span key="borrow_duration" className="inline-flex items-center gap-1 px-2 py-1 bg-rose-100 text-rose-800 text-xs rounded-full">
+          时长: {duration?.label || currentFilters.borrow_duration}
+          <button
+            onClick={() => handleClearFilter('borrow_duration', useTempFilters)}
+            className="ml-1 hover:bg-rose-200 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      );
+    }
+
+    // 仅显示超期借用标签
+    if (currentFilters.overdue_only) {
+      tags.push(
+        <span key="overdue_only" className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+          仅显示超期借用
+          <button
+            onClick={() => handleClearFilter('overdue_only', useTempFilters)}
+            className="ml-1 hover:bg-red-200 rounded-full p-0.5"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      );
+    }
+
+    // 任务类型标签
+    if (currentFilters.task_type) {
+      const taskType = filterOptions.taskTypes.find(t => t.value === currentFilters.task_type);
+      tags.push(
+        <span key="task_type" className="inline-flex items-center gap-1 px-2 py-1 bg-violet-100 text-violet-800 text-xs rounded-full">
+          任务类型: {taskType?.label || currentFilters.task_type}
+          <button
+            onClick={() => handleClearFilter('task_type', useTempFilters)}
+            className="ml-1 hover:bg-violet-200 rounded-full p-0.5"
           >
             <X className="h-3 w-3" />
           </button>
@@ -229,36 +435,374 @@ export function ReportFilter({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {isLoading && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                筛选中...
+              </div>
+            )}
             {hasActiveFilters && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleReset}
                 className="text-red-600 hover:text-red-700"
+                disabled={isLoading}
               >
                 <RotateCcw className="h-4 w-4 mr-1" />
                 重置
               </Button>
             )}
+            {!useDialog && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
+              disabled={isLoading}
             >
               {isExpanded ? '收起' : '展开'}
             </Button>
+            )}
           </div>
         </div>
         
         {/* 筛选标签 */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mt-3">
-            {renderFilterTags()}
+            {renderFilterTags(false)}
           </div>
         )}
       </CardHeader>
 
-      {isExpanded && (
+      {/* 弹窗模式 */}
+      {useDialog ? (
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-4"
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              筛选条件
+              {hasActiveFilters && (
+                <span className="ml-2 px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
+                  {Object.values(filters).filter(v => v !== undefined && v !== '' && v !== false).length}
+                </span>
+              )}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>设置筛选条件</DialogTitle>
+              <DialogDescription>
+                选择您要应用的筛选条件，点击应用按钮确认筛选。
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* 筛选标签预览 */}
+              {renderFilterTags(true).length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">当前筛选条件</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {renderFilterTags(true)}
+                  </div>
+                </div>
+              )}
+
+              {/* 筛选表单 */}
+              <div className="space-y-6">
+                {/* 时间范围筛选 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dialog_start_date">开始日期</Label>
+                    <Input
+                      id="dialog_start_date"
+                      type="date"
+                      value={tempFilters.start_date || ''}
+                      onChange={(e) => handleFilterChange('start_date', e.target.value || undefined, true)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dialog_end_date">结束日期</Label>
+                    <Input
+                      id="dialog_end_date"
+                      type="date"
+                      value={tempFilters.end_date || ''}
+                      onChange={(e) => handleFilterChange('end_date', e.target.value || undefined, true)}
+                    />
+                  </div>
+                </div>
+
+                {/* 日期预设 */}
+                <div className="space-y-2">
+                  <Label>快速选择</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {getDatePresets().map((preset) => (
+                      <Button
+                        key={preset.label}
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const newFilters = {
+                            ...tempFilters,
+                            start_date: preset.start,
+                            end_date: preset.end
+                          };
+                          setTempFilters(newFilters);
+                        }}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 基础筛选条件 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* 分类筛选 */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dialog_category_id">资产分类</Label>
+                    <Select
+                      value={tempFilters.category_id || 'all'}
+                      onValueChange={(value) => handleFilterChange('category_id', value || undefined, true)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择分类" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">全部分类</SelectItem>
+                        {filterOptions.categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 部门筛选 */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dialog_department_id">部门</Label>
+                    <Select
+                      value={tempFilters.department_id || 'all'}
+                      onValueChange={(value) => handleFilterChange('department_id', value || undefined, true)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择部门" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">全部部门</SelectItem>
+                        {filterOptions.departments.map((department) => (
+                          <SelectItem key={department.id} value={department.id}>
+                            {department.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 状态筛选 */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dialog_status">状态</Label>
+                    <Select
+                      value={tempFilters.status || 'all'}
+                      onValueChange={(value) => handleFilterChange('status', value || undefined, true)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择状态" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">全部状态</SelectItem>
+                        {filterOptions.statuses.map((status) => (
+                          <SelectItem key={status.value} value={status.value}>
+                            {status.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* 资产报表专用筛选 */}
+                {reportType === 'asset' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="dialog_value_range">价值范围</Label>
+                      <Select
+                        value={tempFilters.value_range || 'all'}
+                        onValueChange={(value) => handleFilterChange('value_range', value || undefined, true)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择价值范围" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部价值</SelectItem>
+                          {filterOptions.valueRanges.map((range) => (
+                            <SelectItem key={range.value} value={range.value}>
+                              {range.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="dialog_warranty_status">保修状态</Label>
+                      <Select
+                        value={tempFilters.warranty_status || 'all'}
+                        onValueChange={(value) => handleFilterChange('warranty_status', value || undefined, true)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择保修状态" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部保修状态</SelectItem>
+                          {filterOptions.warrantyStatuses.map((status) => (
+                            <SelectItem key={status.value} value={status.value}>
+                              {status.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={tempFilters.include_sub_categories || false}
+                          onChange={(e) => handleFilterChange('include_sub_categories', e.target.checked, true)}
+                          className="rounded"
+                        />
+                        包含子分类
+                      </Label>
+                    </div>
+                  </div>
+                )}
+
+                {/* 借用报表专用筛选 */}
+                {reportType === 'borrow' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="dialog_borrower_name">借用人</Label>
+                      <Input
+                        id="dialog_borrower_name"
+                        placeholder="输入借用人姓名"
+                        value={tempFilters.borrower_name || ''}
+                        onChange={(e) => handleFilterChange('borrower_name', e.target.value || undefined, true)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="dialog_asset_category_id">资产分类</Label>
+                      <Select
+                        value={tempFilters.asset_category_id || 'all'}
+                        onValueChange={(value) => handleFilterChange('asset_category_id', value || undefined, true)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择资产分类" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部分类</SelectItem>
+                          {filterOptions.categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="dialog_borrow_duration">借用时长</Label>
+                      <Select
+                        value={tempFilters.borrow_duration || 'all'}
+                        onValueChange={(value) => handleFilterChange('borrow_duration', value || undefined, true)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择借用时长" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部时长</SelectItem>
+                          {filterOptions.borrowDurations.map((duration) => (
+                            <SelectItem key={duration.value} value={duration.value}>
+                              {duration.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={tempFilters.overdue_only || false}
+                          onChange={(e) => handleFilterChange('overdue_only', e.target.checked, true)}
+                          className="rounded"
+                        />
+                        仅显示超期借用
+                      </Label>
+                    </div>
+                  </div>
+                )}
+
+                {/* 盘点报表专用筛选 */}
+                {reportType === 'inventory' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="dialog_task_type">任务类型</Label>
+                      <Select
+                        value={tempFilters.task_type || 'all'}
+                        onValueChange={(value) => handleFilterChange('task_type', value || undefined, true)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="选择任务类型" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">全部类型</SelectItem>
+                          {filterOptions.taskTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={handleResetTempFilters}
+                disabled={isLoading}
+              >
+                重置
+              </Button>
+              <Button
+                onClick={handleApplyFilters}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                    应用中...
+                  </>
+                ) : (
+                  '应用筛选'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        isExpanded && (
         <CardContent className="space-y-6">
           {/* 时间范围筛选 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -268,7 +812,7 @@ export function ReportFilter({
                 id="start_date"
                 type="date"
                 value={filters.start_date || ''}
-                onChange={(e) => handleFilterChange('start_date', e.target.value || undefined)}
+                onChange={(e) => handleFilterChange('start_date', e.target.value || undefined, false)}
               />
             </div>
             <div className="space-y-2">
@@ -277,7 +821,7 @@ export function ReportFilter({
                 id="end_date"
                 type="date"
                 value={filters.end_date || ''}
-                onChange={(e) => handleFilterChange('end_date', e.target.value || undefined)}
+                onChange={(e) => handleFilterChange('end_date', e.target.value || undefined, false)}
               />
             </div>
           </div>
@@ -291,9 +835,15 @@ export function ReportFilter({
                   key={preset.label}
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    handleFilterChange('start_date', preset.start);
-                    handleFilterChange('end_date', preset.end);
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // 非弹窗模式下直接设置
+                    const newFilters = {
+                      ...filters,
+                      start_date: preset.start,
+                      end_date: preset.end
+                    };
+                    setFilters(newFilters);
                   }}
                 >
                   {preset.label}
@@ -309,7 +859,7 @@ export function ReportFilter({
               <Label htmlFor="category_id">资产分类</Label>
               <Select
                 value={filters.category_id || 'all'}
-                onValueChange={(value) => handleFilterChange('category_id', value || undefined)}
+                onValueChange={(value) => handleFilterChange('category_id', value || undefined, false)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="选择分类" />
@@ -330,7 +880,7 @@ export function ReportFilter({
               <Label htmlFor="department_id">部门</Label>
               <Select
                 value={filters.department_id || 'all'}
-                onValueChange={(value) => handleFilterChange('department_id', value || undefined)}
+                onValueChange={(value) => handleFilterChange('department_id', value || undefined, false)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="选择部门" />
@@ -351,7 +901,7 @@ export function ReportFilter({
               <Label htmlFor="status">状态</Label>
               <Select
                 value={filters.status || 'all'}
-                onValueChange={(value) => handleFilterChange('status', value || undefined)}
+                onValueChange={(value) => handleFilterChange('status', value || undefined, false)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="选择状态" />
@@ -375,7 +925,7 @@ export function ReportFilter({
                 <Label htmlFor="value_range">价值范围</Label>
                 <Select
                   value={filters.value_range || 'all'}
-                  onValueChange={(value) => handleFilterChange('value_range', value || undefined)}
+                  onValueChange={(value) => handleFilterChange('value_range', value || undefined, false)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="选择价值范围" />
@@ -395,7 +945,7 @@ export function ReportFilter({
                 <Label htmlFor="warranty_status">保修状态</Label>
                 <Select
                   value={filters.warranty_status || 'all'}
-                  onValueChange={(value) => handleFilterChange('warranty_status', value || undefined)}
+                  onValueChange={(value) => handleFilterChange('warranty_status', value || undefined, false)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="选择保修状态" />
@@ -416,7 +966,7 @@ export function ReportFilter({
                   <input
                     type="checkbox"
                     checked={filters.include_sub_categories || false}
-                    onChange={(e) => handleFilterChange('include_sub_categories', e.target.checked)}
+                    onChange={(e) => handleFilterChange('include_sub_categories', e.target.checked, false)}
                     className="rounded"
                   />
                   包含子分类
@@ -434,7 +984,7 @@ export function ReportFilter({
                   id="borrower_name"
                   placeholder="输入借用人姓名"
                   value={filters.borrower_name || ''}
-                  onChange={(e) => handleFilterChange('borrower_name', e.target.value || undefined)}
+                  onChange={(e) => handleFilterChange('borrower_name', e.target.value || undefined, false)}
                 />
               </div>
 
@@ -442,7 +992,7 @@ export function ReportFilter({
                 <Label htmlFor="asset_category_id">资产分类</Label>
                 <Select
                   value={filters.asset_category_id || 'all'}
-                  onValueChange={(value) => handleFilterChange('asset_category_id', value || undefined)}
+                  onValueChange={(value) => handleFilterChange('asset_category_id', value || undefined, false)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="选择资产分类" />
@@ -462,7 +1012,7 @@ export function ReportFilter({
                 <Label htmlFor="borrow_duration">借用时长</Label>
                 <Select
                   value={filters.borrow_duration || 'all'}
-                  onValueChange={(value) => handleFilterChange('borrow_duration', value || undefined)}
+                  onValueChange={(value) => handleFilterChange('borrow_duration', value || undefined, false)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="选择借用时长" />
@@ -483,7 +1033,7 @@ export function ReportFilter({
                   <input
                     type="checkbox"
                     checked={filters.overdue_only || false}
-                    onChange={(e) => handleFilterChange('overdue_only', e.target.checked)}
+                    onChange={(e) => handleFilterChange('overdue_only', e.target.checked, false)}
                     className="rounded"
                   />
                   仅显示超期借用
@@ -499,7 +1049,7 @@ export function ReportFilter({
                 <Label htmlFor="task_type">任务类型</Label>
                 <Select
                   value={filters.task_type || 'all'}
-                  onValueChange={(value) => handleFilterChange('task_type', value || undefined)}
+                  onValueChange={(value) => handleFilterChange('task_type', value || undefined, false)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="选择任务类型" />
@@ -517,6 +1067,7 @@ export function ReportFilter({
             </div>
           )}
         </CardContent>
+        )
       )}
     </Card>
   );

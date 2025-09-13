@@ -2,6 +2,7 @@ package reports
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"asset-management-system/server/global"
@@ -46,9 +47,30 @@ func getBorrowSummary(query *gorm.DB) BorrowSummary {
 
 // getBorrowsByDepartment 获取按部门统计的借用数据
 func getBorrowsByDepartment(query *gorm.DB) []BorrowDepartmentStats {
-	var stats []BorrowDepartmentStats
+	stats := make([]BorrowDepartmentStats, 0)
 
-	rows, err := query.Select(`
+	// 先获取总借用数
+	var totalBorrows int64
+	query.Count(&totalBorrows)
+
+	// 获取原始查询的SQL和参数，用于构建统计查询
+	sql := query.Statement.SQL.String()
+	var args []interface{}
+	if query.Statement.Vars != nil {
+		args = query.Statement.Vars
+	}
+
+	// 构建统计查询，确保继承WHERE条件
+	baseQuery := global.DB.Model(&models.BorrowRecord{})
+	if sql != "" && len(args) > 0 {
+		// 如果有WHERE条件，解析并应用
+		whereClause := strings.TrimPrefix(sql, "SELECT * FROM `borrow_records`")
+		if strings.HasPrefix(whereClause, " WHERE") {
+			baseQuery = baseQuery.Where(strings.TrimPrefix(whereClause, " WHERE"), args...)
+		}
+	}
+
+	rows, err := baseQuery.Select(`
 		d.id as department_id,
 		COALESCE(d.name, '未分配') as department_name,
 		COUNT(br.id) as borrow_count,
@@ -64,9 +86,6 @@ func getBorrowsByDepartment(query *gorm.DB) []BorrowDepartmentStats {
 		return stats
 	}
 	defer rows.Close()
-
-	var totalBorrows int64
-	query.Count(&totalBorrows)
 
 	for rows.Next() {
 		var stat BorrowDepartmentStats
@@ -86,15 +105,32 @@ func getBorrowsByDepartment(query *gorm.DB) []BorrowDepartmentStats {
 
 // getBorrowsByAsset 获取按资产统计的借用数据
 func getBorrowsByAsset(query *gorm.DB) []BorrowAssetStats {
-	var stats []BorrowAssetStats
+	stats := make([]BorrowAssetStats, 0)
 
-	rows, err := query.Select(`
+	// 获取原始查询的SQL和参数，用于构建统计查询
+	sql := query.Statement.SQL.String()
+	var args []interface{}
+	if query.Statement.Vars != nil {
+		args = query.Statement.Vars
+	}
+
+	// 构建统计查询，确保继承WHERE条件
+	baseQuery := global.DB.Model(&models.BorrowRecord{})
+	if sql != "" && len(args) > 0 {
+		// 如果有WHERE条件，解析并应用
+		whereClause := strings.TrimPrefix(sql, "SELECT * FROM `borrow_records`")
+		if strings.HasPrefix(whereClause, " WHERE") {
+			baseQuery = baseQuery.Where(strings.TrimPrefix(whereClause, " WHERE"), args...)
+		}
+	}
+
+	rows, err := baseQuery.Select(`
 		a.id as asset_id,
 		a.asset_no,
 		a.name as asset_name,
 		COUNT(br.id) as borrow_count,
 		COALESCE(SUM(
-			CASE 
+			CASE
 				WHEN br.actual_return_date IS NOT NULL THEN julianday(br.actual_return_date) - julianday(br.borrow_date)
 				WHEN br.status = 'borrowed' THEN julianday('now') - julianday(br.borrow_date)
 				ELSE 0
@@ -206,7 +242,7 @@ func getBorrowOverdueDaysStats(baseQuery *gorm.DB) []OverdueDaysStats {
 }
 
 // getBorrowMonthlyTrend 获取借用月度趋势
-func getBorrowMonthlyTrend(query *gorm.DB) []MonthlyBorrowStats {
+func getBorrowMonthlyTrend(_ *gorm.DB) []MonthlyBorrowStats {
 	// 直接使用简化版本，避免复杂的SQL查询
 	return getBorrowMonthlyTrendSimple()
 }
@@ -246,9 +282,26 @@ func getBorrowMonthlyTrendSimple() []MonthlyBorrowStats {
 
 // getBorrowPopularAssets 获取热门借用资产
 func getBorrowPopularAssets(query *gorm.DB) []PopularAssetStats {
-	var stats []PopularAssetStats
+	stats := make([]PopularAssetStats, 0)
 
-	rows, err := query.Select(`
+	// 获取原始查询的SQL和参数，用于构建统计查询
+	sql := query.Statement.SQL.String()
+	var args []interface{}
+	if query.Statement.Vars != nil {
+		args = query.Statement.Vars
+	}
+
+	// 构建统计查询，确保继承WHERE条件
+	baseQuery := global.DB.Model(&models.BorrowRecord{})
+	if sql != "" && len(args) > 0 {
+		// 如果有WHERE条件，解析并应用
+		whereClause := strings.TrimPrefix(sql, "SELECT * FROM `borrow_records`")
+		if strings.HasPrefix(whereClause, " WHERE") {
+			baseQuery = baseQuery.Where(strings.TrimPrefix(whereClause, " WHERE"), args...)
+		}
+	}
+
+	rows, err := baseQuery.Select(`
 		a.id as asset_id,
 		a.asset_no,
 		a.name as asset_name,
@@ -280,9 +333,30 @@ func getBorrowPopularAssets(query *gorm.DB) []PopularAssetStats {
 
 // getBorrowsByBorrower 获取按借用人统计的借用数据
 func getBorrowsByBorrower(query *gorm.DB) []BorrowerStats {
-	var stats []BorrowerStats
+	stats := make([]BorrowerStats, 0)
 
-	rows, err := query.Select(`
+	// 先获取总借用数
+	var totalBorrows int64
+	query.Count(&totalBorrows)
+
+	// 获取原始查询的SQL和参数，用于构建统计查询
+	sql := query.Statement.SQL.String()
+	var args []interface{}
+	if query.Statement.Vars != nil {
+		args = query.Statement.Vars
+	}
+
+	// 构建统计查询，确保继承WHERE条件
+	baseQuery := global.DB.Model(&models.BorrowRecord{})
+	if sql != "" && len(args) > 0 {
+		// 如果有WHERE条件，解析并应用
+		whereClause := strings.TrimPrefix(sql, "SELECT * FROM `borrow_records`")
+		if strings.HasPrefix(whereClause, " WHERE") {
+			baseQuery = baseQuery.Where(strings.TrimPrefix(whereClause, " WHERE"), args...)
+		}
+	}
+
+	rows, err := baseQuery.Select(`
 		borrower_name,
 		COUNT(*) as borrow_count,
 		SUM(CASE WHEN status = 'borrowed' THEN 1 ELSE 0 END) as active_count,
@@ -297,9 +371,6 @@ func getBorrowsByBorrower(query *gorm.DB) []BorrowerStats {
 		return stats
 	}
 	defer rows.Close()
-
-	var totalBorrows int64
-	query.Count(&totalBorrows)
 
 	for rows.Next() {
 		var stat BorrowerStats
@@ -317,9 +388,30 @@ func getBorrowsByBorrower(query *gorm.DB) []BorrowerStats {
 
 // getBorrowsByAssetCategory 获取按资产分类统计的借用数据
 func getBorrowsByAssetCategory(query *gorm.DB) []BorrowCategoryStats {
-	var stats []BorrowCategoryStats
+	stats := make([]BorrowCategoryStats, 0)
 
-	rows, err := query.Select(`
+	// 先获取总借用数
+	var totalBorrows int64
+	query.Count(&totalBorrows)
+
+	// 获取原始查询的SQL和参数，用于构建统计查询
+	sql := query.Statement.SQL.String()
+	var args []interface{}
+	if query.Statement.Vars != nil {
+		args = query.Statement.Vars
+	}
+
+	// 构建统计查询，确保继承WHERE条件
+	baseQuery := global.DB.Model(&models.BorrowRecord{})
+	if sql != "" && len(args) > 0 {
+		// 如果有WHERE条件，解析并应用
+		whereClause := strings.TrimPrefix(sql, "SELECT * FROM `borrow_records`")
+		if strings.HasPrefix(whereClause, " WHERE") {
+			baseQuery = baseQuery.Where(strings.TrimPrefix(whereClause, " WHERE"), args...)
+		}
+	}
+
+	rows, err := baseQuery.Select(`
 		c.id as category_id,
 		c.name as category_name,
 		COUNT(br.id) as borrow_count,
@@ -337,9 +429,6 @@ func getBorrowsByAssetCategory(query *gorm.DB) []BorrowCategoryStats {
 		return stats
 	}
 	defer rows.Close()
-
-	var totalBorrows int64
-	query.Count(&totalBorrows)
 
 	for rows.Next() {
 		var stat BorrowCategoryStats
@@ -415,7 +504,7 @@ func getBorrowTrends(query *gorm.DB) BorrowTrends {
 }
 
 // getBorrowWeeklyTrend 获取周度借用趋势
-func getBorrowWeeklyTrend(query *gorm.DB) []WeeklyBorrowStats {
+func getBorrowWeeklyTrend(_ *gorm.DB) []WeeklyBorrowStats {
 	var stats []WeeklyBorrowStats
 
 	// 获取最近8周的数据
@@ -445,7 +534,7 @@ func getBorrowWeeklyTrend(query *gorm.DB) []WeeklyBorrowStats {
 }
 
 // getBorrowDailyTrend 获取日度借用趋势
-func getBorrowDailyTrend(query *gorm.DB) []DailyBorrowStats {
+func getBorrowDailyTrend(_ *gorm.DB) []DailyBorrowStats {
 	var stats []DailyBorrowStats
 
 	// 获取最近30天的数据
@@ -476,7 +565,7 @@ func getBorrowDailyTrend(query *gorm.DB) []DailyBorrowStats {
 }
 
 // getBorrowHourlyPattern 获取小时借用模式
-func getBorrowHourlyPattern(query *gorm.DB) []HourlyBorrowStats {
+func getBorrowHourlyPattern(_ *gorm.DB) []HourlyBorrowStats {
 	var stats []HourlyBorrowStats
 
 	// 获取最近30天的小时模式

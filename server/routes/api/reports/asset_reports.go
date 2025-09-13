@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"fmt"
 	"time"
 
 	"asset-management-system/server/models"
@@ -47,14 +48,18 @@ func getAssetSummary(baseQuery *gorm.DB) AssetSummary {
 func getAssetsByCategory(query *gorm.DB) []CategoryStats {
 	var stats []CategoryStats
 
-	rows, err := query.Select(`
+	// 先获取总资产数
+	var totalAssets int64
+	query.Count(&totalAssets)
+
+	// 使用新的session来避免查询被修改
+	rows, err := query.Session(&gorm.Session{}).Select(`
 		c.id as category_id,
 		c.name as category_name,
-		COUNT(a.id) as asset_count,
-		COALESCE(SUM(a.purchase_price), 0) as total_value
+		COUNT(assets.id) as asset_count,
+		COALESCE(SUM(assets.purchase_price), 0) as total_value
 	`).
-		Joins("a").
-		Joins("LEFT JOIN categories c ON c.id = a.category_id").
+		Joins("LEFT JOIN categories c ON c.id = assets.category_id").
 		Group("c.id, c.name").
 		Rows()
 
@@ -62,9 +67,6 @@ func getAssetsByCategory(query *gorm.DB) []CategoryStats {
 		return stats
 	}
 	defer rows.Close()
-
-	var totalAssets int64
-	query.Count(&totalAssets)
 
 	for rows.Next() {
 		var stat CategoryStats
@@ -84,14 +86,18 @@ func getAssetsByCategory(query *gorm.DB) []CategoryStats {
 func getAssetsByDepartment(query *gorm.DB) []DepartmentStats {
 	var stats []DepartmentStats
 
-	rows, err := query.Select(`
+	// 先获取总资产数
+	var totalAssets int64
+	query.Count(&totalAssets)
+
+	// 使用新的session来避免查询被修改
+	rows, err := query.Session(&gorm.Session{}).Select(`
 		d.id as department_id,
 		COALESCE(d.name, '未分配') as department_name,
-		COUNT(a.id) as asset_count,
-		COALESCE(SUM(a.purchase_price), 0) as total_value
+		COUNT(assets.id) as asset_count,
+		COALESCE(SUM(assets.purchase_price), 0) as total_value
 	`).
-		Joins("a").
-		Joins("LEFT JOIN departments d ON d.id = a.department_id").
+		Joins("LEFT JOIN departments d ON d.id = assets.department_id").
 		Group("d.id, d.name").
 		Rows()
 
@@ -99,9 +105,6 @@ func getAssetsByDepartment(query *gorm.DB) []DepartmentStats {
 		return stats
 	}
 	defer rows.Close()
-
-	var totalAssets int64
-	query.Count(&totalAssets)
 
 	for rows.Next() {
 		var stat DepartmentStats
@@ -123,7 +126,12 @@ func getAssetsByDepartment(query *gorm.DB) []DepartmentStats {
 func getAssetsByStatus(query *gorm.DB) []StatusStats {
 	var stats []StatusStats
 
-	rows, err := query.Select("status, COUNT(*) as count").
+	// 先获取总资产数
+	var totalAssets int64
+	query.Count(&totalAssets)
+
+	// 使用新的session来避免查询被修改
+	rows, err := query.Session(&gorm.Session{}).Select("status, COUNT(*) as count").
 		Group("status").
 		Rows()
 
@@ -131,9 +139,6 @@ func getAssetsByStatus(query *gorm.DB) []StatusStats {
 		return stats
 	}
 	defer rows.Close()
-
-	var totalAssets int64
-	query.Count(&totalAssets)
 
 	for rows.Next() {
 		var stat StatusStats
@@ -250,26 +255,34 @@ func getAssetWarrantyStatus(baseQuery *gorm.DB) WarrantyStatus {
 func getAssetsByLocation(query *gorm.DB) []LocationStats {
 	var stats []LocationStats
 
-	rows, err := query.Select(`
-		COALESCE(location, '未设置') as location,
+	// 先获取总资产数
+	var totalAssets int64
+	query.Count(&totalAssets)
+	fmt.Printf("getAssetsByLocation totalAssets: %d\n", totalAssets)
+
+	// 使用新的session来避免查询被修改
+	rows, err := query.Session(&gorm.Session{}).Select(`
+		COALESCE(assets.location, '未设置') as location,
 		COUNT(*) as asset_count,
-		COALESCE(SUM(purchase_price), 0) as total_value
+		COALESCE(SUM(assets.purchase_price), 0) as total_value
 	`).
-		Group("location").
+		Group("assets.location").
 		Order("asset_count DESC").
 		Rows()
 
 	if err != nil {
+		// 添加错误日志
+		fmt.Printf("getAssetsByLocation error: %v\n", err)
 		return stats
 	}
-	defer rows.Close()
 
-	var totalAssets int64
-	query.Count(&totalAssets)
+	fmt.Printf("getAssetsByLocation query executed successfully\n")
+	defer rows.Close()
 
 	for rows.Next() {
 		var stat LocationStats
 		rows.Scan(&stat.Location, &stat.AssetCount, &stat.TotalValue)
+		fmt.Printf("getAssetsByLocation stat: %+v\n", stat)
 
 		if totalAssets > 0 {
 			stat.Percentage = float64(stat.AssetCount) / float64(totalAssets) * 100
@@ -278,6 +291,7 @@ func getAssetsByLocation(query *gorm.DB) []LocationStats {
 		stats = append(stats, stat)
 	}
 
+	fmt.Printf("getAssetsByLocation result: %+v\n", stats)
 	return stats
 }
 
@@ -285,12 +299,17 @@ func getAssetsByLocation(query *gorm.DB) []LocationStats {
 func getAssetsBySupplier(query *gorm.DB) []SupplierStats {
 	var stats []SupplierStats
 
-	rows, err := query.Select(`
-		COALESCE(supplier, '未设置') as supplier,
+	// 先获取总资产数
+	var totalAssets int64
+	query.Count(&totalAssets)
+
+	// 使用新的session来避免查询被修改
+	rows, err := query.Session(&gorm.Session{}).Select(`
+		COALESCE(assets.supplier, '未设置') as supplier,
 		COUNT(*) as asset_count,
-		COALESCE(SUM(purchase_price), 0) as total_value
+		COALESCE(SUM(assets.purchase_price), 0) as total_value
 	`).
-		Group("supplier").
+		Group("assets.supplier").
 		Order("asset_count DESC").
 		Rows()
 
@@ -298,9 +317,6 @@ func getAssetsBySupplier(query *gorm.DB) []SupplierStats {
 		return stats
 	}
 	defer rows.Close()
-
-	var totalAssets int64
-	query.Count(&totalAssets)
 
 	for rows.Next() {
 		var stat SupplierStats
@@ -320,14 +336,15 @@ func getAssetsBySupplier(query *gorm.DB) []SupplierStats {
 func getAssetsByPurchaseMonth(query *gorm.DB) []PurchaseMonthStats {
 	var stats []PurchaseMonthStats
 
-	rows, err := query.Select(`
-		strftime('%Y-%m', purchase_date) as month,
+	// 使用新的session来避免查询被修改
+	rows, err := query.Session(&gorm.Session{}).Select(`
+		strftime('%Y-%m', assets.purchase_date) as month,
 		COUNT(*) as asset_count,
-		COALESCE(SUM(purchase_price), 0) as total_value,
-		COALESCE(AVG(purchase_price), 0) as average_value
+		COALESCE(SUM(assets.purchase_price), 0) as total_value,
+		COALESCE(AVG(assets.purchase_price), 0) as average_value
 	`).
-		Where("purchase_date IS NOT NULL").
-		Group("strftime('%Y-%m', purchase_date)").
+		Where("assets.purchase_date IS NOT NULL").
+		Group("strftime('%Y-%m', assets.purchase_date)").
 		Order("month DESC").
 		Limit(12).
 		Rows()
@@ -354,10 +371,10 @@ func getAssetUtilizationRate(query *gorm.DB) UtilizationRate {
 	query.Count(&rate.TotalAssets)
 
 	// 借用中资产数
-	query.Where("status = ?", models.AssetStatusBorrowed).Count(&rate.BorrowedAssets)
+	query.Session(&gorm.Session{}).Where("status = ?", models.AssetStatusBorrowed).Count(&rate.BorrowedAssets)
 
 	// 可用资产数
-	query.Where("status = ?", models.AssetStatusAvailable).Count(&rate.AvailableAssets)
+	query.Session(&gorm.Session{}).Where("status = ?", models.AssetStatusAvailable).Count(&rate.AvailableAssets)
 
 	// 计算利用率
 	if rate.TotalAssets > 0 {

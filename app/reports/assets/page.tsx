@@ -50,6 +50,7 @@ export default function AssetReportsPage() {
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState<ReportFilterParams>({});
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
+  const [isFiltering, setIsFiltering] = useState(false);
 
   useEffect(() => {
     loadReportData();
@@ -133,19 +134,28 @@ export default function AssetReportsPage() {
 
   const handleFilterChange = useCallback((newFilters: ReportFilterParams) => {
     setFilters(newFilters);
+    setIsFiltering(true);
     const queryParams: ReportQueryParams = {
       start_date: newFilters.start_date,
       end_date: newFilters.end_date,
       category_id: newFilters.category_id,
       department_id: newFilters.department_id,
       status: newFilters.status,
+      value_range: newFilters.value_range,
+      warranty_status: newFilters.warranty_status,
+      include_sub_categories: newFilters.include_sub_categories,
     };
-    loadReportData(queryParams);
+    loadReportData(queryParams).finally(() => {
+      setIsFiltering(false);
+    });
   }, []);
 
   const handleFilterReset = useCallback(() => {
     setFilters({});
-    loadReportData();
+    setIsFiltering(true);
+    loadReportData().finally(() => {
+      setIsFiltering(false);
+    });
   }, []);
 
   const handleExport = async (options: ExportOptions) => {
@@ -179,8 +189,8 @@ export default function AssetReportsPage() {
       <div className="container mx-auto p-6">
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <p className="text-muted-foreground mt-2">加载中...</p>
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+            <p className="text-muted-foreground mt-2">加载报表数据中...</p>
           </div>
         </div>
       </div>
@@ -194,7 +204,7 @@ export default function AssetReportsPage() {
           <AlertCircle className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="text-lg font-medium">无法加载报表数据</h3>
           <p className="text-muted-foreground mb-4">请稍后重试</p>
-          <Button onClick={loadReportData}>重新加载</Button>
+          <Button onClick={() => loadReportData()}>重新加载</Button>
         </div>
       </div>
     );
@@ -213,6 +223,10 @@ export default function AssetReportsPage() {
     by_purchase_month,
     utilization_rate
   } = reportData;
+
+  // 调试信息
+  console.log('Report data:', reportData);
+  console.log('Value analysis:', value_analysis);
 
   return (
     <div className="container mx-auto space-y-6 p-6">
@@ -234,13 +248,22 @@ export default function AssetReportsPage() {
 
       {/* 筛选组件 */}
       {filterOptions && (
-        <ReportFilter
-          reportType="asset"
-          onFilterChange={handleFilterChange}
-          onReset={handleFilterReset}
-          initialFilters={filters}
-          options={filterOptions}
-        />
+        <div className="relative">
+          <ReportFilter
+            reportType="asset"
+            onFilterChange={handleFilterChange}
+            onReset={handleFilterReset}
+            initialFilters={filters}
+            options={filterOptions}
+            useDialog={true}
+          />
+          {isFiltering && (
+            <div className="absolute top-4 right-4 flex items-center gap-2 text-sm text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1 rounded-full border">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              正在筛选...
+            </div>
+          )}
+        </div>
       )}
 
       {/* 概览卡片 */}
@@ -462,22 +485,22 @@ export default function AssetReportsPage() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <div className="rounded-lg border p-4 text-center">
-                  <div className="text-2xl font-bold text-red-600">{value_analysis.high_value}</div>
+                  <div className="text-2xl font-bold text-red-600">{value_analysis?.high_value || 0}</div>
                   <div className="mt-1 text-sm font-medium">高价值资产</div>
                   <div className="text-muted-foreground mt-1 text-xs">&gt; ¥10,000</div>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
-                  <div className="text-2xl font-bold text-orange-600">{value_analysis.medium_value}</div>
+                  <div className="text-2xl font-bold text-orange-600">{value_analysis?.medium_value || 0}</div>
                   <div className="mt-1 text-sm font-medium">中等价值资产</div>
                   <div className="text-muted-foreground mt-1 text-xs">¥1,000 - ¥10,000</div>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
-                  <div className="text-2xl font-bold text-green-600">{value_analysis.low_value}</div>
+                  <div className="text-2xl font-bold text-green-600">{value_analysis?.low_value || 0}</div>
                   <div className="mt-1 text-sm font-medium">低价值资产</div>
                   <div className="text-muted-foreground mt-1 text-xs">&lt; ¥1,000</div>
                 </div>
                 <div className="rounded-lg border p-4 text-center">
-                  <div className="text-2xl font-bold text-gray-600">{value_analysis.no_value}</div>
+                  <div className="text-2xl font-bold text-gray-600">{value_analysis?.no_value || 0}</div>
                   <div className="mt-1 text-sm font-medium">无价值信息</div>
                   <div className="text-muted-foreground mt-1 text-xs">未录入价格</div>
                 </div>
@@ -536,7 +559,7 @@ export default function AssetReportsPage() {
                       <div className="flex-1">
                         <h4 className="font-medium">{location.location}</h4>
                         <p className="text-muted-foreground text-sm">
-                          {location.asset_count} 个资产 • ¥{location.total_value.toLocaleString()}
+                          {location.count} 个资产 • ¥{location.total_value.toLocaleString()}
                         </p>
                       </div>
                       <div className="text-right">
@@ -575,7 +598,7 @@ export default function AssetReportsPage() {
                       <div className="flex-1">
                         <h4 className="font-medium">{supplier.supplier}</h4>
                         <p className="text-muted-foreground text-sm">
-                          {supplier.asset_count} 个资产 • ¥{supplier.total_value.toLocaleString()}
+                          {supplier.count} 个资产 • ¥{supplier.total_value.toLocaleString()}
                         </p>
                       </div>
                       <div className="text-right">

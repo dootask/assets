@@ -9,6 +9,14 @@ export interface ReportQueryParams {
   category_id?: string;
   department_id?: string;
   status?: string;
+  value_range?: string;
+  warranty_status?: string;
+  include_sub_categories?: boolean;
+  borrower_name?: string;
+  asset_category_id?: string;
+  overdue_only?: boolean;
+  borrow_duration?: string;
+  task_type?: string;
 }
 
 // 借用报表数据类型
@@ -109,6 +117,23 @@ export interface AssetReportData {
     utilization_rate: number;
     borrow_rate: number;
   };
+  by_location?: Array<{
+    location: string;
+    count: number;
+    total_value: number;
+    percentage: number;
+  }>;
+  by_supplier?: Array<{
+    supplier: string;
+    count: number;
+    total_value: number;
+    percentage: number;
+  }>;
+  by_purchase_month?: Array<{
+    month: string;
+    count: number;
+    total_value: number;
+  }>;
 }
 
 // 盘点报表数据类型
@@ -281,7 +306,7 @@ export const fetchBorrowReports = async (params?: ReportQueryParams): Promise<Bo
     console.error('Failed to fetch borrow reports:', error);
     
     // 检查是否是网络错误
-    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+    if ((error as any)?.code === 'ECONNREFUSED' || (error as any)?.code === 'ERR_NETWORK') {
       // 只有在后端服务不可用时才使用模拟数据
       return {
         summary: {
@@ -336,69 +361,59 @@ export const fetchBorrowReports = async (params?: ReportQueryParams): Promise<Bo
 export const fetchAssetReports = async (params?: ReportQueryParams): Promise<AssetReportData> => {
   try {
     const response = await apiClient.get<APIResponse<AssetReportData>>('/reports/assets', { params });
+    console.log('Asset reports API response:', response.data);
     return response.data.data;
   } catch (error) {
     console.error('Failed to fetch asset reports:', error);
     
     // 检查是否是网络错误
-    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+    if ((error as any)?.code === 'ECONNREFUSED' || (error as any)?.code === 'ERR_NETWORK') {
+      console.warn('API server is not running, using mock data');
     }
     
     // 返回模拟数据
     return {
       summary: {
-        total_assets: 1234,
-        available_assets: 1048,
-        borrowed_assets: 156,
-        maintenance_assets: 18,
-        scrapped_assets: 12,
-        total_value: 25000000,
+        total_assets: 4,
+        available_assets: 2,
+        borrowed_assets: 2,
+        maintenance_assets: 0,
+        scrapped_assets: 0,
+        total_value: 402.5,
       },
       by_category: [
-        { category_id: 1, category_name: '电脑设备', asset_count: 456, total_value: 12000000, percentage: 37.0 },
-        { category_id: 2, category_name: '办公设备', asset_count: 234, total_value: 3500000, percentage: 19.0 },
-        { category_id: 3, category_name: '网络设备', asset_count: 178, total_value: 5600000, percentage: 14.4 },
-        { category_id: 4, category_name: '音响设备', asset_count: 145, total_value: 2800000, percentage: 11.7 },
-        { category_id: 5, category_name: '其他设备', asset_count: 221, total_value: 1100000, percentage: 17.9 },
+        { category_id: 1, category_name: '电脑设备', asset_count: 4, total_value: 402.5, percentage: 100.0 },
       ],
       by_department: [
-        { department_name: 'IT部门', asset_count: 345, total_value: 8900000, percentage: 28.0 },
-        { department_name: '财务部门', asset_count: 234, total_value: 4500000, percentage: 19.0 },
-        { department_name: '人事部门', asset_count: 189, total_value: 3200000, percentage: 15.3 },
-        { department_name: '市场部门', asset_count: 267, total_value: 5600000, percentage: 21.6 },
-        { department_name: '行政部门', asset_count: 199, total_value: 2800000, percentage: 16.1 },
+        { department_name: '未分配', asset_count: 4, total_value: 402.5, percentage: 100.0 },
       ],
       by_status: [
-        { status: 'available', count: 1048, percentage: 84.9 },
-        { status: 'borrowed', count: 156, percentage: 12.6 },
-        { status: 'maintenance', count: 18, percentage: 1.5 },
-        { status: 'scrapped', count: 12, percentage: 1.0 },
+        { status: 'available', count: 2, percentage: 50.0 },
+        { status: 'borrowed', count: 2, percentage: 50.0 },
+        { status: 'maintenance', count: 0, percentage: 0.0 },
+        { status: 'scrapped', count: 0, percentage: 0.0 },
       ],
       by_purchase_year: [
-        { year: 2024, count: 245, total_value: 6800000 },
-        { year: 2023, count: 356, total_value: 8900000 },
-        { year: 2022, count: 298, total_value: 5600000 },
-        { year: 2021, count: 234, total_value: 2800000 },
-        { year: 2020, count: 101, total_value: 900000 },
+        { year: 2024, count: 4, total_value: 402.5 },
       ],
       value_analysis: {
-        high_value: 234,
-        medium_value: 567,
-        low_value: 398,
-        no_value: 35,
-        average_value: 20259,
+        high_value: 0,
+        medium_value: 0,
+        low_value: 4,
+        no_value: 0,
+        average_value: 100.6,
       },
       warranty_status: {
-        in_warranty: 856,
-        expired_warranty: 245,
-        no_warranty: 133,
+        in_warranty: 0,
+        expired_warranty: 0,
+        no_warranty: 4,
       },
       utilization_rate: {
-        total_assets: 1234,
-        borrowed_assets: 156,
-        available_assets: 1048,
-        utilization_rate: 12.6,
-        borrow_rate: 12.6,
+        total_assets: 4,
+        borrowed_assets: 2,
+        available_assets: 2,
+        utilization_rate: 50.0,
+        borrow_rate: 50.0,
       },
     };
   }

@@ -98,6 +98,10 @@ export default function BorrowReportsPage() {
       category_id: newFilters.category_id,
       department_id: newFilters.department_id,
       status: newFilters.status,
+      borrower_name: newFilters.borrower_name,
+      asset_category_id: newFilters.asset_category_id,
+      borrow_duration: newFilters.borrow_duration,
+      overdue_only: newFilters.overdue_only,
     };
     loadReportData(queryParams);
   }, []);
@@ -153,7 +157,7 @@ export default function BorrowReportsPage() {
           <AlertTriangle className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="text-lg font-medium">无法加载报表数据</h3>
           <p className="text-muted-foreground mb-4">请稍后重试</p>
-          <Button onClick={loadReportData}>重新加载</Button>
+          <Button onClick={() => loadReportData()}>重新加载</Button>
         </div>
       </div>
     );
@@ -187,6 +191,7 @@ export default function BorrowReportsPage() {
           onReset={handleFilterReset}
           initialFilters={filters}
           options={filterOptions}
+          useDialog={true}
         />
       )}
 

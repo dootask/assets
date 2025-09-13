@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * 防抖回调 Hook - 首次立即执行，后续防抖
@@ -34,4 +34,25 @@ export function useDebounceCallback<T extends (...args: unknown[]) => unknown>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [...deps]
   );
+}
+
+/**
+ * 防抖值 Hook - 对值进行防抖处理
+ * @param value 需要防抖的值
+ * @param delay 防抖延迟时间（毫秒），默认为 300
+ */
+export function useDebounce<T>(value: T, delay: number = 300): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
 }

@@ -162,12 +162,37 @@ export function AssetStatusChart({ data }: { data: Array<{ status: string; count
 
 // 资产价值分析图表组件
 export function AssetValueAnalysisChart({ data }: { data: { high_value: number; medium_value: number; low_value: number; no_value: number } }) {
+  console.log('AssetValueAnalysisChart data:', data);
+  
+  // 检查数据是否存在
+  if (!data) {
+    console.error('Value analysis data is undefined or null');
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <TrendingUp className="mr-2 h-5 w-5" />
+            价值分析
+          </CardTitle>
+          <CardDescription>按价值区间分析资产分布</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-[300px] items-center justify-center">
+            <p className="text-muted-foreground">数据加载中...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   const chartData = [
-    { name: '高价值资产 (>¥10,000)', value: data.high_value, color: '#FF6B6B' },
-    { name: '中等价值资产 (¥1,000-¥10,000)', value: data.medium_value, color: '#4ECDC4' },
-    { name: '低价值资产 (<¥1,000)', value: data.low_value, color: '#45B7D1' },
-    { name: '无价值信息', value: data.no_value, color: '#96CEB4' },
+    { name: '高价值资产 (>¥10,000)', value: data.high_value || 0, color: '#FF6B6B' },
+    { name: '中等价值资产 (¥1,000-¥10,000)', value: data.medium_value || 0, color: '#4ECDC4' },
+    { name: '低价值资产 (<¥1,000)', value: data.low_value || 0, color: '#45B7D1' },
+    { name: '无价值信息', value: data.no_value || 0, color: '#96CEB4' },
   ];
+  
+  console.log('Chart data:', chartData);
 
   return (
     <Card>

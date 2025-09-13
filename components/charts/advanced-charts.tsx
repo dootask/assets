@@ -116,7 +116,7 @@ export function AdvancedLineChart({
                   y={referenceValue} 
                   stroke="#ff7300" 
                   strokeDasharray="5 5"
-                  label={{ value: referenceLabel, position: "topRight" }}
+                  label={{ value: referenceLabel, position: "top" }}
                 />
               )}
               {showBrush && (
@@ -739,7 +739,7 @@ export function HeatmapChart({
               />
               <Bar 
                 dataKey="value" 
-                fill={(entry: any) => getColor(entry.value)}
+                fill="#8884d8"
                 radius={[2, 2, 0, 0]}
               />
             </BarChart>

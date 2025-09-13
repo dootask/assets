@@ -61,7 +61,12 @@ export default function ReportsPage() {
     startDate: '',
     endDate: '',
   });
+  const [tempDateRange, setTempDateRange] = useState({
+    startDate: '',
+    endDate: '',
+  });
   const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
+  const [isCustomRange, setIsCustomRange] = useState(false);
 
   const buildQueryParams = useCallback((): ReportQueryParams => {
     const params: ReportQueryParams = {};
@@ -246,10 +251,10 @@ export default function ReportsPage() {
   ];
 
   const handleDateRangeApply = () => {
-    if (customDateRange.startDate && customDateRange.endDate) {
+    if (tempDateRange.startDate && tempDateRange.endDate) {
       // 验证日期范围
-      const startDate = new Date(customDateRange.startDate);
-      const endDate = new Date(customDateRange.endDate);
+      const startDate = new Date(tempDateRange.startDate);
+      const endDate = new Date(tempDateRange.endDate);
       
       if (startDate > endDate) {
         toast.error('开始日期不能晚于结束日期');
@@ -257,7 +262,9 @@ export default function ReportsPage() {
       }
       
       // 应用时间范围并重新加载数据
-      toast.success(`已设置时间范围: ${customDateRange.startDate} 至 ${customDateRange.endDate}`);
+      setCustomDateRange({ ...tempDateRange });
+      setIsCustomRange(true);
+      toast.success(`已设置时间范围: ${tempDateRange.startDate} 至 ${tempDateRange.endDate}`);
       setIsDateRangeOpen(false);
       // 手动触发数据重新加载
       loadReportSummary();
@@ -267,11 +274,17 @@ export default function ReportsPage() {
   };
 
   const handleDateRangeReset = () => {
+    setTempDateRange({
+      startDate: '',
+      endDate: '',
+    });
     setCustomDateRange({
       startDate: '',
       endDate: '',
     });
+    setIsCustomRange(false);
     toast.success('已重置时间范围，将使用当前统计周期');
+    setIsDateRangeOpen(false);
     // 手动触发数据重新加载
     loadReportSummary();
   };
@@ -336,18 +349,29 @@ export default function ReportsPage() {
             <Filter className="mr-2 h-4 w-4" />
             刷新数据
           </Button>
-          <Dialog open={isDateRangeOpen} onOpenChange={setIsDateRangeOpen}>
+          <Dialog open={isDateRangeOpen} onOpenChange={(open) => {
+            setIsDateRangeOpen(open);
+            if (open) {
+              // 打开弹窗时，将当前的自定义时间范围复制到临时状态
+              setTempDateRange({ ...customDateRange });
+            }
+          }}>
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Calendar className="mr-2 h-4 w-4" />
                 时间范围
+                {customDateRange.startDate && customDateRange.endDate && (
+                  <span className="ml-2 px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
+                    {customDateRange.startDate} ~ {customDateRange.endDate}
+                  </span>
+                )}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>设置时间范围</DialogTitle>
                 <DialogDescription>
-                  选择自定义的时间范围来筛选报表数据
+                  选择自定义的时间范围来筛选报表数据，点击应用按钮确认筛选。
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -358,8 +382,8 @@ export default function ReportsPage() {
                   <Input
                     id="start-date"
                     type="date"
-                    value={customDateRange.startDate}
-                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    value={tempDateRange.startDate}
+                    onChange={(e) => setTempDateRange(prev => ({ ...prev, startDate: e.target.value }))}
                     className="col-span-3"
                   />
                 </div>
@@ -370,8 +394,8 @@ export default function ReportsPage() {
                   <Input
                     id="end-date"
                     type="date"
-                    value={customDateRange.endDate}
-                    onChange={(e) => setCustomDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    value={tempDateRange.endDate}
+                    onChange={(e) => setTempDateRange(prev => ({ ...prev, endDate: e.target.value }))}
                     className="col-span-3"
                   />
                 </div>
@@ -392,19 +416,46 @@ export default function ReportsPage() {
       {/* 时间周期选择 */}
       <div className="flex items-center space-x-2">
         <span className="text-sm font-medium">统计周期:</span>
-        {['week', 'month', 'quarter', 'year'].map(period => (
-          <Button
-            key={period}
-            variant={selectedPeriod === period ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedPeriod(period)}
-          >
-            {period === 'week' && '本周'}
-            {period === 'month' && '本月'}
-            {period === 'quarter' && '本季度'}
-            {period === 'year' && '本年'}
-          </Button>
-        ))}
+        {isCustomRange ? (
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="default"
+              size="sm"
+              className="bg-primary"
+            >
+              自定义: {customDateRange.startDate} ~ {customDateRange.endDate}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsCustomRange(false);
+                setCustomDateRange({ startDate: '', endDate: '' });
+                loadReportSummary();
+              }}
+            >
+              清除自定义
+            </Button>
+          </div>
+        ) : (
+          ['week', 'month', 'quarter', 'year'].map(period => (
+            <Button
+              key={period}
+              variant={selectedPeriod === period ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setSelectedPeriod(period);
+                setIsCustomRange(false);
+                setCustomDateRange({ startDate: '', endDate: '' });
+              }}
+            >
+              {period === 'week' && '本周'}
+              {period === 'month' && '本月'}
+              {period === 'quarter' && '本季度'}
+              {period === 'year' && '本年'}
+            </Button>
+          ))
+        )}
       </div>
 
       {/* 报表分类卡片 */}
@@ -419,10 +470,14 @@ export default function ReportsPage() {
                     <Icon className="h-6 w-6" />
                   </div>
                   <Badge variant="secondary">
-                    {selectedPeriod === 'week' && '本周'}
-                    {selectedPeriod === 'month' && '本月'}
-                    {selectedPeriod === 'quarter' && '本季度'}
-                    {selectedPeriod === 'year' && '本年'}
+                    {isCustomRange ? `自定义: ${customDateRange.startDate} ~ ${customDateRange.endDate}` : (
+                      <>
+                        {selectedPeriod === 'week' && '本周'}
+                        {selectedPeriod === 'month' && '本月'}
+                        {selectedPeriod === 'quarter' && '本季度'}
+                        {selectedPeriod === 'year' && '本年'}
+                      </>
+                    )}
                   </Badge>
                 </div>
                 <CardTitle className="text-lg">{category.title}</CardTitle>
@@ -499,14 +554,46 @@ export default function ReportsPage() {
                       </p>
                     </div>
                   </div>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={() => {
-                      if (report.downloadUrl) {
-                        window.open(report.downloadUrl, '_blank');
+                      // API返回的是 download_url，但JavaScript会自动转换为 downloadUrl
+                      const downloadUrl = report.downloadUrl;
+                      if (downloadUrl) {
+                        try {
+                          // 使用fetch进行下载，这样可以更好地处理错误
+                          fetch(downloadUrl)
+                            .then(response => {
+                              if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                              }
+                              return response.blob();
+                            })
+                            .then(blob => {
+                              // 创建下载链接
+                              const url = window.URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.style.display = 'none';
+                              a.href = url;
+                              a.download = report.name;
+                              document.body.appendChild(a);
+                              a.click();
+                              window.URL.revokeObjectURL(url);
+                              document.body.removeChild(a);
+                              toast.success('报表下载成功');
+                            })
+                            .catch(error => {
+                              console.error('Download failed:', error);
+                              toast.error('下载失败，请稍后重试');
+                            });
+                        } catch (error) {
+                          console.error('Download error:', error);
+                          toast.error('下载失败，请稍后重试');
+                        }
                       } else {
                         toast.info('下载链接不可用');
+                        console.log('Report data:', report); // 调试信息
                       }
                     }}
                   >

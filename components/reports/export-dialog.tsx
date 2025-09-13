@@ -39,6 +39,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
@@ -55,6 +56,7 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
           ...(categoryFilter && categoryFilter !== 'all' && { category_id: categoryFilter }),
           ...(departmentFilter && departmentFilter !== 'all' && { department_id: departmentFilter }),
           ...(statusFilter && statusFilter !== 'all' && { status: statusFilter }),
+          ...(taskTypeFilter && taskTypeFilter !== 'all' && { task_type: taskTypeFilter }),
         },
       };
 
@@ -258,6 +260,23 @@ export function ExportDialog({ reportType, onExport, children }: ExportDialogPro
                       <SelectItem value="pending">待开始</SelectItem>
                       <SelectItem value="in_progress">进行中</SelectItem>
                       <SelectItem value="completed">已完成</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="task-type" className="text-sm text-muted-foreground">
+                    任务类型
+                  </Label>
+                  <Select value={taskTypeFilter} onValueChange={setTaskTypeFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部类型</SelectItem>
+                      <SelectItem value="full">全盘</SelectItem>
+                      <SelectItem value="department">按部门盘点</SelectItem>
+                      <SelectItem value="category">按分类盘点</SelectItem>
+                      <SelectItem value="spot">抽查</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

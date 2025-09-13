@@ -13,6 +13,7 @@ func AllModels() []interface{} {
 		&InventoryRecord{},
 		&OperationLog{},
 		&SystemConfig{},
+		&ReportRecord{},
 	}
 }
 

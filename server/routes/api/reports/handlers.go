@@ -1,13 +1,17 @@
 package reports
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"asset-management-system/server/global"
 	"asset-management-system/server/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // GetAssetReports 获取资产统计报表
@@ -96,29 +100,102 @@ func GetAssetReports(c *gin.Context) {
 	// 获取资产汇总数据
 	summary := getAssetSummary(query)
 
+	// 创建基础查询构建函数
+	buildBaseQuery := func() *gorm.DB {
+		baseQuery := global.DB.Model(&models.Asset{})
+
+		// 时间范围筛选
+		if startDate != "" {
+			if start, err := time.Parse("2006-01-02", startDate); err == nil {
+				baseQuery = baseQuery.Where("created_at >= ?", start)
+			}
+		}
+		if endDate != "" {
+			if end, err := time.Parse("2006-01-02", endDate); err == nil {
+				baseQuery = baseQuery.Where("created_at <= ?", end.Add(24*time.Hour))
+			}
+		}
+
+		// 分类筛选
+		if categoryID != "" {
+			if includeSubCategories == "true" {
+				baseQuery = baseQuery.Where("category_id IN (SELECT id FROM categories WHERE id = ? OR parent_id = ?)", categoryID, categoryID)
+			} else {
+				baseQuery = baseQuery.Where("category_id = ?", categoryID)
+			}
+		}
+
+		// 部门筛选
+		if departmentID != "" {
+			baseQuery = baseQuery.Where("department_id = ?", departmentID)
+		}
+
+		// 状态筛选
+		if status != "" {
+			baseQuery = baseQuery.Where("status = ?", status)
+		}
+
+		// 价值范围筛选
+		if valueRange != "" {
+			switch valueRange {
+			case "high":
+				baseQuery = baseQuery.Where("purchase_price > ?", 10000)
+			case "medium":
+				baseQuery = baseQuery.Where("purchase_price BETWEEN ? AND ?", 1000, 10000)
+			case "low":
+				baseQuery = baseQuery.Where("purchase_price > 0 AND purchase_price < ?", 1000)
+			case "no_value":
+				baseQuery = baseQuery.Where("purchase_price IS NULL OR purchase_price = 0")
+			}
+		}
+
+		// 保修状态筛选
+		if warrantyStatus != "" {
+			now := time.Now()
+			switch warrantyStatus {
+			case "in_warranty":
+				baseQuery = baseQuery.Where(`
+					purchase_date IS NOT NULL 
+					AND warranty_period IS NOT NULL 
+					AND datetime(purchase_date, '+' || warranty_period || ' months') > ?
+				`, now)
+			case "expired":
+				baseQuery = baseQuery.Where(`
+					purchase_date IS NOT NULL 
+					AND warranty_period IS NOT NULL 
+					AND datetime(purchase_date, '+' || warranty_period || ' months') <= ?
+				`, now)
+			case "no_warranty":
+				baseQuery = baseQuery.Where("purchase_date IS NULL OR warranty_period IS NULL")
+			}
+		}
+
+		return baseQuery
+	}
+
 	// 获取分类统计
-	byCategory := getAssetsByCategory(query)
+	byCategory := getAssetsByCategory(buildBaseQuery())
 
 	// 获取部门统计
-	byDepartment := getAssetsByDepartment(query)
+	byDepartment := getAssetsByDepartment(buildBaseQuery())
 
 	// 获取状态统计
-	byStatus := getAssetsByStatus(query)
+	byStatus := getAssetsByStatus(buildBaseQuery())
 
 	// 获取采购年份统计
-	byPurchaseYear := getAssetsByPurchaseYear(query)
+	byPurchaseYear := getAssetsByPurchaseYear(buildBaseQuery())
 
 	// 获取价值分析
-	valueAnalysis := getAssetValueAnalysis(query)
+	valueAnalysis := getAssetValueAnalysis(buildBaseQuery())
 
 	// 获取保修状态
-	warrantyStatusData := getAssetWarrantyStatus(query)
+	warrantyStatusData := getAssetWarrantyStatus(buildBaseQuery())
 
 	// 获取新增统计维度
-	byLocation := getAssetsByLocation(query)
-	bySupplier := getAssetsBySupplier(query)
-	byPurchaseMonth := getAssetsByPurchaseMonth(query)
-	utilizationRate := getAssetUtilizationRate(query)
+	byLocation := getAssetsByLocation(buildBaseQuery())
+	bySupplier := getAssetsBySupplier(buildBaseQuery())
+	byPurchaseMonth := getAssetsByPurchaseMonth(buildBaseQuery())
+	utilizationRate := getAssetUtilizationRate(buildBaseQuery())
 
 	reportData := AssetReportData{
 		Summary:         summary,
@@ -288,7 +365,7 @@ func GetInventoryReports(c *gin.Context) {
 	summary := getInventorySummary(query)
 
 	// 获取任务分析
-	taskAnalysis := getInventoryTaskAnalysis(query)
+	taskAnalysis := getInventoryTaskAnalysis(startDate, endDate, taskType, status)
 
 	// 获取结果分析
 	resultAnalysis := getInventoryResultAnalysis()
@@ -397,18 +474,44 @@ func GetCustomReports(c *gin.Context) {
 
 // GetRecentReports 获取最近生成的报表
 func GetRecentReports(c *gin.Context) {
-	// 这里应该从数据库或文件系统中获取最近生成的报表列表
-	// 暂时返回空数组，实际项目中需要实现相应的存储和查询逻辑
-	recentReports := []map[string]interface{}{
-		// 示例数据，实际应该从数据库查询
-		// {
-		// 	"id": "1",
-		// 	"name": "2024年1月资产统计报表.xlsx",
-		// 	"type": "资产报表",
-		// 	"date": "2024-01-28 14:30",
-		// 	"size": "2.3 MB",
-		// 	"download_url": "/api/reports/download/1",
-		// },
+	// 获取查询参数
+	limit := c.DefaultQuery("limit", "10")
+	limitInt := 10
+
+	if l, err := strconv.Atoi(limit); err == nil && l > 0 && l <= 50 {
+		limitInt = l
+	}
+
+	// 查询最近生成的报表记录
+	var reports []models.ReportRecord
+	query := global.DB.Model(&models.ReportRecord{}).
+		Where("expires_at IS NULL OR expires_at > ?", time.Now()).
+		Order("created_at DESC").
+		Limit(limitInt)
+
+	if err := query.Find(&reports).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    "DATABASE_ERROR",
+			"message": "查询报表记录失败",
+			"data":    err.Error(),
+		})
+		return
+	}
+
+	// 格式化返回数据
+	recentReports := make([]map[string]interface{}, 0, len(reports))
+	for _, report := range reports {
+		reportData := map[string]interface{}{
+			"id":           report.ID,
+			"name":         report.ReportName,
+			"type":         getReportTypeDisplayName(report.ReportType),
+			"date":         report.CreatedAt.Format("2006-01-02 15:04:05"),
+			"size":         report.GetFileSizeDisplay(),
+			"download_url": report.GetDownloadURL(),
+			"generated_by": report.GeneratedBy,
+			"file_format":  report.FileFormat,
+		}
+		recentReports = append(recentReports, reportData)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -418,18 +521,62 @@ func GetRecentReports(c *gin.Context) {
 	})
 }
 
+// getReportTypeDisplayName 获取报表类型的显示名称
+func getReportTypeDisplayName(reportType models.ReportRecordType) string {
+	switch reportType {
+	case models.ReportRecordTypeAsset:
+		return "资产报表"
+	case models.ReportRecordTypeBorrow:
+		return "借用报表"
+	case models.ReportRecordTypeInventory:
+		return "盘点报表"
+	case models.ReportRecordTypeCustom:
+		return "自定义报表"
+	default:
+		return "未知报表"
+	}
+}
+
+// recordReportGeneration 记录报表生成
+func recordReportGeneration(reportName string, reportType models.ReportRecordType, filePath string, fileSize *int64, generatedBy string, parameters interface{}) error {
+	// 序列化参数为JSON字符串
+	var paramsStr string
+	if parameters != nil {
+		if paramBytes, err := json.Marshal(parameters); err == nil {
+			paramsStr = string(paramBytes)
+		}
+	}
+
+	report := models.ReportRecord{
+		ReportName:  reportName,
+		ReportType:  reportType,
+		FilePath:    filePath,
+		FileSize:    fileSize,
+		GeneratedBy: generatedBy,
+		Parameters:  paramsStr,
+	}
+
+	return global.DB.Create(&report).Error
+}
+
 // ExportAssetReports 导出资产报表
 func ExportAssetReports(c *gin.Context) {
 	format := c.DefaultQuery("format", "excel")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
 
-	// 获取报表数据（复用GetAssetReports的逻辑）
-	// 这里简化处理，实际应该重构共同逻辑
+	// 获取查询参数用于记录
+	parameters := map[string]interface{}{
+		"format":     format,
+		"start_date": startDate,
+		"end_date":   endDate,
+	}
 
 	switch format {
 	case "excel":
-		exportAssetReportsToExcel(c)
+		exportAssetReportsToExcel(c, parameters)
 	case "csv":
-		exportAssetReportsToCSV(c)
+		exportAssetReportsToCSV(c, parameters)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FORMAT",
@@ -441,12 +588,21 @@ func ExportAssetReports(c *gin.Context) {
 // ExportBorrowReports 导出借用报表
 func ExportBorrowReports(c *gin.Context) {
 	format := c.DefaultQuery("format", "excel")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	// 获取查询参数用于记录
+	parameters := map[string]interface{}{
+		"format":     format,
+		"start_date": startDate,
+		"end_date":   endDate,
+	}
 
 	switch format {
 	case "excel":
-		exportBorrowReportsToExcel(c)
+		exportBorrowReportsToExcel(c, parameters)
 	case "csv":
-		exportBorrowReportsToCSV(c)
+		exportBorrowReportsToCSV(c, parameters)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FORMAT",
@@ -458,12 +614,29 @@ func ExportBorrowReports(c *gin.Context) {
 // ExportInventoryReports 导出盘点报表
 func ExportInventoryReports(c *gin.Context) {
 	format := c.DefaultQuery("format", "excel")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	taskType := c.Query("task_type")
+	status := c.Query("status")
+	categoryID := c.Query("category_id")
+	departmentID := c.Query("department_id")
+
+	// 获取查询参数用于记录
+	parameters := map[string]interface{}{
+		"format":        format,
+		"start_date":    startDate,
+		"end_date":      endDate,
+		"task_type":     taskType,
+		"status":        status,
+		"category_id":   categoryID,
+		"department_id": departmentID,
+	}
 
 	switch format {
 	case "excel":
-		exportInventoryReportsToExcel(c)
+		exportInventoryReportsToExcel(c, parameters)
 	case "csv":
-		exportInventoryReportsToCSV(c)
+		exportInventoryReportsToCSV(c, parameters)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FORMAT",
@@ -497,6 +670,68 @@ func ExportCustomReports(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FORMAT",
 			"message": "不支持的导出格式",
+		})
+	}
+}
+
+// DownloadReport 下载报表文件
+func DownloadReport(c *gin.Context) {
+	filename := c.Param("filename")
+
+	// 从文件名解析报表类型和格式
+	var reportType models.ReportRecordType
+	var format string
+
+	if strings.Contains(filename, "资产统计报表") {
+		reportType = models.ReportRecordTypeAsset
+	} else if strings.Contains(filename, "借用统计报表") {
+		reportType = models.ReportRecordTypeBorrow
+	} else if strings.Contains(filename, "盘点统计报表") {
+		reportType = models.ReportRecordTypeInventory
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "INVALID_FILENAME",
+			"message": "无效的文件名格式",
+		})
+		return
+	}
+
+	if strings.HasSuffix(filename, ".xlsx") {
+		format = "excel"
+	} else if strings.HasSuffix(filename, ".csv") {
+		format = "csv"
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "INVALID_FORMAT",
+			"message": "不支持的文件格式",
+		})
+		return
+	}
+
+	// 根据报表类型重新生成文件
+	switch reportType {
+	case models.ReportRecordTypeAsset:
+		if format == "excel" {
+			exportAssetReportsToExcel(c, nil)
+		} else {
+			exportAssetReportsToCSV(c, nil)
+		}
+	case models.ReportRecordTypeBorrow:
+		if format == "excel" {
+			exportBorrowReportsToExcel(c, nil)
+		} else {
+			exportBorrowReportsToCSV(c, nil)
+		}
+	case models.ReportRecordTypeInventory:
+		if format == "excel" {
+			exportInventoryReportsToExcel(c, nil)
+		} else {
+			exportInventoryReportsToCSV(c, nil)
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    "UNSUPPORTED_REPORT_TYPE",
+			"message": "不支持的报表类型",
 		})
 	}
 }

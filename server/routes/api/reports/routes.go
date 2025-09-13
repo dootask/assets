@@ -34,5 +34,8 @@ func RegisterRoutes(router *gin.RouterGroup) {
 
 		// 最近生成的报表
 		reportsGroup.GET("/recent", GetRecentReports)
+
+		// 文件下载
+		reportsGroup.GET("/download/:filename", DownloadReport)
 	}
 }

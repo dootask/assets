@@ -3,6 +3,7 @@ package reports
 import (
 	"asset-management-system/server/global"
 	"asset-management-system/server/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -39,16 +40,39 @@ func getInventorySummary(query *gorm.DB) InventorySummary {
 }
 
 // getInventoryTaskAnalysis 获取盘点任务分析
-func getInventoryTaskAnalysis(query *gorm.DB) []InventoryTaskStats {
+func getInventoryTaskAnalysis(startDate, endDate, taskType, status string) []InventoryTaskStats {
 	var stats []InventoryTaskStats
 
+	// 构建查询
+	query := global.DB.Model(&models.InventoryTask{})
+
+	if startDate != "" {
+		if start, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("created_at >= ?", start)
+		}
+	}
+
+	if endDate != "" {
+		if end, err := time.Parse("2006-01-02", endDate); err == nil {
+			query = query.Where("created_at <= ?", end.Add(24*time.Hour))
+		}
+	}
+
+	if taskType != "" {
+		query = query.Where("task_type = ?", taskType)
+	}
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
 	rows, err := query.Select(`
-		it.id as task_id,
-		it.name as task_name,
-		it.task_type,
-		it.status,
-		it.start_date,
-		it.end_date,
+		inventory_tasks.id as task_id,
+		inventory_tasks.task_name as task_name,
+		inventory_tasks.task_type,
+		inventory_tasks.status,
+		inventory_tasks.start_date,
+		inventory_tasks.end_date,
 		COUNT(DISTINCT ir.asset_id) as total_assets,
 		COUNT(ir.id) as checked_assets,
 		SUM(CASE WHEN ir.result = 'normal' THEN 1 ELSE 0 END) as normal_count,
@@ -56,10 +80,9 @@ func getInventoryTaskAnalysis(query *gorm.DB) []InventoryTaskStats {
 		SUM(CASE WHEN ir.result = 'deficit' THEN 1 ELSE 0 END) as deficit_count,
 		SUM(CASE WHEN ir.result = 'damaged' THEN 1 ELSE 0 END) as damaged_count
 	`).
-		Table("inventory_tasks it").
-		Joins("LEFT JOIN inventory_records ir ON ir.task_id = it.id").
-		Group("it.id, it.name, it.task_type, it.status, it.start_date, it.end_date").
-		Order("it.created_at DESC").
+		Joins("LEFT JOIN inventory_records ir ON ir.task_id = inventory_tasks.id").
+		Group("inventory_tasks.id, inventory_tasks.task_name, inventory_tasks.task_type, inventory_tasks.status, inventory_tasks.start_date, inventory_tasks.end_date").
+		Order("inventory_tasks.created_at DESC").
 		Rows()
 
 	if err != nil {
@@ -69,11 +92,15 @@ func getInventoryTaskAnalysis(query *gorm.DB) []InventoryTaskStats {
 
 	for rows.Next() {
 		var stat InventoryTaskStats
-		rows.Scan(
+		err := rows.Scan(
 			&stat.TaskID, &stat.TaskName, &stat.TaskType, &stat.Status,
 			&stat.StartDate, &stat.EndDate, &stat.TotalAssets, &stat.CheckedAssets,
 			&stat.NormalCount, &stat.SurplusCount, &stat.DeficitCount, &stat.DamagedCount,
 		)
+
+		if err != nil {
+			continue
+		}
 
 		// 计算准确率
 		if stat.CheckedAssets > 0 {
@@ -82,7 +109,6 @@ func getInventoryTaskAnalysis(query *gorm.DB) []InventoryTaskStats {
 
 		stats = append(stats, stat)
 	}
-
 	return stats
 }
 

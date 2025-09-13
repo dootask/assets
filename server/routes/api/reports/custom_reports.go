@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"asset-management-system/server/global"
-	"asset-management-system/server/models"
 
 	"gorm.io/gorm"
 )
@@ -534,87 +533,6 @@ func mapInventorySortField(field string) string {
 		return mapped
 	}
 	return "ir." + field
-}
-
-// 汇总信息生成函数
-func generateAssetSummary(req CustomReportRequest) map[string]interface{} {
-	summary := make(map[string]interface{})
-
-	var totalAssets, totalValue int64
-	var avgValue float64
-
-	query := global.DB.Model(&models.Asset{})
-	query = applyAssetFilters(query, req.Filters)
-
-	query.Count(&totalAssets)
-
-	// 安全地获取总价值
-	row1 := query.Select("SUM(purchase_price)").Row()
-	if row1 != nil {
-		var totalValuePtr *float64
-		err := row1.Scan(&totalValuePtr)
-		if err == nil && totalValuePtr != nil {
-			totalValue = int64(*totalValuePtr)
-		}
-	}
-
-	// 安全地获取平均价值
-	row2 := query.Select("AVG(purchase_price)").Row()
-	if row2 != nil {
-		var avgValuePtr *float64
-		err := row2.Scan(&avgValuePtr)
-		if err == nil && avgValuePtr != nil {
-			avgValue = *avgValuePtr
-		}
-	}
-
-	summary["total_assets"] = totalAssets
-	summary["total_value"] = totalValue
-	summary["average_value"] = avgValue
-
-	return summary
-}
-
-func generateBorrowSummary(req CustomReportRequest) map[string]interface{} {
-	summary := make(map[string]interface{})
-
-	var totalBorrows, activeBorrows, returnedBorrows int64
-
-	query := global.DB.Model(&models.BorrowRecord{})
-	query = applyBorrowFilters(query, req.Filters)
-
-	query.Count(&totalBorrows)
-	query.Where("status = ?", models.BorrowStatusBorrowed).Count(&activeBorrows)
-	query.Where("status = ?", models.BorrowStatusReturned).Count(&returnedBorrows)
-
-	summary["total_borrows"] = totalBorrows
-	summary["active_borrows"] = activeBorrows
-	summary["returned_borrows"] = returnedBorrows
-
-	return summary
-}
-
-func generateInventorySummary(req CustomReportRequest) map[string]interface{} {
-	summary := make(map[string]interface{})
-
-	var totalRecords, normalCount int64
-
-	query := global.DB.Model(&models.InventoryRecord{})
-	query = applyInventoryFilters(query, req.Filters)
-
-	query.Count(&totalRecords)
-	query.Where("result = ?", models.InventoryResultNormal).Count(&normalCount)
-
-	var accuracyRate float64
-	if totalRecords > 0 {
-		accuracyRate = float64(normalCount) / float64(totalRecords) * 100
-	}
-
-	summary["total_records"] = totalRecords
-	summary["normal_count"] = normalCount
-	summary["accuracy_rate"] = accuracyRate
-
-	return summary
 }
 
 // generateAssetColumns 生成资产报表列定义

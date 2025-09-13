@@ -99,14 +99,223 @@ export default function InventoryReportPage() {
     window.print();
   };
 
-  const handleExport = () => {
-    // TODO: 实现导出功能
-    toast.info('导出功能开发中...');
+  const handleExport = async (format: 'excel' | 'csv' = 'excel') => {
+    if (!report) {
+      toast.error('报告数据不可用');
+      return;
+    }
+
+    try {
+      // 动态导入导出相关函数
+      const { downloadFile } = await import('@/lib/api/reports');
+      
+      if (format === 'csv') {
+        // CSV导出
+        const csvData = generateCSVData();
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const filename = `盘点报告_${report.task.task_name}_${new Date().toISOString().split('T')[0]}.csv`;
+        downloadFile(blob, filename);
+        toast.success('CSV报告导出成功');
+        return;
+      }
+      
+      // Excel导出
+      const { default: ExcelJS } = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      
+      // 添加工作表
+      const worksheet = workbook.addWorksheet('盘点报告');
+      
+      // 设置表头样式
+      const headerStyle = {
+        font: { bold: true, size: 12 },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } },
+        alignment: { horizontal: 'center', vertical: 'middle' }
+      };
+      
+      // 1. 报告标题
+      worksheet.mergeCells('A1:J1');
+      worksheet.getCell('A1').value = `盘点报告 - ${report.task.task_name}`;
+      worksheet.getCell('A1').font = { bold: true, size: 16 };
+      worksheet.getCell('A1').alignment = { horizontal: 'center' };
+      
+      // 2. 任务基本信息
+      worksheet.mergeCells('A3:J3');
+      worksheet.getCell('A3').value = '任务信息';
+      worksheet.getCell('A3').font = { bold: true, size: 14 };
+      
+      const taskInfo = [
+        ['任务名称', report.task.task_name],
+        ['任务类型', taskTypeLabels[report.task.task_type] || report.task.task_type],
+        ['任务状态', statusLabels[report.task.status] || report.task.status],
+        ['创建人', report.task.created_by || '-'],
+        ['创建时间', formatDate(report.task.created_at)],
+        ['开始时间', formatDate(report.task.start_date)],
+        ['结束时间', formatDate(report.task.end_date)],
+        ['备注', report.task.notes || '无备注']
+      ];
+      
+      taskInfo.forEach(([label, value], index) => {
+        worksheet.getCell(`A${4 + index}`).value = label;
+        worksheet.getCell(`B${4 + index}`).value = value;
+        worksheet.getCell(`A${4 + index}`).font = { bold: true };
+      });
+      
+      // 3. 盘点汇总
+      const summaryRow = 13;
+      worksheet.mergeCells(`A${summaryRow}:J${summaryRow}`);
+      worksheet.getCell(`A${summaryRow}`).value = '盘点汇总';
+      worksheet.getCell(`A${summaryRow}`).font = { bold: true, size: 14 };
+      
+      const summaryData = [
+        ['总资产', report.summary.total_assets],
+        ['已盘点', report.summary.checked_assets],
+        ['正常', report.summary.normal_assets],
+        ['盘盈', report.summary.surplus_assets],
+        ['盘亏', report.summary.deficit_assets],
+        ['损坏', report.summary.damaged_assets],
+        ['完成率', `${report.summary.progress.toFixed(1)}%`]
+      ];
+      
+      summaryData.forEach(([label, value], index) => {
+        worksheet.getCell(`A${summaryRow + 1 + index}`).value = label;
+        worksheet.getCell(`B${summaryRow + 1 + index}`).value = value;
+        worksheet.getCell(`A${summaryRow + 1 + index}`).font = { bold: true };
+      });
+      
+      // 4. 详细记录
+      const recordsStartRow = summaryRow + 9;
+      worksheet.mergeCells(`A${recordsStartRow}:J${recordsStartRow}`);
+      worksheet.getCell(`A${recordsStartRow}`).value = '详细记录';
+      worksheet.getCell(`A${recordsStartRow}`).font = { bold: true, size: 14 };
+      
+      // 设置详细记录表头
+      const headers = ['资产编号', '资产名称', '分类', '部门', '预期状态', '实际状态', '盘点结果', '盘点人', '盘点时间', '备注'];
+      headers.forEach((header, index) => {
+        const cell = worksheet.getCell(recordsStartRow + 2, index + 1);
+        cell.value = header;
+        cell.style = {
+          font: headerStyle.font,
+          fill: {
+            type: 'pattern' as const,
+            pattern: 'solid' as const,
+            fgColor: { argb: 'FFE6E6FA' }
+          },
+          alignment: {
+            horizontal: 'center' as const,
+            vertical: 'middle' as const
+          }
+        };
+      });
+      
+      // 填充详细记录数据
+      report.records.forEach((record, index) => {
+        const row = recordsStartRow + 3 + index;
+        const data = [
+          record.asset?.asset_no || '-',
+          record.asset?.name || '-',
+          record.asset?.category?.name || '-',
+          record.asset?.department?.name || '-',
+          getAssetStatusLabel(record.expected_status),
+          getAssetStatusLabel(record.actual_status),
+          resultLabels[record.result] || record.result,
+          record.checked_by || '-',
+          formatDate(record.checked_at),
+          record.notes || '-'
+        ];
+        
+        data.forEach((value, colIndex) => {
+          worksheet.getCell(row, colIndex + 1).value = value;
+        });
+      });
+      
+      // 设置列宽
+      worksheet.columns = [
+        { width: 15 }, // 资产编号
+        { width: 20 }, // 资产名称
+        { width: 15 }, // 分类
+        { width: 15 }, // 部门
+        { width: 12 }, // 预期状态
+        { width: 12 }, // 实际状态
+        { width: 12 }, // 盘点结果
+        { width: 12 }, // 盘点人
+        { width: 20 }, // 盘点时间
+        { width: 20 }  // 备注
+      ];
+      
+      // 生成Excel文件
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      // 下载文件
+      const filename = `盘点报告_${report.task.task_name}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      downloadFile(blob, filename);
+      
+      toast.success('报告导出成功');
+    } catch (error) {
+      console.error('导出失败:', error);
+      toast.error('导出失败，请稍后重试');
+    }
   };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString('zh-CN');
+  };
+
+  const generateCSVData = () => {
+    if (!report) return '';
+    
+    const lines: string[] = [];
+    
+    // 报告标题
+    lines.push(`盘点报告 - ${report.task.task_name}`);
+    lines.push('');
+    
+    // 任务信息
+    lines.push('任务信息');
+    lines.push(`任务名称,${report.task.task_name}`);
+    lines.push(`任务类型,${taskTypeLabels[report.task.task_type] || report.task.task_type}`);
+    lines.push(`任务状态,${statusLabels[report.task.status] || report.task.status}`);
+    lines.push(`创建人,${report.task.created_by || '-'}`);
+    lines.push(`创建时间,${formatDate(report.task.created_at)}`);
+    lines.push(`开始时间,${formatDate(report.task.start_date)}`);
+    lines.push(`结束时间,${formatDate(report.task.end_date)}`);
+    lines.push(`备注,${report.task.notes || '无备注'}`);
+    lines.push('');
+    
+    // 盘点汇总
+    lines.push('盘点汇总');
+    lines.push(`总资产,${report.summary.total_assets}`);
+    lines.push(`已盘点,${report.summary.checked_assets}`);
+    lines.push(`正常,${report.summary.normal_assets}`);
+    lines.push(`盘盈,${report.summary.surplus_assets}`);
+    lines.push(`盘亏,${report.summary.deficit_assets}`);
+    lines.push(`损坏,${report.summary.damaged_assets}`);
+    lines.push(`完成率,${report.summary.progress.toFixed(1)}%`);
+    lines.push('');
+    
+    // 详细记录
+    lines.push('详细记录');
+    lines.push('资产编号,资产名称,分类,部门,预期状态,实际状态,盘点结果,盘点人,盘点时间,备注');
+    
+    report.records.forEach(record => {
+      const row = [
+        record.asset?.asset_no || '-',
+        record.asset?.name || '-',
+        record.asset?.category?.name || '-',
+        record.asset?.department?.name || '-',
+        getAssetStatusLabel(record.expected_status),
+        getAssetStatusLabel(record.actual_status),
+        resultLabels[record.result] || record.result,
+        record.checked_by || '-',
+        formatDate(record.checked_at),
+        record.notes || '-'
+      ];
+      lines.push(row.map(field => `"${field}"`).join(','));
+    });
+    
+    return lines.join('\n');
   };
 
   if (loading) {
@@ -145,9 +354,13 @@ export default function InventoryReportPage() {
             <Printer className="mr-2 h-4 w-4" />
             打印
           </Button>
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" onClick={() => handleExport('excel')}>
             <Download className="mr-2 h-4 w-4" />
-            导出
+            导出Excel
+          </Button>
+          <Button variant="outline" onClick={() => handleExport('csv')}>
+            <Download className="mr-2 h-4 w-4" />
+            导出CSV
           </Button>
         </div>
       </div>

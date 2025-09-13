@@ -107,6 +107,7 @@ export default function InventoryReportsPage() {
       category_id: newFilters.category_id,
       department_id: newFilters.department_id,
       status: newFilters.status,
+      task_type: newFilters.task_type,
     };
     loadReportData(queryParams);
   }, []);
@@ -128,6 +129,7 @@ export default function InventoryReportsPage() {
         category_id: filters.category_id ? String(filters.category_id) : undefined,
         department_id: filters.department_id ? String(filters.department_id) : undefined,
         status: filters.status as string,
+        task_type: filters.task_type as string,
       };
 
       const blob = await exportInventoryReports(options.format, queryParams);
@@ -162,7 +164,7 @@ export default function InventoryReportsPage() {
           <AlertTriangle className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="text-lg font-medium">无法加载报表数据</h3>
           <p className="text-muted-foreground mb-4">请稍后重试</p>
-          <Button onClick={loadReportData}>重新加载</Button>
+          <Button onClick={() => loadReportData()}>重新加载</Button>
         </div>
       </div>
     );
@@ -197,6 +199,7 @@ export default function InventoryReportsPage() {
           onReset={handleFilterReset}
           initialFilters={filters}
           options={filterOptions}
+          useDialog={true}
         />
       )}
 

@@ -180,7 +180,7 @@ export function InteractiveChart({
         <div style={{ height: `${chartHeight}px` }}>
           <ResponsiveContainer width="100%" height="100%">
             {React.cloneElement(children as React.ReactElement, {
-              data: selectedData,
+              ...(children as any).props,
               onDataPointClick: handleDataPointClick,
               onDataPointHover: handleDataPointHover,
               hiddenSeries,
@@ -293,7 +293,7 @@ export function InteractiveLineChart({
             y={referenceValue} 
             stroke="#ff7300" 
             strokeDasharray="5 5"
-            label={{ value: referenceLabel, position: "topRight" }}
+            label={{ value: referenceLabel, position: "top" }}
           />
         )}
         {showBrush && (

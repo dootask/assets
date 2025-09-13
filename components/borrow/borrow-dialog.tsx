@@ -30,7 +30,7 @@ const borrowSchema = z.object({
   borrower_name: z.string().min(1, '借用人姓名不能为空').max(100, '借用人姓名不能超过100个字符'),
   borrower_contact: z.string().max(100, '联系方式不能超过100个字符').optional(),
   department_id: z.number().optional(),
-  borrow_date: z.date({ required_error: '请选择借用时间' }),
+  borrow_date: z.date({ message: '请选择借用时间' }),
   expected_return_date: z.date().optional(),
   purpose: z.string().optional(),
   notes: z.string().optional(),
