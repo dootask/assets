@@ -34,7 +34,7 @@ export function AssetCategoryChart({ data }: { data: Array<{ category_name: stri
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
+                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(1)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
@@ -43,7 +43,7 @@ export function AssetCategoryChart({ data }: { data: Array<{ category_name: stri
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value, name) => [value, '数量']} />
+              <Tooltip formatter={(value) => [value, '数量']} />
               <Legend />
             </RechartsPieChart>
           </ResponsiveContainer>
@@ -92,7 +92,7 @@ export function AssetDepartmentChart({ data }: { data: Array<{ department_name: 
                 ))}
               </Pie>
               <Tooltip 
-                formatter={(value, name, props) => {
+                formatter={(value, name) => {
                   if (name === 'assets') return [value, '资产数量'];
                   return [value, name];
                 }}
@@ -141,7 +141,7 @@ export function AssetStatusChart({ data }: { data: Array<{ status: string; count
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
+                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(1)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
@@ -212,7 +212,7 @@ export function AssetValueAnalysisChart({ data }: { data: { high_value: number; 
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, value }) => `${value}个`}
+                label={({ value }) => `${value}个`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"

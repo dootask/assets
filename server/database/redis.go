@@ -63,7 +63,7 @@ func InitRedis() error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("Redis连接失败，已重试%d次: %v", redisMaxRetries, err)
+		return fmt.Errorf("redis连接失败，已重试%d次: %v", redisMaxRetries, err)
 	}
 
 	return nil
