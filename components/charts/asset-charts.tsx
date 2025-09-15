@@ -82,7 +82,7 @@ export function AssetDepartmentChart({ data }: { data: Array<{ department_name: 
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, assets }) => `${name}: ${assets}个`}
+                label={({ name, value }) => `${name}: ${value}个`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="assets"
@@ -259,7 +259,7 @@ export function AssetPurchaseTrendChart({ data }: { data: Array<{ year: number; 
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ year, count }) => `${year}年: ${count}个`}
+                label={({ name, value }) => `${name}: ${value}个`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="count"
