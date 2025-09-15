@@ -1,0 +1,12 @@
+name: 
+  en: Asset Management System
+  zh: 资产管理系统
+description:
+  en: Asset Management System is a system that allows you to manage your assets.
+  zh: 资产管理系统，允许您管理您的固定资产。
+tags:
+  - 资产管理系统
+  - Asset Management System
+author: DooTask
+website: https://www.dootask.com
+github: https://github.com/dootask/asset

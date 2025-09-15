@@ -1,0 +1,9 @@
+services:
+  asset-management:
+    image: "dootask/asset-management:${PLUGIN_VERSION}"
+    volumes:
+      - asset_management_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  asset_management_data:

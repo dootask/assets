@@ -18,7 +18,7 @@ import (
 func InitSQLiteDatabase() error {
 	// 从环境变量获取数据库路径，默认为 ./data/assets.db
 	dbPath := utils.GetEnvWithDefault("DATABASE_PATH", "./data/assets.db")
-	
+
 	// 确保数据库目录存在
 	dbDir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
@@ -152,44 +152,6 @@ func seedInitialData() error {
 	for _, subCategory := range computerSubCategories {
 		if err := global.DB.Create(&subCategory).Error; err != nil {
 			return fmt.Errorf("插入计算机子分类失败: %v", err)
-		}
-	}
-
-	// 插入默认部门
-	defaultDepartments := []models.Department{
-		{
-			Name:        "信息技术部",
-			Code:        "IT",
-			Manager:     "张三",
-			Contact:     "zhangsan@company.com",
-			Description: "负责公司信息技术相关工作",
-		},
-		{
-			Name:        "人力资源部",
-			Code:        "HR",
-			Manager:     "李四",
-			Contact:     "lisi@company.com",
-			Description: "负责人力资源管理",
-		},
-		{
-			Name:        "财务部",
-			Code:        "FINANCE",
-			Manager:     "王五",
-			Contact:     "wangwu@company.com",
-			Description: "负责财务管理",
-		},
-		{
-			Name:        "行政部",
-			Code:        "ADMIN",
-			Manager:     "赵六",
-			Contact:     "zhaoliu@company.com",
-			Description: "负责行政管理",
-		},
-	}
-
-	for _, department := range defaultDepartments {
-		if err := global.DB.Create(&department).Error; err != nil {
-			return fmt.Errorf("插入默认部门失败: %v", err)
 		}
 	}
 

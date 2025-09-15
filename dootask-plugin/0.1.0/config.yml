@@ -1,0 +1,13 @@
+menu_items:
+  - location: application
+    label:
+      en: Asset Management System
+      zh: 资产管理系统
+    url: "apps/asset-management?theme={system_theme}"
+    url_type: iframe
+    background: "#f9f9f9|#e8e8e8"
+require_version:
+ version: "> 1.1.66"
+ reason:
+     en: "Requires new API features"
+     zh: "需要新的API功能"
