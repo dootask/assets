@@ -34,7 +34,7 @@ export function AssetCategoryChart({ data }: { data: Array<{ category_name: stri
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={(entry) => `${entry.name} ${((entry.percent || 0) * 100).toFixed(1)}%`}
+                label={(entry) => `${entry.name} ${((entry.percentage || 0) * 100).toFixed(1)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
@@ -141,7 +141,7 @@ export function AssetStatusChart({ data }: { data: Array<{ status: string; count
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={(entry) => `${entry.name} ${((entry.percent || 0) * 100).toFixed(1)}%`}
+                label={(entry) => `${entry.name} ${((entry.percentage || 0) * 100).toFixed(1)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
