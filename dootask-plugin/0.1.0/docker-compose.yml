@@ -1,6 +1,6 @@
 services:
   asset-management:
-    image: "nightcp/asset-management:${PLUGIN_VERSION}"
+    image: "nightcp/assets:${PLUGIN_VERSION}"
     environment:
       - AUTHORIZED_USERS=${Authorized_users}
     volumes:
