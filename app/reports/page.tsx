@@ -7,17 +7,18 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { fetchAssetReports, fetchBorrowReports, fetchInventoryReports, ReportQueryParams } from '@/lib/api/reports';
+import { AxiosError } from 'axios';
 import {
-    BarChart3,
-    Calendar,
-    ClipboardList,
-    Download,
-    FileText,
-    Filter,
-    Loader2,
-    Package,
-    TrendingUp,
-    Users,
+  BarChart3,
+  Calendar,
+  ClipboardList,
+  Download,
+  FileText,
+  Filter,
+  Loader2,
+  Package,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -138,9 +139,13 @@ export default function ReportsPage() {
           accuracy_rate: inventoryData.summary.accuracy_rate,
         },
       });
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        if (error.status !== 403) {
+          toast.error('加载报表概览失败');
+        }
+      }
       console.error('Failed to load report summary:', error);
-      toast.error('加载报表概览失败');
     } finally {
       setLoading(false);
     }

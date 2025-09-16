@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAppContext } from '@/contexts/app-context';
 import { deleteBorrowRecord, getBorrowRecords } from '@/lib/api/borrow';
 import type { BorrowFilters, BorrowResponse, BorrowStatus, PaginationRequest } from '@/lib/types';
+import { AxiosError } from 'axios';
 import { AlertTriangle, CheckCircle, Clock, Edit, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -62,9 +63,13 @@ export default function BorrowPage() {
       } else {
         toast.error(response.message || '加载借用记录失败');
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        if (error.status !== 403) {
+          toast.error('加载借用记录失败');
+        }
+      }
       console.error('加载借用记录失败:', error);
-      toast.error('加载借用记录失败');
     } finally {
       setLoading(false);
     }

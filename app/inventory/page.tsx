@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAppContext } from '@/contexts/app-context';
 import type { InventoryTask } from '@/lib/api/inventory';
 import { deleteInventoryTask, getInventoryTasks, updateInventoryTask } from '@/lib/api/inventory';
+import { AxiosError } from 'axios';
 import { Eye, FileText, Play, Plus, Search, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -80,9 +81,13 @@ export default function InventoryPage() {
       } else {
         toast.error(response.message || '获取盘点任务失败');
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        if (error.status !== 403) {
+          toast.error('获取盘点任务失败');
+        }
+      }
       console.error('获取盘点任务失败:', error);
-      toast.error('获取盘点任务失败');
     } finally {
       setLoading(false);
     }

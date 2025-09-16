@@ -1,6 +1,8 @@
 services:
   asset-management:
     image: "nightcp/asset-management:${PLUGIN_VERSION}"
+    environment:
+      - AUTHORIZED_USERS=${Authorized_users}
     volumes:
       - asset_management_data:/app/data
     restart: unless-stopped

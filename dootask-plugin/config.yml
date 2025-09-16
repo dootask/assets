@@ -1,12 +1,30 @@
 name: 
   en: Asset Management System
   zh: 资产管理系统
+
 description:
   en: Asset Management System is a system that allows you to manage your assets.
   zh: 资产管理系统，允许您管理您的固定资产。
+
 tags:
-  - 资产管理系统
-  - Asset Management System
+  - 管理系统
+
 author: DooTask
 website: https://www.dootask.com
 github: https://github.com/dootask/asset
+
+fields:
+  - name: Authorized_users
+    label:
+      zh: 授权用户
+      en: Authorized Users
+    placeholder:                     
+      en: Select users who can access this tool
+      zh: 请选择可以访问此工具的用户
+    type: user_select
+
+require_version:
+ version: "> 1.1.66"
+ reason:
+     en: "Requires new API features"
+     zh: "需要新的API功能"

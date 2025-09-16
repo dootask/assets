@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAppContext } from '@/contexts/app-context';
 import { CategoryTreeNode, deleteCategory, getCategories } from '@/lib/api/categories';
+import { AxiosError } from 'axios';
 import { Folder, Loader2, Plus, Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -29,9 +30,13 @@ export default function CategoriesPage() {
       setLoading(true);
       const data = await getCategories({ name: searchTerm || undefined });
       setCategories(data);
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        if (error.status !== 403) {
+          toast.error('加载分类失败');
+        }
+      }
       console.error('Failed to load categories:', error);
-      toast.error('加载分类失败');
     } finally {
       setLoading(false);
     }

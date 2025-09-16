@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAppContext } from '@/contexts/app-context';
 import { deleteDepartment, getDepartments } from '@/lib/api/departments';
 import type { DepartmentFilters, DepartmentResponse, PaginationRequest } from '@/lib/types';
+import { AxiosError } from 'axios';
 import { Building2, Edit, Plus, Search, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -43,16 +44,19 @@ export default function DepartmentsPage() {
       };
 
       const response = await getDepartments(params);
-
       if (response.code === 'SUCCESS') {
         setDepartments(response.data.data);
         setPagination(response.data);
       } else {
         toast.error(response.message || '加载部门列表失败');
       }
-    } catch (error) {
-      console.error('加载部门列表失败:', error);
-      toast.error('加载部门列表失败');
+    } catch (error: unknown) {
+      if (error instanceof AxiosError) {
+        console.log(error);
+        if (error.status !== 403) {
+          toast.error('加载部门列表失败');
+        }
+      }
     } finally {
       setLoading(false);
     }

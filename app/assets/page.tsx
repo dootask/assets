@@ -19,6 +19,7 @@ import { useAppContext } from '@/contexts/app-context';
 import { deleteAsset, exportAssets, getAssets } from '@/lib/api/assets';
 import { showError, showSuccess } from '@/lib/notifications';
 import type { AssetFilters, AssetResponse, AssetStatus, PaginationRequest } from '@/lib/types';
+import { AxiosError } from 'axios';
 
 // 资产状态映射
 const statusMap: Record<AssetStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> =
@@ -81,9 +82,13 @@ export default function AssetsPage() {
         const response = await getAssets(params);
         setAssets(response.data.data);
         setPagination(response.data);
-      } catch (error) {
+      } catch (error: unknown) {
+        if (error instanceof AxiosError) {
+          if (error.status !== 403) {
+            showError('加载资产列表失败', '请检查网络连接或稍后重试');
+          }
+        }
         console.error('加载资产列表失败:', error);
-        showError('加载资产列表失败', '请检查网络连接或稍后重试');
       } finally {
         setLoading(false);
       }

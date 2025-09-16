@@ -2,6 +2,9 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { storage } from './storage';
 
+// 从dootask工具中导入微前端检测和用户信息获取方法
+import { appReady, getUserId, getUserToken, isMicroApp, UnsupportedError } from '@dootask/tools';
+
 // 创建axios实例
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || `http://localhost:${process.env.GO_SERVICE_PORT}/api`,
@@ -13,11 +16,28 @@ const apiClient = axios.create({
 
 // 请求拦截器 - 添加认证头等
 apiClient.interceptors.request.use(
-  config => {
+  async config => {
     const token = storage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    try {
+      await appReady();
+      const isMicro = await isMicroApp()
+      if (isMicro) {
+        // 获取用户ID和token
+        const userId = await getUserId();
+        const userToken = await getUserToken();
+
+        config.headers['X-MicroApp-User-ID'] = userId;
+        config.headers['X-MicroApp-User-Token'] = userToken;
+      }
+    } catch (error) {
+      if (error instanceof UnsupportedError) {
+        console.log("当前环境不支持微前端模式")
+      }
+    }
+
     return config;
   },
   error => {
@@ -61,7 +81,11 @@ const translateErrorCode = (code: string): string => {
 // 统一错误处理函数
 const handleApiError = (response: { status: number; data: { code: string; message: string; data?: unknown } }) => {
   const { status, data } = response;
-  const userMessage = translateErrorCode(data.code);
+  let userMessage = "";
+  if (data && data.code) {
+    userMessage = translateErrorCode(data.code);
+  }
+  
 
   switch (status) {
     case 400:
@@ -84,7 +108,7 @@ const handleApiError = (response: { status: number; data: { code: string; messag
     case 403:
       // 权限不足
       toast.error('权限不足', {
-        description: userMessage,
+        description: userMessage || "请联系管理员获取权限",
       });
       break;
 
