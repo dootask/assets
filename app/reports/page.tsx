@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetchAssetReports, fetchBorrowReports, fetchInventoryReports, ReportQueryParams } from '@/lib/api/reports';
+import { downloadFileFromUrl, fetchAssetReports, fetchBorrowReports, fetchInventoryReports, ReportQueryParams } from '@/lib/api/reports';
 import { AxiosError } from 'axios';
 import {
   BarChart3,
@@ -50,7 +50,7 @@ interface RecentReport {
   type: string;
   date: string;
   size: string;
-  downloadUrl?: string;
+  download_url?: string;
 }
 
 export default function ReportsPage() {
@@ -299,11 +299,10 @@ export default function ReportsPage() {
       case 'export-assets':
         try {
           // 使用动态导入避免循环依赖
-          const { exportAssetInventory, downloadFile } = await import('@/lib/api/reports');
-          const blob = await exportAssetInventory();
-          const filename = `资产清单_${new Date().toISOString().split('T')[0]}.xlsx`;
-          downloadFile(blob, filename);
-          toast.success('资产清单导出成功');
+          const { exportAssetInventory, downloadFileFromUrl } = await import('@/lib/api/reports');
+          const response = await exportAssetInventory();
+          downloadFileFromUrl(response.data.download_url, response.data.filename);
+          toast.success(response.data.message);
         } catch (error) {
           console.error('导出资产清单失败:', error);
         }
@@ -311,12 +310,11 @@ export default function ReportsPage() {
       case 'monthly-report':
         try {
           // 使用动态导入避免循环依赖
-          const { generateMonthlyReport, downloadFile } = await import('@/lib/api/reports');
+          const { generateMonthlyReport, downloadFileFromUrl } = await import('@/lib/api/reports');
           const currentMonth = new Date().toISOString().slice(0, 7);
-          const blob = await generateMonthlyReport(currentMonth);
-          const filename = `月度报告_${currentMonth}.pdf`;
-          downloadFile(blob, filename);
-          toast.success('月度报告生成成功');
+          const response = await generateMonthlyReport(currentMonth);
+          downloadFileFromUrl(response.data.download_url, response.data.filename);
+          toast.success(response.data.message);
         } catch (error) {
           console.error('生成月度报告失败:', error);
         }
@@ -563,39 +561,10 @@ export default function ReportsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      // API返回的是 download_url，但JavaScript会自动转换为 downloadUrl
-                      const downloadUrl = report.downloadUrl;
+                      const downloadUrl = report.download_url;
                       if (downloadUrl) {
-                        try {
-                          // 使用fetch进行下载，这样可以更好地处理错误
-                          fetch(downloadUrl)
-                            .then(response => {
-                              if (!response.ok) {
-                                throw new Error(`HTTP error! status: ${response.status}`);
-                              }
-                              return response.blob();
-                            })
-                            .then(blob => {
-                              // 创建下载链接
-                              const url = window.URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.style.display = 'none';
-                              a.href = url;
-                              a.download = report.name;
-                              document.body.appendChild(a);
-                              a.click();
-                              window.URL.revokeObjectURL(url);
-                              document.body.removeChild(a);
-                              toast.success('报表下载成功');
-                            })
-                            .catch(error => {
-                              console.error('Download failed:', error);
-                              toast.error('下载失败，请稍后重试');
-                            });
-                        } catch (error) {
-                          console.error('Download error:', error);
-                          toast.error('下载失败，请稍后重试');
-                        }
+                        downloadFileFromUrl(downloadUrl, report.name);
+                        toast.success('报表下载成功');
                       } else {
                         toast.info('下载链接不可用');
                         console.log('Report data:', report); // 调试信息

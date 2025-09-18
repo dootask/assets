@@ -309,6 +309,14 @@ export default function AssetDetailPage() {
                   </span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-muted-foreground">采购人:</span>
+                  <span className="font-medium">{asset.purchase_person || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">采购数量:</span>
+                  <span className="font-medium">{asset.purchase_quantity ? asset.purchase_quantity.toLocaleString() : '-'}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">供应商:</span>
                   <span className="font-medium">{asset.supplier || '-'}</span>
                 </div>

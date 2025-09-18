@@ -95,6 +95,8 @@ type CreateAssetRequest struct {
 	SerialNumber      string                 `json:"serial_number" validate:"max=100"`
 	PurchaseDate      *FlexibleTime          `json:"purchase_date"`
 	PurchasePrice     *float64               `json:"purchase_price"`
+	PurchasePerson    string                 `json:"purchase_person" validate:"max=100"`
+	PurchaseQuantity  *int                   `json:"purchase_quantity"`
 	Supplier          string                 `json:"supplier" validate:"max=200"`
 	WarrantyPeriod    *int                   `json:"warranty_period"`
 	Status            models.AssetStatus     `json:"status" validate:"oneof=available borrowed maintenance scrapped"`
@@ -116,6 +118,8 @@ type UpdateAssetRequest struct {
 	SerialNumber      string                 `json:"serial_number" validate:"omitempty,max=100"`
 	PurchaseDate      *FlexibleTime          `json:"purchase_date"`
 	PurchasePrice     *float64               `json:"purchase_price"`
+	PurchasePerson    string                 `json:"purchase_person" validate:"omitempty,max=100"`
+	PurchaseQuantity  *int                   `json:"purchase_quantity"`
 	Supplier          string                 `json:"supplier" validate:"omitempty,max=200"`
 	WarrantyPeriod    *int                   `json:"warranty_period"`
 	Status            *models.AssetStatus    `json:"status" validate:"omitempty,oneof=available borrowed maintenance scrapped"`

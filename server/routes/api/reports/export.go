@@ -4,37 +4,99 @@ import (
 	"encoding/csv"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"asset-management-system/server/global"
 	"asset-management-system/server/models"
+	"asset-management-system/server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xuri/excelize/v2"
 )
 
-// exportAssetReportsToExcel 导出资产报表到Excel
-func exportAssetReportsToExcel(c *gin.Context, parameters map[string]interface{}) {
-	// 获取报表数据（复用GetAssetReports的逻辑）
-	// 这里简化处理，实际应该重构共同逻辑
+// exportAssetReportsToExcelFile 导出资产报表到Excel文件
+func exportAssetReportsToExcelFile(c *gin.Context, parameters map[string]interface{}) {
+	// 从parameters中获取筛选条件
+	startDate := ""
+	endDate := ""
+	categoryID := ""
+	departmentID := ""
+	status := ""
+	if parameters != nil {
+		if sd, ok := parameters["start_date"].(string); ok {
+			startDate = sd
+		}
+		if ed, ok := parameters["end_date"].(string); ok {
+			endDate = ed
+		}
+		if cid, ok := parameters["category_id"].(string); ok {
+			categoryID = cid
+		}
+		if did, ok := parameters["department_id"].(string); ok {
+			departmentID = did
+		}
+		if st, ok := parameters["status"].(string); ok {
+			status = st
+		}
+	}
+
+	// 构建查询获取资产数据
+	query := global.DB.Model(&models.Asset{}).
+		Preload("Category").
+		Preload("Department")
+
+	// 应用筛选条件
+	if startDate != "" {
+		if start, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("created_at >= ?", start)
+		}
+	}
+	if endDate != "" {
+		if end, err := time.Parse("2006-01-02", endDate); err == nil {
+			query = query.Where("created_at <= ?", end.Add(24*time.Hour))
+		}
+	}
+	if categoryID != "" {
+		query = query.Where("category_id = ?", categoryID)
+	}
+	if departmentID != "" {
+		query = query.Where("department_id = ?", departmentID)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	// 获取所有资产数据
+	var assets []models.Asset
+	if err := query.Find(&assets).Error; err != nil {
+		utils.InternalError(c, fmt.Errorf("查询资产数据失败: %v", err))
+		return
+	}
+
+	// 如果没有数据，返回错误
+	if len(assets) == 0 {
+		utils.Error(c, utils.ASSET_NOT_FOUND, "没有找到符合条件的资产数据")
+		return
+	}
 
 	f := excelize.NewFile()
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	// 创建工作表
 	sheetName := "资产统计报表"
 	index, err := f.NewSheet(sheetName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "EXPORT_ERROR",
-			"message": "创建工作表失败",
-			"data":    err.Error(),
-		})
+		utils.InternalError(c, fmt.Errorf("创建工作表失败: %v", err))
 		return
 	}
 
 	// 设置表头
-	headers := []string{"资产编号", "资产名称", "分类", "部门", "状态", "采购价格", "采购日期", "位置"}
+	headers := []string{"资产编号", "资产名称", "分类", "部门", "状态", "采购价格", "采购日期", "位置", "责任人", "保修期(月)", "供应商"}
 	for i, header := range headers {
 		cell := fmt.Sprintf("%c1", 'A'+i)
 		f.SetCellValue(sheetName, cell, header)
@@ -47,91 +109,306 @@ func exportAssetReportsToExcel(c *gin.Context, parameters map[string]interface{}
 	})
 	f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%c1", 'A'+len(headers)-1), headerStyle)
 
-	// 获取数据并填充
-	// 这里应该调用实际的数据获取逻辑
-	// 为了演示，我们创建一些示例数据
-	sampleData := [][]interface{}{
-		{"A001", "笔记本电脑", "电子设备", "IT部", "可用", 5000.00, "2023-01-15", "办公室A"},
-		{"A002", "打印机", "办公设备", "行政部", "借用中", 2000.00, "2023-02-20", "办公室B"},
+	// 填充数据
+	for i, asset := range assets {
+		// 资产编号
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", i+2), asset.AssetNo)
+
+		// 资产名称
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", i+2), asset.Name)
+
+		// 分类名称
+		categoryName := ""
+		if asset.Category.ID > 0 {
+			categoryName = asset.Category.Name
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("C%d", i+2), categoryName)
+
+		// 部门名称
+		departmentName := ""
+		if asset.Department != nil {
+			departmentName = asset.Department.Name
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("D%d", i+2), departmentName)
+
+		// 状态（转换为中文显示）
+		statusDisplay := string(asset.Status)
+		switch asset.Status {
+		case "available":
+			statusDisplay = "可用"
+		case "borrowed":
+			statusDisplay = "借用中"
+		case "maintenance":
+			statusDisplay = "维护中"
+		case "scrapped":
+			statusDisplay = "已报废"
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("E%d", i+2), statusDisplay)
+
+		// 采购价格
+		f.SetCellValue(sheetName, fmt.Sprintf("F%d", i+2), asset.PurchasePrice)
+
+		// 采购日期
+		purchaseDateStr := ""
+		if asset.PurchaseDate != nil {
+			purchaseDateStr = asset.PurchaseDate.Format("2006-01-02")
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("G%d", i+2), purchaseDateStr)
+
+		// 位置
+		f.SetCellValue(sheetName, fmt.Sprintf("H%d", i+2), asset.Location)
+
+		// 责任人
+		f.SetCellValue(sheetName, fmt.Sprintf("I%d", i+2), asset.ResponsiblePerson)
+
+		// 保修期
+		f.SetCellValue(sheetName, fmt.Sprintf("J%d", i+2), asset.WarrantyPeriod)
+
+		// 供应商
+		f.SetCellValue(sheetName, fmt.Sprintf("K%d", i+2), asset.Supplier)
 	}
 
-	for i, row := range sampleData {
-		for j, value := range row {
-			cell := fmt.Sprintf("%c%d", 'A'+j, i+2)
-			f.SetCellValue(sheetName, cell, value)
-		}
+	// 设置列宽
+	colWidths := []float64{15, 20, 15, 15, 10, 12, 12, 20, 12, 12, 20}
+	for i, width := range colWidths {
+		col := fmt.Sprintf("%c:%c", 'A'+i, 'A'+i)
+		f.SetColWidth(sheetName, col, col, width)
 	}
 
 	// 设置活动工作表
 	f.SetActiveSheet(index)
 
-	// 设置响应头
-	filename := fmt.Sprintf("资产统计报表_%s.xlsx", time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("asset_report_%s_%s.xlsx", timestamp, randomStr)
 
-	// 输出文件
-	if err := f.Write(c.Writer); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "EXPORT_ERROR",
-			"message": "导出文件失败",
-			"data":    err.Error(),
-		})
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
 	}
 
-	// 记录报表生成
-	fileSize := int64(1024 * 1024) // 示例文件大小，实际应该获取真实大小
-	go recordReportGeneration(filename, models.ReportRecordTypeAsset, filename, &fileSize, "系统用户", parameters)
+	// 保存文件到文件系统
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	if err := f.SaveAs(filepath); err != nil {
+		utils.InternalError(c, fmt.Errorf("保存报表文件失败: %v", err))
+		return
+	}
+
+	// 获取文件大小
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration("资产统计报表", models.ReportRecordTypeAsset, models.ReportRecordFormatExcel, filename, &fileSize, "系统用户", parameters)
+		}()
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     filename,
+		"message":      "资产报表已生成",
+	}
+
+	utils.Success(c, response)
 }
 
-// exportAssetReportsToCSV 导出资产报表到CSV
-func exportAssetReportsToCSV(c *gin.Context, parameters map[string]interface{}) {
-	// 设置响应头
-	filename := fmt.Sprintf("资产统计报表_%s.csv", time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "text/csv")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+// exportAssetReportsToCSVFile 导出资产报表到CSV文件
+func exportAssetReportsToCSVFile(c *gin.Context, parameters map[string]interface{}) {
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("asset_report_%s_%s.csv", timestamp, randomStr)
+
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
+		return
+	}
+
+	// 创建CSV文件
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	file, err := os.Create(filepath)
+	if err != nil {
+		utils.InternalError(c, fmt.Errorf("创建CSV文件失败: %v", err))
+		return
+	}
+	defer file.Close()
 
 	// 创建CSV写入器
-	writer := csv.NewWriter(c.Writer)
+	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
+	// 从parameters中获取筛选条件
+	startDate := ""
+	endDate := ""
+	categoryID := ""
+	departmentID := ""
+	status := ""
+	if parameters != nil {
+		if sd, ok := parameters["start_date"].(string); ok {
+			startDate = sd
+		}
+		if ed, ok := parameters["end_date"].(string); ok {
+			endDate = ed
+		}
+		if cid, ok := parameters["category_id"].(string); ok {
+			categoryID = cid
+		}
+		if did, ok := parameters["department_id"].(string); ok {
+			departmentID = did
+		}
+		if st, ok := parameters["status"].(string); ok {
+			status = st
+		}
+	}
+
+	// 构建查询获取资产数据
+	query := global.DB.Model(&models.Asset{}).
+		Preload("Category").
+		Preload("Department")
+
+	// 应用筛选条件
+	if startDate != "" {
+		if start, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("created_at >= ?", start)
+		}
+	}
+	if endDate != "" {
+		if end, err := time.Parse("2006-01-02", endDate); err == nil {
+			query = query.Where("created_at <= ?", end.Add(24*time.Hour))
+		}
+	}
+	if categoryID != "" {
+		query = query.Where("category_id = ?", categoryID)
+	}
+	if departmentID != "" {
+		query = query.Where("department_id = ?", departmentID)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	// 获取所有资产数据
+	var assets []models.Asset
+	if err := query.Find(&assets).Error; err != nil {
+		utils.InternalError(c, fmt.Errorf("查询资产数据失败: %v", err))
+		return
+	}
+
+	// 如果没有数据，返回错误
+	if len(assets) == 0 {
+		utils.Error(c, utils.ASSET_NOT_FOUND, "没有找到符合条件的资产数据")
+		return
+	}
+
 	// 写入表头
-	headers := []string{"资产编号", "资产名称", "分类", "部门", "状态", "采购价格", "采购日期", "位置"}
+	headers := []string{"资产编号", "资产名称", "分类", "部门", "状态", "采购价格", "采购日期", "位置", "责任人", "保修期(月)", "供应商"}
 	if err := writer.Write(headers); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "EXPORT_ERROR",
-			"message": "写入CSV表头失败",
-			"data":    err.Error(),
-		})
+		utils.InternalError(c, fmt.Errorf("写入CSV表头失败: %v", err))
 		return
 	}
 
 	// 写入数据
-	// 这里应该调用实际的数据获取逻辑
-	sampleData := [][]string{
-		{"A001", "笔记本电脑", "电子设备", "IT部", "可用", "5000.00", "2023-01-15", "办公室A"},
-		{"A002", "打印机", "办公设备", "行政部", "借用中", "2000.00", "2023-02-20", "办公室B"},
-	}
+	for _, asset := range assets {
+		// 资产编号
+		assetNo := asset.AssetNo
 
-	for _, row := range sampleData {
+		// 资产名称
+		name := asset.Name
+
+		// 分类名称
+		categoryName := ""
+		if asset.Category.ID > 0 {
+			categoryName = asset.Category.Name
+		}
+
+		// 部门名称
+		departmentName := ""
+		if asset.Department != nil {
+			departmentName = asset.Department.Name
+		}
+
+		// 状态（转换为中文显示）
+		statusDisplay := string(asset.Status)
+		switch asset.Status {
+		case "available":
+			statusDisplay = "可用"
+		case "borrowed":
+			statusDisplay = "借用中"
+		case "maintenance":
+			statusDisplay = "维护中"
+		case "scrapped":
+			statusDisplay = "已报废"
+		}
+
+		// 采购价格
+		purchasePrice := ""
+		if asset.PurchasePrice != nil {
+			purchasePrice = fmt.Sprintf("%.2f", *asset.PurchasePrice)
+		}
+
+		// 采购日期
+		purchaseDateStr := ""
+		if asset.PurchaseDate != nil {
+			purchaseDateStr = asset.PurchaseDate.Format("2006-01-02")
+		}
+
+		// 位置
+		location := asset.Location
+
+		// 责任人
+		responsiblePerson := asset.ResponsiblePerson
+
+		// 保修期
+		warrantyPeriod := ""
+		if asset.WarrantyPeriod != nil {
+			warrantyPeriod = fmt.Sprintf("%d", *asset.WarrantyPeriod)
+		}
+
+		// 供应商
+		supplier := asset.Supplier
+
+		// 写入CSV行
+		row := []string{
+			assetNo, name, categoryName, departmentName, statusDisplay,
+			purchasePrice, purchaseDateStr, location, responsiblePerson,
+			warrantyPeriod, supplier,
+		}
+
 		if err := writer.Write(row); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    "EXPORT_ERROR",
-				"message": "写入CSV数据失败",
-				"data":    err.Error(),
-			})
+			utils.InternalError(c, fmt.Errorf("写入CSV数据失败: %v", err))
 			return
 		}
 	}
 
-	// 记录报表生成
-	fileSize := int64(512 * 1024) // 示例文件大小，实际应该获取真实大小
-	go recordReportGeneration(filename, models.ReportRecordTypeAsset, filename, &fileSize, "系统用户", parameters)
+	// 获取文件大小
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration("资产统计报表", models.ReportRecordTypeAsset, models.ReportRecordFormatCSV, filename, &fileSize, "系统用户", parameters)
+		}()
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     filename,
+		"message":      "资产报表已生成",
+	}
+
+	utils.Success(c, response)
 }
 
-// exportBorrowReportsToExcel 导出借用报表到Excel
-func exportBorrowReportsToExcel(c *gin.Context, parameters map[string]interface{}) {
+// exportBorrowReportsToExcelFile 导出借用报表到Excel文件
+func exportBorrowReportsToExcelFile(c *gin.Context, parameters map[string]interface{}) {
 	f := excelize.NewFile()
 	defer f.Close()
 
@@ -160,77 +437,388 @@ func exportBorrowReportsToExcel(c *gin.Context, parameters map[string]interface{
 	})
 	f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%c1", 'A'+len(headers)-1), headerStyle)
 
-	// 示例数据
-	sampleData := [][]interface{}{
-		{1, "A001", "笔记本电脑", "张三", "2023-01-15", "2023-01-22", "2023-01-20", "已归还"},
-		{2, "A002", "打印机", "李四", "2023-02-20", "2023-02-27", nil, "借用中"},
+	// 从parameters中获取筛选条件
+	startDate := ""
+	endDate := ""
+	departmentID := ""
+	status := ""
+	borrowerName := ""
+	if parameters != nil {
+		if sd, ok := parameters["start_date"].(string); ok {
+			startDate = sd
+		}
+		if ed, ok := parameters["end_date"].(string); ok {
+			endDate = ed
+		}
+		if did, ok := parameters["department_id"].(string); ok {
+			departmentID = did
+		}
+		if st, ok := parameters["status"].(string); ok {
+			status = st
+		}
+		if bn, ok := parameters["borrower_name"].(string); ok {
+			borrowerName = bn
+		}
 	}
 
-	for i, row := range sampleData {
-		for j, value := range row {
-			cell := fmt.Sprintf("%c%d", 'A'+j, i+2)
-			f.SetCellValue(sheetName, cell, value)
+	// 构建查询获取借用记录数据
+	query := global.DB.Model(&models.BorrowRecord{}).
+		Preload("Asset").
+		Preload("Department")
+
+	// 应用筛选条件
+	if startDate != "" {
+		if start, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("borrow_date >= ?", start)
 		}
+	}
+	if endDate != "" {
+		if end, err := time.Parse("2006-01-02", endDate); err == nil {
+			query = query.Where("borrow_date <= ?", end.Add(24*time.Hour))
+		}
+	}
+	if departmentID != "" {
+		query = query.Where("department_id = ?", departmentID)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if borrowerName != "" {
+		query = query.Where("borrower_name LIKE ?", "%"+borrowerName+"%")
+	}
+
+	// 获取所有借用记录数据
+	var borrowRecords []models.BorrowRecord
+	if err := query.Order("borrow_date DESC").Find(&borrowRecords).Error; err != nil {
+		utils.InternalError(c, fmt.Errorf("查询借用记录失败: %v", err))
+		return
+	}
+
+	// 如果没有数据，返回错误
+	if len(borrowRecords) == 0 {
+		utils.Error(c, utils.ASSET_NOT_FOUND, "没有找到符合条件的借用记录")
+		return
+	}
+
+	// 更新表头，添加借用部门字段
+	headers = []string{"借用编号", "资产编号", "资产名称", "借用人", "借用日期", "预计归还日期", "实际归还日期", "状态", "借用部门"}
+	for i, header := range headers {
+		cell := fmt.Sprintf("%c1", 'A'+i)
+		f.SetCellValue(sheetName, cell, header)
+	}
+	f.SetCellStyle(sheetName, "A1", fmt.Sprintf("%c1", 'A'+len(headers)-1), headerStyle)
+
+	// 填充数据
+	for i, record := range borrowRecords {
+		// 借用编号
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", i+2), record.ID)
+
+		// 资产编号和名称
+		assetNo := ""
+		assetName := ""
+		if record.Asset.ID > 0 {
+			assetNo = record.Asset.AssetNo
+			assetName = record.Asset.Name
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", i+2), assetNo)
+		f.SetCellValue(sheetName, fmt.Sprintf("C%d", i+2), assetName)
+
+		// 借用人
+		f.SetCellValue(sheetName, fmt.Sprintf("D%d", i+2), record.BorrowerName)
+
+		// 借用日期
+		f.SetCellValue(sheetName, fmt.Sprintf("E%d", i+2), record.BorrowDate.Format("2006-01-02"))
+
+		// 预计归还日期
+		expectedReturnDateStr := ""
+		if record.ExpectedReturnDate != nil {
+			expectedReturnDateStr = record.ExpectedReturnDate.Format("2006-01-02")
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("F%d", i+2), expectedReturnDateStr)
+
+		// 实际归还日期
+		actualReturnDateStr := ""
+		if record.ActualReturnDate != nil {
+			actualReturnDateStr = record.ActualReturnDate.Format("2006-01-02")
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("G%d", i+2), actualReturnDateStr)
+
+		// 状态（转换为中文显示）
+		statusDisplay := string(record.Status)
+		switch record.Status {
+		case "borrowed":
+			statusDisplay = "借用中"
+		case "returned":
+			statusDisplay = "已归还"
+		case "overdue":
+			statusDisplay = "逾期"
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("H%d", i+2), statusDisplay)
+
+		// 借用部门
+		departmentName := ""
+		if record.Department != nil {
+			departmentName = record.Department.Name
+		}
+		f.SetCellValue(sheetName, fmt.Sprintf("I%d", i+2), departmentName)
+	}
+
+	// 设置列宽
+	colWidths := []float64{12, 15, 20, 12, 12, 15, 15, 10, 15}
+	for i, width := range colWidths {
+		col := fmt.Sprintf("%c:%c", 'A'+i, 'A'+i)
+		f.SetColWidth(sheetName, col, col, width)
 	}
 
 	f.SetActiveSheet(index)
 
-	filename := fmt.Sprintf("借用统计报表_%s.xlsx", time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("borrow_report_%s_%s.xlsx", timestamp, randomStr)
 
-	if err := f.Write(c.Writer); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "EXPORT_ERROR",
-			"message": "导出文件失败",
-			"data":    err.Error(),
-		})
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
 	}
 
-	// 记录报表生成
-	fileSize := int64(1024 * 1024) // 示例文件大小，实际应该获取真实大小
-	go recordReportGeneration(filename, models.ReportRecordTypeBorrow, filename, &fileSize, "系统用户", parameters)
+	// 保存文件到文件系统
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	if err := f.SaveAs(filepath); err != nil {
+		utils.InternalError(c, fmt.Errorf("保存报表文件失败: %v", err))
+		return
+	}
+
+	// 获取文件大小
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration("借用统计报表", models.ReportRecordTypeBorrow, models.ReportRecordFormatExcel, filename, &fileSize, "系统用户", parameters)
+		}()
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     filename,
+		"message":      "借用报表已生成",
+	}
+
+	utils.Success(c, response)
 }
 
-// exportBorrowReportsToCSV 导出借用报表到CSV
-func exportBorrowReportsToCSV(c *gin.Context, parameters map[string]interface{}) {
-	filename := fmt.Sprintf("借用统计报表_%s.csv", time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "text/csv")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+// exportBorrowReportsToCSVFile 导出借用报表到CSV文件
+func exportBorrowReportsToCSVFile(c *gin.Context, parameters map[string]interface{}) {
+	// 从parameters中获取筛选条件
+	startDate := ""
+	endDate := ""
+	departmentID := ""
+	status := ""
+	borrowerName := ""
+	if parameters != nil {
+		if sd, ok := parameters["start_date"].(string); ok {
+			startDate = sd
+		}
+		if ed, ok := parameters["end_date"].(string); ok {
+			endDate = ed
+		}
+		if did, ok := parameters["department_id"].(string); ok {
+			departmentID = did
+		}
+		if st, ok := parameters["status"].(string); ok {
+			status = st
+		}
+		if bn, ok := parameters["borrower_name"].(string); ok {
+			borrowerName = bn
+		}
+	}
 
-	writer := csv.NewWriter(c.Writer)
+	// 构建查询获取借用记录数据
+	query := global.DB.Model(&models.BorrowRecord{}).
+		Preload("Asset").
+		Preload("Department")
+
+	// 应用筛选条件
+	if startDate != "" {
+		if start, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("borrow_date >= ?", start)
+		}
+	}
+	if endDate != "" {
+		if end, err := time.Parse("2006-01-02", endDate); err == nil {
+			query = query.Where("borrow_date <= ?", end.Add(24*time.Hour))
+		}
+	}
+	if departmentID != "" {
+		query = query.Where("department_id = ?", departmentID)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if borrowerName != "" {
+		query = query.Where("borrower_name LIKE ?", "%"+borrowerName+"%")
+	}
+
+	// 获取所有借用记录数据
+	var borrowRecords []models.BorrowRecord
+	if err := query.Order("borrow_date DESC").Find(&borrowRecords).Error; err != nil {
+		utils.InternalError(c, fmt.Errorf("查询借用记录失败: %v", err))
+		return
+	}
+
+	// 如果没有数据，返回错误
+	if len(borrowRecords) == 0 {
+		utils.Error(c, utils.ASSET_NOT_FOUND, "没有找到符合条件的借用记录")
+		return
+	}
+
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("borrow_report_%s_%s.csv", timestamp, randomStr)
+
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
+		return
+	}
+
+	// 创建CSV文件
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	file, err := os.Create(filepath)
+	if err != nil {
+		utils.InternalError(c, fmt.Errorf("创建CSV文件失败: %v", err))
+		return
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	headers := []string{"借用编号", "资产编号", "资产名称", "借用人", "借用日期", "预计归还日期", "实际归还日期", "状态"}
-	writer.Write(headers)
-
-	sampleData := [][]string{
-		{"1", "A001", "笔记本电脑", "张三", "2023-01-15", "2023-01-22", "2023-01-20", "已归还"},
-		{"2", "A002", "打印机", "李四", "2023-02-20", "2023-02-27", "", "借用中"},
+	// 写入表头
+	headers := []string{"借用编号", "资产编号", "资产名称", "借用人", "借用日期", "预计归还日期", "实际归还日期", "状态", "借用部门"}
+	if err := writer.Write(headers); err != nil {
+		utils.InternalError(c, fmt.Errorf("写入CSV表头失败: %v", err))
+		return
 	}
 
-	for _, row := range sampleData {
-		writer.Write(row)
+	// 写入数据
+	for _, record := range borrowRecords {
+		// 借用编号
+		borrowID := fmt.Sprintf("%d", record.ID)
+
+		// 资产编号和名称
+		assetNo := ""
+		assetName := ""
+		if record.Asset.ID > 0 {
+			assetNo = record.Asset.AssetNo
+			assetName = record.Asset.Name
+		}
+
+		// 借用人
+		borrowerName := record.BorrowerName
+
+		// 借用日期
+		borrowDate := record.BorrowDate.Format("2006-01-02")
+
+		// 预计归还日期
+		expectedReturnDateStr := ""
+		if record.ExpectedReturnDate != nil {
+			expectedReturnDateStr = record.ExpectedReturnDate.Format("2006-01-02")
+		}
+
+		// 实际归还日期
+		actualReturnDateStr := ""
+		if record.ActualReturnDate != nil {
+			actualReturnDateStr = record.ActualReturnDate.Format("2006-01-02")
+		}
+
+		// 状态（转换为中文显示）
+		statusDisplay := string(record.Status)
+		switch record.Status {
+		case "borrowed":
+			statusDisplay = "借用中"
+		case "returned":
+			statusDisplay = "已归还"
+		case "overdue":
+			statusDisplay = "逾期"
+		}
+
+		// 借用部门
+		departmentName := ""
+		if record.Department != nil {
+			departmentName = record.Department.Name
+		}
+
+		// 写入CSV行
+		row := []string{
+			borrowID, assetNo, assetName, borrowerName, borrowDate,
+			expectedReturnDateStr, actualReturnDateStr, statusDisplay, departmentName,
+		}
+
+		if err := writer.Write(row); err != nil {
+			utils.InternalError(c, fmt.Errorf("写入CSV数据失败: %v", err))
+			return
+		}
 	}
 
-	// 记录报表生成
-	fileSize := int64(512 * 1024) // 示例文件大小，实际应该获取真实大小
-	go recordReportGeneration(filename, models.ReportRecordTypeBorrow, filename, &fileSize, "系统用户", parameters)
+	// 获取文件大小
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration("借用统计报表", models.ReportRecordTypeBorrow, models.ReportRecordFormatCSV, filename, &fileSize, "系统用户", parameters)
+		}()
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     filename,
+		"message":      "借用报表已生成",
+	}
+
+	utils.Success(c, response)
 }
 
-// exportInventoryReportsToExcel 导出盘点报表到Excel
-func exportInventoryReportsToExcel(c *gin.Context, parameters map[string]interface{}) {
+// exportInventoryReportsToExcelFile 导出盘点报表到Excel文件
+func exportInventoryReportsToExcelFile(c *gin.Context, parameters map[string]interface{}) {
 	f := excelize.NewFile()
 	defer f.Close()
 
-	// 获取查询参数
-	startDate := c.Query("start_date")
-	endDate := c.Query("end_date")
-	taskType := c.Query("task_type")
-	status := c.Query("status")
-	categoryID := c.Query("category_id")
-	departmentID := c.Query("department_id")
+	// 从parameters中获取筛选条件
+	startDate := ""
+	endDate := ""
+	taskType := ""
+	status := ""
+	categoryID := ""
+	departmentID := ""
+	if parameters != nil {
+		if sd, ok := parameters["start_date"].(string); ok {
+			startDate = sd
+		}
+		if ed, ok := parameters["end_date"].(string); ok {
+			endDate = ed
+		}
+		if tt, ok := parameters["task_type"].(string); ok {
+			taskType = tt
+		}
+		if st, ok := parameters["status"].(string); ok {
+			status = st
+		}
+		if cid, ok := parameters["category_id"].(string); ok {
+			categoryID = cid
+		}
+		if did, ok := parameters["department_id"].(string); ok {
+			departmentID = did
+		}
+	}
 
 	// 构建查询条件
 	query := global.DB.Model(&models.InventoryTask{})
@@ -522,33 +1110,74 @@ func exportInventoryReportsToExcel(c *gin.Context, parameters map[string]interfa
 	// 设置活动工作表为概览
 	f.SetActiveSheet(overviewIndex)
 
-	filename := fmt.Sprintf("盘点统计报表_%s.xlsx", time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("inventory_report_%s_%s.xlsx", timestamp, randomStr)
 
-	if err := f.Write(c.Writer); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "EXPORT_ERROR",
-			"message": "导出文件失败",
-			"data":    err.Error(),
-		})
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
 	}
 
-	// 记录报表生成
-	fileSize := int64(1024 * 1024) // 示例文件大小，实际应该获取真实大小
-	go recordReportGeneration(filename, models.ReportRecordTypeInventory, filename, &fileSize, "系统用户", parameters)
+	// 保存文件到文件系统
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	if err := f.SaveAs(filepath); err != nil {
+		utils.InternalError(c, fmt.Errorf("保存报表文件失败: %v", err))
+		return
+	}
+
+	// 获取文件大小
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration("盘点统计报表", models.ReportRecordTypeInventory, models.ReportRecordFormatExcel, filename, &fileSize, "系统用户", parameters)
+		}()
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     filename,
+		"message":      "盘点报表已生成",
+	}
+
+	utils.Success(c, response)
 }
 
-// exportInventoryReportsToCSV 导出盘点报表到CSV
-func exportInventoryReportsToCSV(c *gin.Context, parameters map[string]interface{}) {
-	// 获取查询参数
-	startDate := c.Query("start_date")
-	endDate := c.Query("end_date")
-	taskType := c.Query("task_type")
-	status := c.Query("status")
-	categoryID := c.Query("category_id")
-	departmentID := c.Query("department_id")
+// exportInventoryReportsToCSVFile 导出盘点报表到CSV文件
+func exportInventoryReportsToCSVFile(c *gin.Context, parameters map[string]interface{}) {
+	// 从parameters中获取筛选条件
+	startDate := ""
+	endDate := ""
+	taskType := ""
+	status := ""
+	categoryID := ""
+	departmentID := ""
+	if parameters != nil {
+		if sd, ok := parameters["start_date"].(string); ok {
+			startDate = sd
+		}
+		if ed, ok := parameters["end_date"].(string); ok {
+			endDate = ed
+		}
+		if tt, ok := parameters["task_type"].(string); ok {
+			taskType = tt
+		}
+		if st, ok := parameters["status"].(string); ok {
+			status = st
+		}
+		if cid, ok := parameters["category_id"].(string); ok {
+			categoryID = cid
+		}
+		if did, ok := parameters["department_id"].(string); ok {
+			departmentID = did
+		}
+	}
 
 	// 构建查询条件
 	query := global.DB.Model(&models.InventoryTask{})
@@ -584,21 +1213,34 @@ func exportInventoryReportsToCSV(c *gin.Context, parameters map[string]interface
 		return
 	}
 
-	filename := fmt.Sprintf("盘点统计报表_%s.csv", time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "text/csv")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("inventory_report_%s_%s.csv", timestamp, randomStr)
 
-	writer := csv.NewWriter(c.Writer)
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
+		return
+	}
+
+	// 创建CSV文件
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	file, err := os.Create(filepath)
+	if err != nil {
+		utils.InternalError(c, fmt.Errorf("创建CSV文件失败: %v", err))
+		return
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
 	// 写入表头
 	headers := []string{"任务名称", "资产编号", "资产名称", "分类", "部门", "预期状态", "实际状态", "盘点结果", "盘点人", "盘点时间", "备注"}
 	if err := writer.Write(headers); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "EXPORT_ERROR",
-			"message": "写入CSV表头失败",
-			"data":    err.Error(),
-		})
+		utils.InternalError(c, fmt.Errorf("写入CSV表头失败: %v", err))
 		return
 	}
 
@@ -729,13 +1371,28 @@ func exportInventoryReportsToCSV(c *gin.Context, parameters map[string]interface
 		}
 	}
 
-	// 记录报表生成
-	fileSize := int64(512 * 1024) // 示例文件大小，实际应该获取真实大小
-	go recordReportGeneration(filename, models.ReportRecordTypeInventory, filename, &fileSize, "系统用户", parameters)
+	// 获取文件大小
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration("盘点统计报表", models.ReportRecordTypeInventory, models.ReportRecordFormatCSV, filename, &fileSize, "系统用户", parameters)
+		}()
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     filename,
+		"message":      "盘点报表已生成",
+	}
+
+	utils.Success(c, response)
 }
 
-// exportCustomReportsToExcel 导出自定义报表到Excel
-func exportCustomReportsToExcel(c *gin.Context, req CustomReportRequest) {
+// exportCustomReportsToExcelFile 导出自定义报表到Excel文件
+func exportCustomReportsToExcelFile(c *gin.Context, req CustomReportRequest) {
 	// 获取自定义报表数据
 	var data []map[string]interface{}
 
@@ -801,35 +1458,56 @@ func exportCustomReportsToExcel(c *gin.Context, req CustomReportRequest) {
 
 	f.SetActiveSheet(index)
 
-	filename := fmt.Sprintf("自定义报表_%s_%s.xlsx", req.ReportType, time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("custom_report_%s_%s_%s.xlsx", req.ReportType, timestamp, randomStr)
 
-	if err := f.Write(c.Writer); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "EXPORT_ERROR",
-			"message": "导出文件失败",
-			"data":    err.Error(),
-		})
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
 	}
 
-	// 记录报表生成
-	fileSize := int64(1024 * 1024) // 示例文件大小，实际应该获取真实大小
-	parameters := map[string]interface{}{
-		"report_type": req.ReportType,
-		"filters":     req.Filters,
-		"group_by":    req.GroupBy,
-		"metrics":     req.Metrics,
-		"sort_by":     req.SortBy,
-		"sort_order":  req.SortOrder,
-		"limit":       req.Limit,
+	// 保存文件到文件系统
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	if err := f.SaveAs(filepath); err != nil {
+		utils.InternalError(c, fmt.Errorf("保存报表文件失败: %v", err))
+		return
 	}
-	go recordReportGeneration(filename, models.ReportRecordTypeCustom, filename, &fileSize, "系统用户", parameters)
+
+	// 获取文件大小并记录报表生成
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		parameters := map[string]interface{}{
+			"report_type": req.ReportType,
+			"filters":     req.Filters,
+			"group_by":    req.GroupBy,
+			"metrics":     req.Metrics,
+			"sort_by":     req.SortBy,
+			"sort_order":  req.SortOrder,
+			"limit":       req.Limit,
+		}
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration(fmt.Sprintf("自定义报表_%s", req.ReportType), models.ReportRecordTypeCustom, models.ReportRecordFormatExcel, filename, &fileSize, "系统用户", parameters)
+		}()
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     filename,
+		"message":      "自定义报表已生成",
+	}
+
+	utils.Success(c, response)
 }
 
-// exportCustomReportsToCSV 导出自定义报表到CSV
-func exportCustomReportsToCSV(c *gin.Context, req CustomReportRequest) {
+// exportCustomReportsToCSVFile 导出自定义报表到CSV文件
+func exportCustomReportsToCSVFile(c *gin.Context, req CustomReportRequest) {
 	// 获取自定义报表数据
 	var data []map[string]interface{}
 
@@ -848,11 +1526,28 @@ func exportCustomReportsToCSV(c *gin.Context, req CustomReportRequest) {
 		return
 	}
 
-	filename := fmt.Sprintf("自定义报表_%s_%s.csv", req.ReportType, time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "text/csv")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("custom_report_%s_%s_%s.csv", req.ReportType, timestamp, randomStr)
 
-	writer := csv.NewWriter(c.Writer)
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
+		return
+	}
+
+	// 创建CSV文件
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	file, err := os.Create(filepath)
+	if err != nil {
+		utils.InternalError(c, fmt.Errorf("创建CSV文件失败: %v", err))
+		return
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
 	// 如果有数据，写入表头和数据
@@ -881,16 +1576,31 @@ func exportCustomReportsToCSV(c *gin.Context, req CustomReportRequest) {
 		}
 	}
 
-	// 记录报表生成
-	fileSize := int64(512 * 1024) // 示例文件大小，实际应该获取真实大小
-	parameters := map[string]interface{}{
-		"report_type": req.ReportType,
-		"filters":     req.Filters,
-		"group_by":    req.GroupBy,
-		"metrics":     req.Metrics,
-		"sort_by":     req.SortBy,
-		"sort_order":  req.SortOrder,
-		"limit":       req.Limit,
+	// 获取文件大小并记录报表生成
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		parameters := map[string]interface{}{
+			"report_type": req.ReportType,
+			"filters":     req.Filters,
+			"group_by":    req.GroupBy,
+			"metrics":     req.Metrics,
+			"sort_by":     req.SortBy,
+			"sort_order":  req.SortOrder,
+			"limit":       req.Limit,
+		}
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration(fmt.Sprintf("自定义报表_%s", req.ReportType), models.ReportRecordTypeCustom, models.ReportRecordFormatCSV, filename, &fileSize, "系统用户", parameters)
+		}()
 	}
-	go recordReportGeneration(filename, models.ReportRecordTypeCustom, filename, &fileSize, "系统用户", parameters)
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     filename,
+		"message":      "自定义报表已生成",
+	}
+
+	utils.Success(c, response)
 }

@@ -8,16 +8,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAllCategories } from '@/lib/api/categories';
 import { getAllDepartments } from '@/lib/api/departments';
-import { downloadFile, exportInventoryReports, fetchInventoryReports, InventoryReportData, ReportQueryParams } from '@/lib/api/reports';
+import { downloadFileFromUrl, exportInventoryReports, fetchInventoryReports, InventoryReportData, ReportQueryParams } from '@/lib/api/reports';
 import {
-    AlertTriangle,
-    BarChart3,
-    CheckCircle,
-    ClipboardList,
-    Download,
-    Loader2,
-    Target,
-    TrendingUp,
+  AlertTriangle,
+  BarChart3,
+  CheckCircle,
+  ClipboardList,
+  Download,
+  Loader2,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -132,10 +132,9 @@ export default function InventoryReportsPage() {
         task_type: filters.task_type as string,
       };
 
-      const blob = await exportInventoryReports(options.format, queryParams);
-      const filename = `盘点统计报表_${new Date().toISOString().split('T')[0]}.${options.format === 'excel' ? 'xlsx' : 'csv'}`;
-      downloadFile(blob, filename);
-      toast.success('报表导出成功');
+      const response = await exportInventoryReports(options.format, queryParams);
+      downloadFileFromUrl(response.data.download_url, response.data.filename);
+      toast.success(response.data.message);
     } catch (error) {
       console.error('Failed to export inventory reports:', error);
       toast.error('报表导出失败');

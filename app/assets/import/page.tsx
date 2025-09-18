@@ -8,17 +8,19 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { importAssets } from '@/lib/api/assets';
-import type { CreateAssetRequest, ImportAssetRequest, ImportAssetResponse } from '@/lib/types';
+import { getAssetTemplate, importAssets } from '@/lib/api/assets';
+import { downloadFileFromUrl } from '@/lib/api/reports';
+import type { AssetStatus, CreateAssetRequest, ImportAssetRequest, ImportAssetResponse } from '@/lib/types';
+import { AxiosError } from 'axios';
 import {
-    AlertCircle,
-    CheckCircle,
-    Download,
-    FileSpreadsheet,
-    FileText,
-    Loader2,
-    Upload,
-    XCircle
+  AlertCircle,
+  CheckCircle,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Upload,
+  XCircle
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -36,130 +38,16 @@ export default function ImportAssetsPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [previewData, setPreviewData] = useState<CreateAssetRequest[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // 模板下载
-  const downloadTemplate = useCallback(() => {
+  const downloadTemplate = useCallback(async () => {
     try {
-      // 创建工作簿
-      const wb = XLSX.utils.book_new();
-
-      // 创建工作表数据
-      const templateData = [
-        [
-          '资产编号*',
-          '资产名称*',
-          '分类ID*',
-          '部门ID',
-          '品牌',
-          '型号',
-          '序列号',
-          '采购日期',
-          '采购价格',
-          '供应商',
-          '保修期(月)',
-          '状态',
-          '位置',
-          '责任人',
-          '描述'
-        ],
-        [
-          'ASSET001',
-          '联想笔记本电脑',
-          '1',
-          '2',
-          '联想',
-          'ThinkPad X1',
-          'SN123456',
-          '2024-01-15',
-          '15000.00',
-          '联想科技有限公司',
-          '24',
-          'available',
-          '办公楼A座201室',
-          '张三',
-          '办公用笔记本电脑'
-        ],
-        [
-          'ASSET002',
-          '办公桌椅',
-          '3',
-          '',
-          '办公家具公司',
-          '办公桌椅套装',
-          '',
-          '2024-02-01',
-          '2000.00',
-          '办公家具公司',
-          '12',
-          'available',
-          '会议室B',
-          '李四',
-          '办公桌椅套装'
-        ]
-      ];
-
-      // 创建工作表
-      const ws = XLSX.utils.aoa_to_sheet(templateData);
-
-      // 设置列宽
-      const colWidths = [
-        { wch: 15 }, // 资产编号
-        { wch: 20 }, // 资产名称
-        { wch: 10 }, // 分类ID
-        { wch: 10 }, // 部门ID
-        { wch: 12 }, // 品牌
-        { wch: 15 }, // 型号
-        { wch: 15 }, // 序列号
-        { wch: 12 }, // 采购日期
-        { wch: 12 }, // 采购价格
-        { wch: 20 }, // 供应商
-        { wch: 12 }, // 保修期
-        { wch: 12 }, // 状态
-        { wch: 15 }, // 位置
-        { wch: 10 }, // 责任人
-        { wch: 30 }  // 描述
-      ];
-      ws['!cols'] = colWidths;
-
-      // 添加工作表到工作簿
-      XLSX.utils.book_append_sheet(wb, ws, '资产导入模板');
-
-      // 创建说明工作表
-      const instructions = [
-        ['资产导入说明'],
-        [''],
-        ['1. 必填字段：'],
-        ['   - 资产编号：唯一标识，必须填写'],
-        ['   - 资产名称：资产名称，必须填写'],
-        ['   - 分类ID：资产分类ID，必须填写'],
-        [''],
-        ['2. 可选字段：'],
-        ['   - 部门ID：所属部门ID'],
-        ['   - 品牌、型号、序列号：资产规格信息'],
-        ['   - 采购日期：格式为 YYYY-MM-DD'],
-        ['   - 采购价格：数字格式'],
-        ['   - 供应商：供应商名称'],
-        ['   - 保修期：数字，单位为月'],
-        ['   - 状态：available(可用)/borrowed(借用中)/maintenance(维护中)/scrapped(已报废)'],
-        ['   - 位置：资产存放位置'],
-        ['   - 责任人：责任人姓名'],
-        ['   - 描述：资产描述信息'],
-        [''],
-        ['3. 注意事项：'],
-        ['   - 请确保资产编号的唯一性'],
-        ['   - 分类ID和部门ID必须是系统中已存在的ID'],
-        ['   - 日期格式请使用 YYYY-MM-DD'],
-        ['   - 价格字段只填写数字，不需要货币符号'],
-        ['   - 导入前请先备份数据']
-      ];
-
-      const wsInstructions = XLSX.utils.aoa_to_sheet(instructions);
-      XLSX.utils.book_append_sheet(wb, wsInstructions, '导入说明');
-
-      // 下载文件
-      XLSX.writeFile(wb, '资产导入模板.xlsx');
+      // 调用后端API获取模板下载URL
+      const response = await getAssetTemplate();
+      downloadFileFromUrl(response.data.download_url, response.data.filename);
 
       toast({
         title: '模板下载成功',
@@ -173,45 +61,6 @@ export default function ImportAssetsPage() {
         description: '模板下载失败，请重试',
       });
     }
-  }, [toast]);
-
-  // 文件选择
-  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (!selectedFile) return;
-
-    // 验证文件类型
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'application/vnd.ms-excel', // .xls
-      'text/csv', // .csv
-      'application/csv'
-    ];
-
-    if (!allowedTypes.includes(selectedFile.type)) {
-      toast({
-        variant: 'destructive',
-        title: '文件类型错误',
-        description: '请选择 Excel (.xlsx, .xls) 或 CSV 文件',
-      });
-      return;
-    }
-
-    // 验证文件大小（限制为10MB）
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (selectedFile.size > maxSize) {
-      toast({
-        variant: 'destructive',
-        title: '文件过大',
-        description: '文件大小不能超过 10MB',
-      });
-      return;
-    }
-
-    setFile(selectedFile);
-    setImportResult(null);
-    setValidationErrors([]);
-    parseFile(selectedFile);
   }, [toast]);
 
   // 解析文件
@@ -233,7 +82,6 @@ export default function ImportAssetsPage() {
       }
 
       // 解析数据
-      const headers = jsonData[0] as string[];
       const rows = jsonData.slice(1) as (string | number | null)[][];
 
       const assets: CreateAssetRequest[] = [];
@@ -254,12 +102,14 @@ export default function ImportAssetsPage() {
             serial_number: String(row[6] || '').trim(),
             purchase_date: row[7] ? String(row[7]).trim() : undefined,
             purchase_price: row[8] ? parseFloat(String(row[8])) : undefined,
-            supplier: String(row[9] || '').trim(),
-            warranty_period: row[10] ? parseInt(String(row[10])) : undefined,
-            status: (row[11] ? String(row[11]).trim() : 'available') as any,
-            location: String(row[12] || '').trim(),
-            responsible_person: String(row[13] || '').trim(),
-            description: String(row[14] || '').trim(),
+            purchase_person: String(row[9] || '').trim(),
+            purchase_quantity: row[10] ? parseInt(String(row[10])) : undefined,
+            supplier: String(row[11] || '').trim(),
+            warranty_period: row[12] ? parseInt(String(row[12])) : undefined,
+            status: (row[13] ? String(row[13]).trim() : 'available') as AssetStatus,
+            location: String(row[14] || '').trim(),
+            responsible_person: String(row[15] || '').trim(),
+            description: String(row[16] || '').trim(),
           };
 
           // 基本验证
@@ -316,6 +166,102 @@ export default function ImportAssetsPage() {
     }
   }, [toast]);
 
+  // 文件选择
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+
+    // 验证文件类型
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'text/csv', // .csv
+      'application/csv'
+    ];
+
+    if (!allowedTypes.includes(selectedFile.type)) {
+      toast({
+        variant: 'destructive',
+        title: '文件类型错误',
+        description: '请选择 Excel (.xlsx, .xls) 或 CSV 文件',
+      });
+      return;
+    }
+
+    // 验证文件大小（限制为10MB）
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (selectedFile.size > maxSize) {
+      toast({
+        variant: 'destructive',
+        title: '文件过大',
+        description: '文件大小不能超过 10MB',
+      });
+      return;
+    }
+
+    setFile(selectedFile);
+    setImportResult(null);
+    setValidationErrors([]);
+    parseFile(selectedFile);
+  }, [parseFile, toast]);
+
+  // 拖拽事件处理
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      const selectedFile = files[0];
+
+      // 验证文件类型
+      const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'text/csv', // .csv
+        'application/csv'
+      ];
+
+      if (!allowedTypes.includes(selectedFile.type)) {
+        toast({
+          variant: 'destructive',
+          title: '文件类型错误',
+          description: '请选择 Excel (.xlsx, .xls) 或 CSV 文件',
+        });
+        return;
+      }
+
+      // 验证文件大小（限制为10MB）
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (selectedFile.size > maxSize) {
+        toast({
+          variant: 'destructive',
+          title: '文件过大',
+          description: '文件大小不能超过 10MB',
+        });
+        return;
+      }
+
+      setFile(selectedFile);
+      setImportResult(null);
+      setValidationErrors([]);
+      parseFile(selectedFile);
+    }
+  }, [parseFile, toast]);
+
   // 执行导入
   const handleImport = useCallback(async () => {
     if (previewData.length === 0) {
@@ -351,18 +297,20 @@ export default function ImportAssetsPage() {
         title: '导入完成',
         description: `成功导入 ${result.data.success_count} 条数据`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('导入失败:', error);
-      setImportResult({
-        success: false,
-        error: error?.response?.data?.message || error.message || '导入失败',
-      });
-
-      toast({
-        variant: 'destructive',
-        title: '导入失败',
-        description: error?.response?.data?.message || error.message || '导入过程中发生错误',
-      });
+      if (error instanceof AxiosError) {
+        setImportResult({
+          success: false,
+          error: error?.response?.data?.message || error.message || '导入失败',
+        });
+  
+        toast({
+          variant: 'destructive',
+          title: '导入失败',
+          description: error?.response?.data?.message || error.message || '导入过程中发生错误',
+        });
+      }
     } finally {
       setIsImporting(false);
     }
@@ -374,6 +322,7 @@ export default function ImportAssetsPage() {
     setPreviewData([]);
     setValidationErrors([]);
     setImportResult(null);
+    setIsDragOver(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -419,12 +368,26 @@ export default function ImportAssetsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer ${
+              isDragOver
+                ? 'border-primary bg-primary/5'
+                : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
             <div className="text-center">
-              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <FileText className={`mx-auto h-12 w-12 mb-4 ${
+                isDragOver ? 'text-primary' : 'text-muted-foreground'
+              }`} />
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  拖拽文件到此处，或点击选择文件
+                <p className={`text-sm ${
+                  isDragOver ? 'text-primary font-medium' : 'text-muted-foreground'
+                }`}>
+                  {isDragOver ? '释放文件以上传' : '拖拽文件到此处，或点击选择文件'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   支持 Excel (.xlsx, .xls) 和 CSV 格式，文件大小不超过 10MB
@@ -439,7 +402,10 @@ export default function ImportAssetsPage() {
               />
               <Button
                 variant="outline"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
                 disabled={isUploading}
                 className="mt-4"
               >
@@ -493,6 +459,8 @@ export default function ImportAssetsPage() {
                     <TableHead>资产编号</TableHead>
                     <TableHead>资产名称</TableHead>
                     <TableHead>分类ID</TableHead>
+                    <TableHead>采购人</TableHead>
+                    <TableHead>采购数量</TableHead>
                     <TableHead>品牌</TableHead>
                     <TableHead>型号</TableHead>
                     <TableHead>状态</TableHead>
@@ -505,8 +473,10 @@ export default function ImportAssetsPage() {
                       <TableCell className="font-medium">{asset.asset_no}</TableCell>
                       <TableCell>{asset.name}</TableCell>
                       <TableCell>{asset.category_id}</TableCell>
-                      <TableCell>{asset.brand}</TableCell>
-                      <TableCell>{asset.model}</TableCell>
+                      <TableCell>{asset.purchase_person || '-'}</TableCell>
+                      <TableCell>{asset.purchase_quantity || '-'}</TableCell>
+                      <TableCell>{asset.brand || '-'}</TableCell>
+                      <TableCell>{asset.model || '-'}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -520,7 +490,7 @@ export default function ImportAssetsPage() {
                            asset.status === 'maintenance' ? '维护中' : '已报废'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{asset.location}</TableCell>
+                      <TableCell>{asset.location || '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

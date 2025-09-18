@@ -2,16 +2,16 @@
 
 import { AdvancedBarChart } from '@/components/charts/advanced-charts';
 import {
-    AssetCategoryChart,
-    AssetDepartmentChart,
-    AssetPurchaseTrendChart,
-    AssetStatusChart,
-    AssetValueAnalysisChart,
+  AssetCategoryChart,
+  AssetDepartmentChart,
+  AssetPurchaseTrendChart,
+  AssetStatusChart,
+  AssetValueAnalysisChart,
 } from '@/components/charts/asset-charts';
 import {
-    InteractiveAreaChart,
-    InteractiveBarChart,
-    InteractiveLineChart,
+  InteractiveAreaChart,
+  InteractiveBarChart,
+  InteractiveLineChart,
 } from '@/components/charts/interactive-charts';
 import { ExportDialog, type ExportOptions } from '@/components/reports/export-dialog';
 import { ReportFilter, type FilterOptions, type ReportFilterParams } from '@/components/reports/report-filter';
@@ -19,27 +19,27 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getAllCategories } from '@/lib/api/categories';
+import { CategoryTreeNode, getAllCategories } from '@/lib/api/categories';
 import { getAllDepartments } from '@/lib/api/departments';
 import {
-    AssetReportData,
-    downloadFile,
-    exportAssetReports,
-    fetchAssetReports,
-    ReportQueryParams,
+  AssetReportData,
+  downloadFileFromUrl,
+  exportAssetReports,
+  fetchAssetReports,
+  ReportQueryParams,
 } from '@/lib/api/reports';
 import {
-    AlertCircle,
-    BarChart3,
-    Building2,
-    Clock,
-    DollarSign,
-    Download,
-    Loader2,
-    MapPin,
-    Package,
-    PieChart,
-    Zap
+  AlertCircle,
+  BarChart3,
+  Building2,
+  Clock,
+  DollarSign,
+  Download,
+  Loader2,
+  MapPin,
+  Package,
+  PieChart,
+  Zap
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -79,8 +79,8 @@ export default function AssetReportsPage() {
       ]);
       
       const options: FilterOptions = {
-        categories: categoriesData?.map((cat: any) => ({ id: cat.id.toString(), name: cat.name })) || [],
-        departments: departmentsData.data?.data?.map((dept: any) => ({ id: dept.id.toString(), name: dept.name })) || [],
+        categories: categoriesData?.map((cat: CategoryTreeNode) => ({ id: cat.id.toString(), name: cat.name })) || [],
+        departments: departmentsData.data?.data?.map((dept: { id: number; name: string }) => ({ id: dept.id.toString(), name: dept.name })) || [],
         statuses: [
           { value: 'available', label: '可用' },
           { value: 'borrowed', label: '借用中' },
@@ -172,10 +172,9 @@ export default function AssetReportsPage() {
         status: filters.status as string,
       };
 
-      const blob = await exportAssetReports(options.format, queryParams);
-      const filename = `资产统计报表_${new Date().toISOString().split('T')[0]}.${options.format === 'excel' ? 'xlsx' : 'csv'}`;
-      downloadFile(blob, filename);
-      toast.success('报表导出成功');
+      const response = await exportAssetReports(options.format, queryParams);
+      downloadFileFromUrl(response.data.download_url, response.data.filename);
+      toast.success(response.data.message);
     } catch (error) {
       console.error('Failed to export asset reports:', error);
       toast.error('报表导出失败');

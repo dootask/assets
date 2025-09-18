@@ -17,6 +17,7 @@ import { Pagination, defaultPagination } from '@/components/pagination';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/app-context';
 import { deleteAsset, exportAssets, getAssets } from '@/lib/api/assets';
+import { downloadFileFromUrl } from '@/lib/api/reports';
 import { showError, showSuccess } from '@/lib/notifications';
 import type { AssetFilters, AssetResponse, AssetStatus, PaginationRequest } from '@/lib/types';
 import { AxiosError } from 'axios';
@@ -158,22 +159,15 @@ export default function AssetsPage() {
   // 导出资产
   const handleExport = async () => {
     try {
-      const blob = await exportAssets({
+      const result = await exportAssets({
         ...filters,
         ...(searchTerm && { name: searchTerm }),
       });
 
-      // 创建下载链接
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `资产清单_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      // 使用返回的下载URL
+      downloadFileFromUrl(result.download_url, result.filename);
 
-      showSuccess('资产数据导出成功', 'Excel文件已保存到下载目录');
+      showSuccess('资产数据导出成功', 'Excel文件正在下载...');
     } catch (error) {
       console.error('导出资产失败:', error);
       showError('导出资产失败', '请稍后重试');

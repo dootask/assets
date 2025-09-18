@@ -554,6 +554,8 @@ export interface Asset {
   serial_number: string;
   purchase_date?: string;
   purchase_price?: number;
+  purchase_person: string;
+  purchase_quantity?: number;
   supplier: string;
   warranty_period?: number;
   status: AssetStatus;
@@ -645,6 +647,7 @@ export interface AssetFilters extends Record<string, unknown> {
   model?: string;
   location?: string;
   responsible_person?: string;
+  purchase_person?: string;
   purchase_date_from?: string;
   purchase_date_to?: string;
   price_low?: number;
@@ -662,6 +665,8 @@ export interface CreateAssetRequest {
   serial_number?: string;
   purchase_date?: string;
   purchase_price?: number;
+  purchase_person?: string;
+  purchase_quantity?: number;
   supplier?: string;
   warranty_period?: number;
   status?: AssetStatus;
@@ -683,6 +688,8 @@ export interface UpdateAssetRequest {
   serial_number?: string;
   purchase_date?: string;
   purchase_price?: number;
+  purchase_person?: string;
+  purchase_quantity?: number;
   supplier?: string;
   warranty_period?: number;
   status?: AssetStatus;

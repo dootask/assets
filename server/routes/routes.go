@@ -3,6 +3,7 @@ package routes
 import (
 	"asset-management-system/server/middleware"
 	"asset-management-system/server/routes/api/assets"
+	"asset-management-system/server/routes/api/backup"
 	"asset-management-system/server/routes/api/borrow"
 	"asset-management-system/server/routes/api/categories"
 	"asset-management-system/server/routes/api/dashboard"
@@ -56,5 +57,8 @@ func RegisterRoutes(r *gin.Engine) {
 
 		// 操作日志路由
 		logs.RegisterRoutes(api)
+
+		// 备份恢复路由
+		backup.RegisterRoutes(api)
 	}
 }

@@ -6,7 +6,9 @@ import (
 	"asset-management-system/server/pkg/utils"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -168,7 +170,7 @@ func CreateAsset(c *gin.Context) {
 	}
 
 	// 验证部门是否存在（如果提供了部门ID）
-	if req.DepartmentID != nil {
+	if req.DepartmentID != nil && *req.DepartmentID != 0 {
 		var department models.Department
 		if err := global.DB.First(&department, *req.DepartmentID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -208,6 +210,8 @@ func CreateAsset(c *gin.Context) {
 		SerialNumber:      req.SerialNumber,
 		PurchaseDate:      purchaseDate,
 		PurchasePrice:     req.PurchasePrice,
+		PurchasePerson:    req.PurchasePerson,
+		PurchaseQuantity:  req.PurchaseQuantity,
 		Supplier:          req.Supplier,
 		WarrantyPeriod:    req.WarrantyPeriod,
 		Status:            req.Status,
@@ -303,7 +307,7 @@ func UpdateAsset(c *gin.Context) {
 	}
 
 	// 验证部门是否存在
-	if req.DepartmentID != nil {
+	if req.DepartmentID != nil && *req.DepartmentID != 0 {
 		var department models.Department
 		if err := global.DB.First(&department, *req.DepartmentID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -326,8 +330,10 @@ func UpdateAsset(c *gin.Context) {
 	if req.CategoryID != nil {
 		updates["category_id"] = *req.CategoryID
 	}
-	if req.DepartmentID != nil {
+	if req.DepartmentID != nil && *req.DepartmentID != 0 {
 		updates["department_id"] = *req.DepartmentID
+	} else if req.DepartmentID != nil && *req.DepartmentID == 0 {
+		updates["department_id"] = nil
 	}
 	updates["brand"] = req.Brand
 	updates["model"] = req.Model
@@ -339,6 +345,10 @@ func UpdateAsset(c *gin.Context) {
 	}
 	if req.PurchasePrice != nil {
 		updates["purchase_price"] = *req.PurchasePrice
+	}
+	updates["purchase_person"] = req.PurchasePerson
+	if req.PurchaseQuantity != nil {
+		updates["purchase_quantity"] = *req.PurchaseQuantity
 	}
 	updates["supplier"] = req.Supplier
 	if req.WarrantyPeriod != nil {
@@ -475,13 +485,50 @@ func ImportAssets(c *gin.Context) {
 	}()
 
 	for i, assetReq := range req.Assets {
-		// 验证单个资产数据
-		if err := validate.Struct(&assetReq); err != nil {
+		// 只验证必填字段
+		if assetReq.AssetNo == "" {
 			response.FailedCount++
 			response.Errors = append(response.Errors, ImportAssetError{
 				Index:   i,
 				AssetNo: assetReq.AssetNo,
-				Error:   err.Error(),
+				Error:   "资产编号不能为空",
+			})
+			continue
+		}
+		if assetReq.Name == "" {
+			response.FailedCount++
+			response.Errors = append(response.Errors, ImportAssetError{
+				Index:   i,
+				AssetNo: assetReq.AssetNo,
+				Error:   "资产名称不能为空",
+			})
+			continue
+		}
+		if assetReq.CategoryID == 0 {
+			response.FailedCount++
+			response.Errors = append(response.Errors, ImportAssetError{
+				Index:   i,
+				AssetNo: assetReq.AssetNo,
+				Error:   "分类ID不能为空",
+			})
+			continue
+		}
+
+		// 验证状态值
+		validStatuses := []models.AssetStatus{"available", "borrowed", "maintenance", "scrapped"}
+		isValidStatus := false
+		for _, status := range validStatuses {
+			if assetReq.Status == status {
+				isValidStatus = true
+				break
+			}
+		}
+		if !isValidStatus {
+			response.FailedCount++
+			response.Errors = append(response.Errors, ImportAssetError{
+				Index:   i,
+				AssetNo: assetReq.AssetNo,
+				Error:   "状态必须是: available, borrowed, maintenance, scrapped",
 			})
 			continue
 		}
@@ -519,7 +566,7 @@ func ImportAssets(c *gin.Context) {
 		}
 
 		// 验证部门是否存在（如果提供了部门ID）
-		if assetReq.DepartmentID != nil {
+		if assetReq.DepartmentID != nil && *assetReq.DepartmentID != 0 {
 			var department models.Department
 			if err := tx.First(&department, *assetReq.DepartmentID).Error; err != nil {
 				response.FailedCount++
@@ -565,6 +612,8 @@ func ImportAssets(c *gin.Context) {
 			SerialNumber:      assetReq.SerialNumber,
 			PurchaseDate:      purchaseDate,
 			PurchasePrice:     assetReq.PurchasePrice,
+			PurchasePerson:    assetReq.PurchasePerson,
+			PurchaseQuantity:  assetReq.PurchaseQuantity,
 			Supplier:          assetReq.Supplier,
 			WarrantyPeriod:    assetReq.WarrantyPeriod,
 			Status:            assetReq.Status,
@@ -603,7 +652,7 @@ func ImportAssets(c *gin.Context) {
 	utils.Success(c, response)
 }
 
-// ExportAssets 导出资产
+// ExportAssets 导出资产 - 生成文件并返回下载URL
 func ExportAssets(c *gin.Context) {
 	// 解析筛选条件
 	var filters AssetFilters
@@ -628,6 +677,24 @@ func ExportAssets(c *gin.Context) {
 		return
 	}
 
+	// 如果没有资产数据，返回错误
+	if len(assets) == 0 {
+		utils.Error(c, utils.ASSET_NOT_FOUND, "没有找到资产数据")
+		return
+	}
+
+	// 检查是否需要异步处理（数据量较大时）
+	if len(assets) > 10000 {
+		// 异步处理大文件导出
+		go processLargeAssetExport(assets)
+		response := gin.H{
+			"message": "大数据量导出已提交处理，请稍后刷新页面查看下载链接",
+			"async":   true,
+		}
+		utils.Success(c, response)
+		return
+	}
+
 	// 创建Excel文件
 	f := excelize.NewFile()
 	defer func() {
@@ -643,7 +710,7 @@ func ExportAssets(c *gin.Context) {
 	// 设置表头
 	headers := []string{
 		"资产编号", "资产名称", "分类", "部门", "品牌", "型号", "序列号",
-		"采购日期", "采购价格", "供应商", "保修期(月)", "状态", "位置",
+		"采购日期", "采购价格", "采购人", "采购数量", "供应商", "保修期(月)", "状态", "位置",
 		"责任人", "描述", "保修到期", "是否在保修期", "创建时间", "更新时间",
 	}
 
@@ -664,7 +731,7 @@ func ExportAssets(c *gin.Context) {
 		}
 
 		departmentName := ""
-		if asset.Department.ID != 0 {
+		if asset.Department != nil && asset.Department.ID != 0 {
 			departmentName = asset.Department.Name
 		}
 
@@ -698,6 +765,22 @@ func ExportAssets(c *gin.Context) {
 			isUnderWarrantyText = "是"
 		}
 
+		// 处理数值字段，确保正确显示
+		purchasePriceValue := ""
+		if asset.PurchasePrice != nil {
+			purchasePriceValue = fmt.Sprintf("%.2f", *asset.PurchasePrice)
+		}
+
+		purchaseQuantityValue := ""
+		if asset.PurchaseQuantity != nil {
+			purchaseQuantityValue = fmt.Sprintf("%d", *asset.PurchaseQuantity)
+		}
+
+		warrantyPeriodValue := ""
+		if asset.WarrantyPeriod != nil {
+			warrantyPeriodValue = fmt.Sprintf("%d", *asset.WarrantyPeriod)
+		}
+
 		// 写入数据行
 		data := []interface{}{
 			asset.AssetNo,
@@ -708,9 +791,11 @@ func ExportAssets(c *gin.Context) {
 			asset.Model,
 			asset.SerialNumber,
 			purchaseDateStr,
-			asset.PurchasePrice,
+			purchasePriceValue,
+			asset.PurchasePerson,
+			purchaseQuantityValue,
 			asset.Supplier,
-			asset.WarrantyPeriod,
+			warrantyPeriodValue,
 			statusText,
 			asset.Location,
 			asset.ResponsiblePerson,
@@ -723,26 +808,243 @@ func ExportAssets(c *gin.Context) {
 
 		for j, value := range data {
 			cell := fmt.Sprintf("%c%d", 'A'+j, row)
-			f.SetCellValue(sheetName, cell, value)
+
+			// 为数值字段设置格式
+			switch j {
+			case 8: // 采购价格列（第9列，索引为8）
+				if purchasePriceValue != "" {
+					// 设置为数字格式，保留2位小数
+					f.SetCellValue(sheetName, cell, purchasePriceValue)
+					style, _ := f.NewStyle(&excelize.Style{NumFmt: 2}) // 数字格式，保留2位小数
+					f.SetCellStyle(sheetName, cell, cell, style)
+				} else {
+					f.SetCellValue(sheetName, cell, value)
+				}
+			case 10: // 采购数量列（第11列，索引为10）
+				if purchaseQuantityValue != "" {
+					// 设置为整数格式
+					f.SetCellValue(sheetName, cell, purchaseQuantityValue)
+					style, _ := f.NewStyle(&excelize.Style{NumFmt: 1}) // 整数格式
+					f.SetCellStyle(sheetName, cell, cell, style)
+				} else {
+					f.SetCellValue(sheetName, cell, value)
+				}
+			case 12: // 保修期列（第13列，索引为12）
+				if warrantyPeriodValue != "" {
+					// 设置为整数格式
+					f.SetCellValue(sheetName, cell, warrantyPeriodValue)
+					style, _ := f.NewStyle(&excelize.Style{NumFmt: 1}) // 整数格式
+					f.SetCellStyle(sheetName, cell, cell, style)
+				} else {
+					f.SetCellValue(sheetName, cell, value)
+				}
+			default:
+				f.SetCellValue(sheetName, cell, value)
+			}
 		}
 	}
 
 	// 设置列宽
-	columnWidths := []float64{15, 20, 15, 15, 12, 15, 15, 12, 12, 15, 10, 10, 15, 12, 30, 12, 10, 20, 20}
+	columnWidths := []float64{15, 20, 15, 15, 12, 15, 15, 12, 12, 12, 12, 15, 10, 10, 15, 12, 30, 12, 10, 20, 20}
 	for i, width := range columnWidths {
 		col := fmt.Sprintf("%c:%c", 'A'+i, 'A'+i)
 		f.SetColWidth(sheetName, col, col, width)
 	}
 
-	// 设置响应头
-	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	c.Header("Content-Disposition", "attachment; filename=资产清单.xlsx")
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("asset_export_%s_%s.xlsx", timestamp, randomStr)
 
-	// 写入响应
-	if err := f.Write(c.Writer); err != nil {
-		utils.InternalError(c, err)
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
 	}
+
+	// 保存文件到文件系统
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	if err := f.SaveAs(filepath); err != nil {
+		utils.InternalError(c, fmt.Errorf("保存导出文件失败: %v", err))
+		return
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     "资产清单.xlsx",
+		"message":      "资产导出文件已生成",
+	}
+
+	utils.Success(c, response)
+}
+
+// GenerateTemplate 生成资产导入模板
+func GenerateTemplate(c *gin.Context) {
+	// 创建Excel文件
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	// 设置工作表名称
+	sheetName := "资产导入模板"
+	index, _ := f.NewSheet(sheetName)
+	f.SetActiveSheet(index)
+
+	// 模板数据
+	templateData := [][]interface{}{
+		{
+			"资产编号*",
+			"资产名称*",
+			"分类ID*",
+			"部门ID",
+			"品牌",
+			"型号",
+			"序列号",
+			"采购日期",
+			"采购价格",
+			"采购人",
+			"采购数量",
+			"供应商",
+			"保修期(月)",
+			"状态",
+			"位置",
+			"责任人",
+			"描述",
+		},
+		{
+			"ASSET001",
+			"联想笔记本电脑",
+			"1",
+			"2",
+			"联想",
+			"ThinkPad X1",
+			"SN123456",
+			"2024-01-15",
+			"15000.00",
+			"张三",
+			"1",
+			"联想科技有限公司",
+			"24",
+			"available",
+			"办公楼A座201室",
+			"张三",
+			"办公用笔记本电脑",
+		},
+		{
+			"ASSET002",
+			"办公桌椅",
+			"3",
+			"",
+			"办公家具公司",
+			"办公桌椅套装",
+			"",
+			"2024-02-01",
+			"2000.00",
+			"李四",
+			"5",
+			"办公家具公司",
+			"12",
+			"available",
+			"会议室B",
+			"李四",
+			"办公桌椅套装",
+		},
+	}
+
+	// 写入数据到工作表
+	for i, row := range templateData {
+		for j, cellValue := range row {
+			cell, _ := excelize.CoordinatesToCellName(j+1, i+1)
+			f.SetCellValue(sheetName, cell, cellValue)
+		}
+	}
+
+	// 设置列宽
+	colWidths := []float64{15, 20, 10, 10, 12, 15, 15, 12, 12, 12, 12, 20, 12, 12, 15, 10, 30}
+	for i, width := range colWidths {
+		col := fmt.Sprintf("%c:%c", 'A'+i, 'A'+i)
+		f.SetColWidth(sheetName, col, col, width)
+	}
+
+	// 创建说明工作表
+	instructionsSheet := "导入说明"
+	f.NewSheet(instructionsSheet)
+
+	instructions := [][]interface{}{
+		{"资产导入说明"},
+		{""},
+		{"1. 必填字段："},
+		{"   - 资产编号：唯一标识，必须填写"},
+		{"   - 资产名称：资产名称，必须填写"},
+		{"   - 分类ID：资产分类ID，必须填写"},
+		{""},
+		{"2. 可选字段："},
+		{"   - 部门ID：所属部门ID"},
+		{"   - 品牌、型号、序列号：资产规格信息"},
+		{"   - 采购日期：格式为 YYYY-MM-DD"},
+		{"   - 采购价格：数字格式"},
+		{"   - 采购人：采购人员姓名"},
+		{"   - 采购数量：采购数量，数字格式"},
+		{"   - 供应商：供应商名称"},
+		{"   - 保修期：数字，单位为月"},
+		{"   - 状态：available(可用)/borrowed(借用中)/maintenance(维护中)/scrapped(已报废)"},
+		{"   - 位置：资产存放位置"},
+		{"   - 责任人：责任人姓名"},
+		{"   - 描述：资产描述信息"},
+		{""},
+		{"3. 注意事项："},
+		{"   - 请确保资产编号的唯一性"},
+		{"   - 分类ID和部门ID必须是系统中已存在的ID"},
+		{"   - 日期格式请使用 YYYY-MM-DD"},
+		{"   - 价格字段只填写数字，不需要货币符号"},
+		{"   - 导入前请先备份数据"},
+	}
+
+	// 写入说明数据
+	for i, row := range instructions {
+		for j, cellValue := range row {
+			cell, _ := excelize.CoordinatesToCellName(j+1, i+1)
+			f.SetCellValue(instructionsSheet, cell, cellValue)
+		}
+	}
+
+	// 设置说明工作表的列宽
+	f.SetColWidth(instructionsSheet, "A:A", "A:A", 80)
+
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("asset_template_%s_%s.xlsx", timestamp, randomStr)
+
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
+		return
+	}
+
+	// 保存文件到文件系统
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	if err := f.SaveAs(filepath); err != nil {
+		utils.InternalError(c, fmt.Errorf("保存模板文件失败: %v", err))
+		return
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     "资产导入模板.xlsx",
+		"message":      "资产导入模板已生成",
+	}
+
+	utils.Success(c, response)
 }
 
 // BatchUpdateAssets 批量更新资产
@@ -814,7 +1116,7 @@ func BatchUpdateAssets(c *gin.Context) {
 	if req.Updates.Status != nil {
 		updates["status"] = *req.Updates.Status
 	}
-	if req.Updates.DepartmentID != nil {
+	if req.Updates.DepartmentID != nil && *req.Updates.DepartmentID != 0 {
 		// 验证部门是否存在
 		var department models.Department
 		if err := tx.First(&department, *req.Updates.DepartmentID).Error; err != nil {
@@ -1021,4 +1323,231 @@ func applyAssetFilters(query *gorm.DB, filters AssetFilters) *gorm.DB {
 	}
 
 	return query
+}
+
+// DownloadAssetFile 下载导出文件
+func DownloadAssetFile(c *gin.Context) {
+	filename := c.Param("filename")
+
+	// 验证文件名安全性 - 防止路径遍历攻击
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		utils.ValidationError(c, "无效的文件名")
+		return
+	}
+
+	// 构建文件路径
+	filepath := fmt.Sprintf("./uploads/exports/%s", filename)
+
+	// 检查文件是否存在
+	if !utils.IsFileExists(filepath) {
+		utils.Error(c, utils.ASSET_NOT_FOUND, "文件不存在或已过期")
+		return
+	}
+
+	// 根据文件扩展名设置Content-Type
+	var contentType string
+	if strings.HasSuffix(filename, ".xlsx") {
+		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	} else if strings.HasSuffix(filename, ".csv") {
+		contentType = "text/csv"
+	} else {
+		contentType = "application/octet-stream"
+	}
+
+	// 设置响应头，使用实际文件名
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.Header("Cache-Control", "no-cache")
+
+	// 读取并返回文件内容
+	c.File(filepath)
+}
+
+// processLargeAssetExport 处理大数据量资产导出（异步）
+func processLargeAssetExport(assets []models.Asset) {
+	// 创建Excel文件
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	// 设置工作表名称
+	sheetName := "资产清单"
+	f.SetSheetName("Sheet1", sheetName)
+
+	// 设置表头
+	headers := []string{
+		"资产编号", "资产名称", "分类", "部门", "品牌", "型号", "序列号",
+		"采购日期", "采购价格", "采购人", "采购数量", "供应商", "保修期(月)", "状态", "位置",
+		"责任人", "描述", "保修到期", "是否在保修期", "创建时间", "更新时间",
+	}
+
+	// 写入表头
+	for i, header := range headers {
+		cell := fmt.Sprintf("%c1", 'A'+i)
+		f.SetCellValue(sheetName, cell, header)
+	}
+
+	// 分批写入数据，避免内存溢出
+	batchSize := 1000
+	for batchStart := 0; batchStart < len(assets); batchStart += batchSize {
+		batchEnd := batchStart + batchSize
+		if batchEnd > len(assets) {
+			batchEnd = len(assets)
+		}
+
+		batch := assets[batchStart:batchEnd]
+		for i, asset := range batch {
+			row := batchStart + i + 2 // 从第2行开始写入数据
+
+			// 获取分类和部门名称
+			categoryName := ""
+			if asset.Category.ID != 0 {
+				categoryName = asset.Category.Name
+			}
+
+			departmentName := ""
+			if asset.Department != nil && asset.Department.ID != 0 {
+				departmentName = asset.Department.Name
+			}
+
+			// 格式化采购日期
+			purchaseDateStr := ""
+			if asset.PurchaseDate != nil {
+				purchaseDateStr = asset.PurchaseDate.Format("2006-01-02")
+			}
+
+			// 格式化保修到期日期
+			warrantyEndDateStr := ""
+			if warrantyEndDate := asset.GetWarrantyEndDate(); warrantyEndDate != nil {
+				warrantyEndDateStr = warrantyEndDate.Format("2006-01-02")
+			}
+
+			// 状态映射
+			statusMap := map[string]string{
+				"available":   "可用",
+				"borrowed":    "借用中",
+				"maintenance": "维护中",
+				"scrapped":    "已报废",
+			}
+			statusText := statusMap[string(asset.Status)]
+			if statusText == "" {
+				statusText = string(asset.Status)
+			}
+
+			// 是否在保修期
+			isUnderWarrantyText := "否"
+			if asset.IsUnderWarranty() {
+				isUnderWarrantyText = "是"
+			}
+
+			// 处理数值字段，确保正确显示
+			purchasePriceValue := ""
+			if asset.PurchasePrice != nil {
+				purchasePriceValue = fmt.Sprintf("%.2f", *asset.PurchasePrice)
+			}
+
+			purchaseQuantityValue := ""
+			if asset.PurchaseQuantity != nil {
+				purchaseQuantityValue = fmt.Sprintf("%d", *asset.PurchaseQuantity)
+			}
+
+			warrantyPeriodValue := ""
+			if asset.WarrantyPeriod != nil {
+				warrantyPeriodValue = fmt.Sprintf("%d", *asset.WarrantyPeriod)
+			}
+
+			// 写入数据行
+			data := []interface{}{
+				asset.AssetNo,
+				asset.Name,
+				categoryName,
+				departmentName,
+				asset.Brand,
+				asset.Model,
+				asset.SerialNumber,
+				purchaseDateStr,
+				purchasePriceValue,
+				asset.PurchasePerson,
+				purchaseQuantityValue,
+				asset.Supplier,
+				warrantyPeriodValue,
+				statusText,
+				asset.Location,
+				asset.ResponsiblePerson,
+				asset.Description,
+				warrantyEndDateStr,
+				isUnderWarrantyText,
+				asset.CreatedAt.Format("2006-01-02 15:04:05"),
+				asset.UpdatedAt.Format("2006-01-02 15:04:05"),
+			}
+
+			for j, value := range data {
+				cell := fmt.Sprintf("%c%d", 'A'+j, row)
+
+				// 为数值字段设置格式
+				switch j {
+				case 8: // 采购价格列（第9列，索引为8）
+					if purchasePriceValue != "" {
+						// 设置为数字格式，保留2位小数
+						f.SetCellValue(sheetName, cell, purchasePriceValue)
+						style, _ := f.NewStyle(&excelize.Style{NumFmt: 2}) // 数字格式，保留2位小数
+						f.SetCellStyle(sheetName, cell, cell, style)
+					} else {
+						f.SetCellValue(sheetName, cell, value)
+					}
+				case 10: // 采购数量列（第11列，索引为10）
+					if purchaseQuantityValue != "" {
+						// 设置为整数格式
+						f.SetCellValue(sheetName, cell, purchaseQuantityValue)
+						style, _ := f.NewStyle(&excelize.Style{NumFmt: 1}) // 整数格式
+						f.SetCellStyle(sheetName, cell, cell, style)
+					} else {
+						f.SetCellValue(sheetName, cell, value)
+					}
+				case 12: // 保修期列（第13列，索引为12）
+					if warrantyPeriodValue != "" {
+						// 设置为整数格式
+						f.SetCellValue(sheetName, cell, warrantyPeriodValue)
+						style, _ := f.NewStyle(&excelize.Style{NumFmt: 1}) // 整数格式
+						f.SetCellStyle(sheetName, cell, cell, style)
+					} else {
+						f.SetCellValue(sheetName, cell, value)
+					}
+				default:
+					f.SetCellValue(sheetName, cell, value)
+				}
+			}
+		}
+	}
+
+	// 设置列宽
+	columnWidths := []float64{15, 20, 15, 15, 12, 15, 15, 12, 12, 12, 12, 15, 10, 10, 15, 12, 30, 12, 10, 20, 20}
+	for i, width := range columnWidths {
+		col := fmt.Sprintf("%c:%c", 'A'+i, 'A'+i)
+		f.SetColWidth(sheetName, col, col, width)
+	}
+
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("asset_export_large_%s_%s.xlsx", timestamp, randomStr)
+
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		fmt.Printf("异步导出：创建导出目录失败: %v\n", err)
+		return
+	}
+
+	// 保存文件到文件系统
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	if err := f.SaveAs(filepath); err != nil {
+		fmt.Printf("异步导出：保存文件失败: %v\n", err)
+		return
+	}
+
+	fmt.Printf("✅ 大数据量资产导出完成: %s\n", filename)
 }

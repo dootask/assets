@@ -9,32 +9,32 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-    CustomReportRequest,
-    CustomReportResponse,
-    downloadFile,
-    exportCustomReports,
-    fetchCustomReports,
+  CustomReportRequest,
+  CustomReportResponse,
+  downloadFileFromUrl,
+  exportCustomReports,
+  fetchCustomReports,
 } from '@/lib/api/reports';
 import {
-    BarChart3,
-    Calendar,
-    Database,
-    Download,
-    FileText,
-    Filter,
-    Loader2,
-    Play,
-    Settings,
-    X
+  BarChart3,
+  Calendar,
+  Database,
+  Download,
+  FileText,
+  Filter,
+  Loader2,
+  Play,
+  Settings,
+  X
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -172,12 +172,9 @@ export default function CustomReportsPage() {
         format,
       };
 
-      const blob = await exportCustomReports(request);
-      const filename = `自定义报表_${new Date().toISOString().split('T')[0]}.${
-        format === 'excel' ? 'xlsx' : format
-      }`;
-      downloadFile(blob, filename);
-      toast.success('导出成功');
+      const response = await exportCustomReports(request);
+      downloadFileFromUrl(response.data.download_url, response.data.filename);
+      toast.success(response.data.message);
     } catch (error) {
       console.error('Export failed:', error);
       toast.error('导出失败');

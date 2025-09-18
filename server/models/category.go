@@ -11,7 +11,7 @@ import (
 type Category struct {
 	ID          uint           `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name        string         `json:"name" gorm:"size:100;not null" validate:"required,max=100"`
-	Code        string         `json:"code" gorm:"size:50;uniqueIndex;not null" validate:"required,max=50"`
+	Code        string         `json:"code" gorm:"size:50;index:not null" validate:"required,max=50"`
 	ParentID    *uint          `json:"parent_id" gorm:"index"`
 	Description string         `json:"description" gorm:"type:text"`
 	Attributes  datatypes.JSON `json:"attributes" gorm:"type:json"` // 分类特定属性模板
@@ -72,10 +72,10 @@ type CategoryAttributes struct {
 
 // CategoryField 分类字段定义
 type CategoryField struct {
-	Name        string      `json:"name"`
-	Label       string      `json:"label"`
-	Type        string      `json:"type"` // text, number, date, select, boolean
-	Required    bool        `json:"required"`
-	Options     []string    `json:"options,omitempty"` // 用于select类型
+	Name         string      `json:"name"`
+	Label        string      `json:"label"`
+	Type         string      `json:"type"` // text, number, date, select, boolean
+	Required     bool        `json:"required"`
+	Options      []string    `json:"options,omitempty"` // 用于select类型
 	DefaultValue interface{} `json:"default_value,omitempty"`
 }

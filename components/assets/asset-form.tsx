@@ -42,6 +42,8 @@ const assetFormSchema = z.object({
   serial_number: z.string().max(100, '序列号不能超过100个字符').optional(),
   purchase_date: z.date().optional(),
   purchase_price: z.number().min(0, '采购价格不能为负数').optional(),
+  purchase_person: z.string().max(100, '采购人不能超过100个字符').optional(),
+  purchase_quantity: z.number().min(1, '采购数量不能小于1').optional(),
   supplier: z.string().max(200, '供应商不能超过200个字符').optional(),
   warranty_period: z.number().min(0, '保修期不能为负数').optional(),
   status: z.enum(['available', 'borrowed', 'maintenance', 'scrapped']).optional(),
@@ -113,6 +115,8 @@ export function AssetForm({
       serial_number: initialData?.serial_number || '',
       purchase_date: initialData?.purchase_date ? new Date(initialData.purchase_date) : undefined,
       purchase_price: initialData?.purchase_price || undefined,
+      purchase_person: initialData?.purchase_person || '',
+      purchase_quantity: initialData?.purchase_quantity || undefined,
       supplier: initialData?.supplier || '',
       warranty_period: initialData?.warranty_period || undefined,
       status: initialData?.status || 'available',
@@ -598,6 +602,8 @@ export function AssetForm({
           `${data.purchase_date.getFullYear()}-${String(data.purchase_date.getMonth() + 1).padStart(2, '0')}-${String(data.purchase_date.getDate()).padStart(2, '0')}` : 
           undefined,
         purchase_price: data.purchase_price || undefined,
+        purchase_person: data.purchase_person || '',
+        purchase_quantity: data.purchase_quantity || undefined,
         warranty_period: data.warranty_period || undefined,
         brand: data.brand || '',
         model: data.model || '',
@@ -882,6 +888,42 @@ export function AssetForm({
                         step="0.01"
                         placeholder="请输入采购价格"
                         onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* 采购人 */}
+              <FormField
+                control={form.control}
+                name="purchase_person"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>采购人</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="请输入采购人" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* 采购数量 */}
+              <FormField
+                control={form.control}
+                name="purchase_quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>采购数量</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        placeholder="请输入采购数量"
+                        onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                         value={field.value || ''}
                       />
                     </FormControl>

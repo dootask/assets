@@ -12,6 +12,8 @@ func RegisterRoutes(r *gin.RouterGroup) {
 		assets.POST("", CreateAsset)                         // 创建资产
 		assets.POST("/import", ImportAssets)                 // 批量导入资产
 		assets.GET("/export", ExportAssets)                  // 导出资产
+		assets.GET("/template", GenerateTemplate)            // 生成导入模板
+		assets.GET("/download/:filename", DownloadAssetFile) // 下载导出文件
 		assets.GET("/check-asset-no/:assetNo", CheckAssetNo) // 检查资产编号是否存在
 		assets.PUT("/batch", BatchUpdateAssets)              // 批量更新资产
 		assets.DELETE("/batch", BatchDeleteAssets)           // 批量删除资产

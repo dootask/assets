@@ -39,7 +39,7 @@ func GetCategories(c *gin.Context) {
 
 	// 获取所有分类
 	var categories []models.Category
-	if err := query.Order("parent_id ASC, name ASC").Find(&categories).Error; err != nil {
+	if err := query.Order("parent_id ASC, created_at ASC").Find(&categories).Error; err != nil {
 		utils.InternalError(c, err)
 		return
 	}

@@ -1,19 +1,19 @@
 import apiClient from '@/lib/axios';
 import type {
-    APIResponse,
-    AssetFilters,
-    AssetResponse,
-    BatchDeleteAssetsRequest,
-    BatchDeleteAssetsResponse,
-    BatchUpdateAssetsRequest,
-    BatchUpdateAssetsResponse,
-    CheckAssetNoResponse,
-    CreateAssetRequest,
-    ImportAssetRequest,
-    ImportAssetResponse,
-    PaginationRequest,
-    PaginationResponse,
-    UpdateAssetRequest,
+  APIResponse,
+  AssetFilters,
+  AssetResponse,
+  BatchDeleteAssetsRequest,
+  BatchDeleteAssetsResponse,
+  BatchUpdateAssetsRequest,
+  BatchUpdateAssetsResponse,
+  CheckAssetNoResponse,
+  CreateAssetRequest,
+  ImportAssetRequest,
+  ImportAssetResponse,
+  PaginationRequest,
+  PaginationResponse,
+  UpdateAssetRequest,
 } from '@/lib/types';
 
 // 获取资产列表
@@ -83,8 +83,12 @@ export const importAssets = async (data: ImportAssetRequest) => {
   return response.data;
 };
 
-// 导出资产
-export const exportAssets = async (filters?: AssetFilters): Promise<Blob> => {
+// 导出资产 - 返回下载URL
+export const exportAssets = async (filters?: AssetFilters): Promise<{
+  download_url: string;
+  filename: string;
+  message: string;
+}> => {
   const queryParams = new URLSearchParams();
 
   // 添加筛选参数
@@ -96,10 +100,8 @@ export const exportAssets = async (filters?: AssetFilters): Promise<Blob> => {
     });
   }
 
-  const response = await apiClient.get(`/assets/export?${queryParams.toString()}`, {
-    responseType: 'blob',
-  });
-  return response.data;
+  const response = await apiClient.get(`/assets/export?${queryParams.toString()}`);
+  return response.data.data;
 };
 
 // 批量更新资产
@@ -118,12 +120,20 @@ export const batchDeleteAssets = async (data: BatchDeleteAssetsRequest) => {
 export const uploadAssetImage = async (file: File): Promise<{ data: { filepath: string; filename: string; size: number } }> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const response = await apiClient.post('/upload/image', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   });
-  
+
+  return response.data;
+};
+
+/**
+ * 获取资产导入模板下载URL
+ */
+export const getAssetTemplate = async (): Promise<{ data: { download_url: string; filename: string; message: string } }> => {
+  const response = await apiClient.get('/assets/template');
   return response.data;
 };

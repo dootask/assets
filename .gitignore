@@ -51,3 +51,5 @@ tmp/
 # dev data
 uploads/
 assets.db
+backups/
+.spec-workflow/

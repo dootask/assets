@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
-	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"asset-management-system/server/global"
 	"asset-management-system/server/models"
+	"asset-management-system/server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,42 +24,71 @@ type MonthlyReportRequest struct {
 func GenerateMonthlyReport(c *gin.Context) {
 	var req MonthlyReportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "VALIDATION_ERROR",
-			"message": "请求参数错误",
-			"data":    err.Error(),
-		})
+		utils.ValidationError(c, err.Error())
 		return
 	}
 
 	// 解析月份
 	monthTime, err := time.Parse("2006-01", req.Month)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "INVALID_MONTH",
-			"message": "月份格式错误",
-		})
+		utils.ValidationError(c, "月份格式错误")
 		return
 	}
 
 	// 生成文本报告
 	reportContent, err := generateMonthlyReportText(monthTime)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "GENERATE_ERROR",
-			"message": "生成报告失败",
-			"data":    err.Error(),
-		})
+		utils.InternalError(c, fmt.Errorf("生成报告失败: %v", err))
 		return
 	}
 
-	// 设置响应头
-	filename := fmt.Sprintf("月度报告_%s.txt", req.Month)
-	c.Header("Content-Type", "text/plain; charset=utf-8")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	filename := fmt.Sprintf("monthly_report_%s_%s.txt", req.Month, timestamp)
 
-	// 写入响应
-	c.Data(http.StatusOK, "text/plain", []byte(reportContent))
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
+		return
+	}
+
+	// 创建文件
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	file, err := os.Create(filepath)
+	if err != nil {
+		utils.InternalError(c, fmt.Errorf("创建报告文件失败: %v", err))
+		return
+	}
+	defer file.Close()
+
+	// 写入报告内容
+	if _, err := file.WriteString(reportContent); err != nil {
+		utils.InternalError(c, fmt.Errorf("写入报告内容失败: %v", err))
+		return
+	}
+
+	// 获取文件大小并记录报表生成
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		parameters := map[string]interface{}{
+			"month": req.Month,
+		}
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration(fmt.Sprintf("月度报告_%s", req.Month), models.ReportRecordTypeCustom, models.ReportRecordFormat("txt"), filename, &fileSize, "系统用户", parameters)
+		}()
+	}
+
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     fmt.Sprintf("月度报告_%s.txt", req.Month),
+		"message":      "月度报告已生成",
+	}
+
+	utils.Success(c, response)
 }
 
 // ExportAssetInventory 导出资产清单
@@ -67,16 +97,32 @@ func ExportAssetInventory(c *gin.Context) {
 	var assets []models.Asset
 	query := global.DB.Preload("Category").Preload("Department").Find(&assets)
 	if query.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    "QUERY_ERROR",
-			"message": "查询资产数据失败",
-		})
+		utils.InternalError(c, fmt.Errorf("查询资产数据失败: %v", query.Error))
 		return
 	}
 
-	// 创建CSV缓冲区
-	var buf bytes.Buffer
-	writer := csv.NewWriter(&buf)
+	// 生成唯一文件名
+	timestamp := time.Now().Format("20060102_150405")
+	randomStr := fmt.Sprintf("%06d", time.Now().Nanosecond()%1000000)
+	filename := fmt.Sprintf("asset_inventory_%s_%s.csv", timestamp, randomStr)
+
+	// 确保导出目录存在
+	exportDir := "./uploads/exports"
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
+		return
+	}
+
+	// 创建CSV文件
+	filepath := fmt.Sprintf("%s/%s", exportDir, filename)
+	file, err := os.Create(filepath)
+	if err != nil {
+		utils.InternalError(c, fmt.Errorf("创建CSV文件失败: %v", err))
+		return
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
 
 	// 写入表头
 	headers := []string{
@@ -171,14 +217,24 @@ func ExportAssetInventory(c *gin.Context) {
 
 	writer.Flush()
 
-	// 设置响应头
-	filename := fmt.Sprintf("资产清单_%s.csv", time.Now().Format("20060102_150405"))
-	c.Header("Content-Type", "text/csv; charset=utf-8")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	// 获取文件大小并记录报表生成
+	if fileInfo, err := os.Stat(filepath); err == nil {
+		fileSize := fileInfo.Size()
+		// 异步记录报表生成
+		go func() {
+			recordReportGeneration("资产清单", models.ReportRecordTypeAsset, models.ReportRecordFormatCSV, filename, &fileSize, "系统用户", nil)
+		}()
+	}
 
-	// 写入BOM以支持Excel正确打开UTF-8文件
-	bomUtf8 := []byte{0xEF, 0xBB, 0xBF}
-	c.Data(http.StatusOK, "text/csv", append(bomUtf8, buf.Bytes()...))
+	// 返回下载URL
+	downloadURL := utils.GetFileURL(c.GetString("base_url"), fmt.Sprintf("/api/assets/download/%s", filename))
+	response := gin.H{
+		"download_url": downloadURL,
+		"filename":     "资产清单.csv",
+		"message":      "资产清单已生成",
+	}
+
+	utils.Success(c, response)
 }
 
 // generateMonthlyReportText 生成月度报告文本

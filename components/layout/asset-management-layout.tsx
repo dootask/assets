@@ -4,16 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import {
-  Building2,
-  CheckCircle,
-  ChevronRight,
-  ClipboardList,
-  Home,
-  LayoutDashboard,
-  Menu,
-  Package,
-  TrendingUp,
-  Users,
+    Building2,
+    CheckCircle,
+    ChevronRight,
+    ClipboardList,
+    Database,
+    Home,
+    LayoutDashboard,
+    Menu,
+    Package,
+    TrendingUp,
+    Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -62,6 +63,12 @@ const navigation = [
     icon: TrendingUp,
     description: '数据分析报表',
   },
+  {
+    name: '备份恢复',
+    href: '/backup-restore',
+    icon: Database,
+    description: '数据备份恢复管理',
+  },
 ];
 
 // 面包屑导航配置
@@ -80,6 +87,7 @@ const breadcrumbConfig: Record<string, { name: string; parent?: string }> = {
   '/reports/borrow': { name: '借用报表', parent: '/reports' },
   '/reports/inventory': { name: '盘点报表', parent: '/reports' },
   '/logs': { name: '操作日志' },
+  '/backup-restore': { name: '备份恢复' },
 };
 
 // 动态路由处理函数

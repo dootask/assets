@@ -10,7 +10,7 @@ import (
 type Department struct {
 	ID          uint           `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name        string         `json:"name" gorm:"size:100;not null" validate:"required,max=100"`
-	Code        string         `json:"code" gorm:"size:50;uniqueIndex;not null" validate:"required,max=50"`
+	Code        string         `json:"code" gorm:"size:50;index;not null" validate:"required,max=50"`
 	Manager     string         `json:"manager" gorm:"size:100" validate:"max=100"`
 	Contact     string         `json:"contact" gorm:"size:100" validate:"max=100"`
 	Description string         `json:"description" gorm:"type:text"`

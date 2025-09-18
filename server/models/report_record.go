@@ -1,6 +1,7 @@
 package models
 
 import (
+	"asset-management-system/server/pkg/utils"
 	"fmt"
 	"time"
 
@@ -73,11 +74,11 @@ func (rr *ReportRecord) IsExpired() bool {
 }
 
 // GetDownloadURL 获取下载URL
-func (rr *ReportRecord) GetDownloadURL() string {
+func (rr *ReportRecord) GetDownloadURL(baseURL string) string {
 	if rr.FilePath == "" {
 		return ""
 	}
-	return "/api/reports/download/" + rr.FilePath
+	return utils.GetFileURL(baseURL, "/api/reports/download/"+rr.FilePath)
 }
 
 // GetFileSizeDisplay 获取文件大小显示

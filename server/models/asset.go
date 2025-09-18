@@ -19,27 +19,29 @@ const (
 
 // Asset 资产模型
 type Asset struct {
-	ID                  uint           `json:"id" gorm:"primaryKey;autoIncrement"`
-	AssetNo             string         `json:"asset_no" gorm:"size:100;uniqueIndex;not null" validate:"required,max=100"`
-	Name                string         `json:"name" gorm:"size:200;not null" validate:"required,max=200"`
-	CategoryID          uint           `json:"category_id" gorm:"not null;index" validate:"required"`
-	DepartmentID        *uint          `json:"department_id" gorm:"index"`
-	Brand               string         `json:"brand" gorm:"size:100" validate:"max=100"`
-	Model               string         `json:"model" gorm:"size:100" validate:"max=100"`
-	SerialNumber        string         `json:"serial_number" gorm:"size:100" validate:"max=100"`
-	PurchaseDate        *time.Time     `json:"purchase_date" gorm:"type:date"`
-	PurchasePrice       *float64       `json:"purchase_price" gorm:"type:decimal(12,2)"`
-	Supplier            string         `json:"supplier" gorm:"size:200" validate:"max=200"`
-	WarrantyPeriod      *int           `json:"warranty_period"` // 保修期（月）
-	Status              AssetStatus    `json:"status" gorm:"size:20;default:available" validate:"oneof=available borrowed maintenance scrapped"`
-	Location            string         `json:"location" gorm:"size:200" validate:"max=200"`
-	ResponsiblePerson   string         `json:"responsible_person" gorm:"size:100" validate:"max=100"`
-	Description         string         `json:"description" gorm:"type:text"`
-	ImageURL            string         `json:"image_url" gorm:"size:500" validate:"max=500"`
-	CustomAttributes    datatypes.JSON `json:"custom_attributes" gorm:"type:json"` // 自定义属性
-	CreatedAt           time.Time      `json:"created_at"`
-	UpdatedAt           time.Time      `json:"updated_at"`
-	DeletedAt           gorm.DeletedAt `json:"-" gorm:"index"`
+	ID                uint           `json:"id" gorm:"primaryKey;autoIncrement"`
+	AssetNo           string         `json:"asset_no" gorm:"size:100;index;not null" validate:"required,max=100"`
+	Name              string         `json:"name" gorm:"size:200;not null" validate:"required,max=200"`
+	CategoryID        uint           `json:"category_id" gorm:"not null;index" validate:"required"`
+	DepartmentID      *uint          `json:"department_id" gorm:"index"`
+	Brand             string         `json:"brand" gorm:"size:100" validate:"max=100"`
+	Model             string         `json:"model" gorm:"size:100" validate:"max=100"`
+	SerialNumber      string         `json:"serial_number" gorm:"size:100" validate:"max=100"`
+	PurchaseDate      *time.Time     `json:"purchase_date" gorm:"type:date"`
+	PurchasePrice     *float64       `json:"purchase_price" gorm:"type:decimal(12,2)"`
+	PurchasePerson    string         `json:"purchase_person" gorm:"size:100" validate:"max=100"` // 采购人
+	PurchaseQuantity  *int           `json:"purchase_quantity"`                                  // 采购数量
+	Supplier          string         `json:"supplier" gorm:"size:200" validate:"max=200"`
+	WarrantyPeriod    *int           `json:"warranty_period"` // 保修期（月）
+	Status            AssetStatus    `json:"status" gorm:"size:20;default:available" validate:"oneof=available borrowed maintenance scrapped"`
+	Location          string         `json:"location" gorm:"size:200" validate:"max=200"`
+	ResponsiblePerson string         `json:"responsible_person" gorm:"size:100" validate:"max=100"`
+	Description       string         `json:"description" gorm:"type:text"`
+	ImageURL          string         `json:"image_url" gorm:"size:500" validate:"max=500"`
+	CustomAttributes  datatypes.JSON `json:"custom_attributes" gorm:"type:json"` // 自定义属性
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// 关联关系
 	Category      Category       `json:"category,omitempty" gorm:"foreignKey:CategoryID"`

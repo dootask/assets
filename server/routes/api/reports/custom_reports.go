@@ -16,11 +16,14 @@ func generateCustomAssetReport(req CustomReportRequest) ([]map[string]interface{
 	var columns []CustomReportColumn
 	var totalCount int64
 
-	// 构建基础查询
-	query := global.DB.Table("assets a").
+	// 构建基础查询，添加软删除过滤
+	query := global.DB.Debug().Table("assets a").
 		Select(buildAssetSelectFields(req.Metrics)).
 		Joins("LEFT JOIN categories c ON c.id = a.category_id").
-		Joins("LEFT JOIN departments d ON d.id = a.department_id")
+		Joins("LEFT JOIN departments d ON d.id = a.department_id").
+		Where("a.deleted_at IS NULL").
+		Where("c.deleted_at IS NULL").
+		Where("(d.deleted_at IS NULL OR d.id IS NULL)")
 
 	// 应用过滤条件
 	query = applyAssetFilters(query, req.Filters)
@@ -102,11 +105,14 @@ func generateCustomBorrowReport(req CustomReportRequest) ([]map[string]interface
 	var columns []CustomReportColumn
 	var totalCount int64
 
-	// 构建基础查询
+	// 构建基础查询，添加软删除过滤
 	query := global.DB.Table("borrow_records br").
 		Select(buildBorrowSelectFields(req.Metrics)).
 		Joins("JOIN assets a ON a.id = br.asset_id").
-		Joins("LEFT JOIN departments d ON d.id = br.department_id")
+		Joins("LEFT JOIN departments d ON d.id = br.department_id").
+		Where("br.deleted_at IS NULL").
+		Where("a.deleted_at IS NULL").
+		Where("(d.deleted_at IS NULL OR d.id IS NULL)")
 
 	// 应用过滤条件
 	query = applyBorrowFilters(query, req.Filters)
@@ -188,13 +194,18 @@ func generateCustomInventoryReport(req CustomReportRequest) ([]map[string]interf
 	var columns []CustomReportColumn
 	var totalCount int64
 
-	// 构建基础查询
+	// 构建基础查询，添加软删除过滤
 	query := global.DB.Table("inventory_records ir").
 		Select(buildInventorySelectFields(req.Metrics)).
 		Joins("JOIN inventory_tasks it ON it.id = ir.task_id").
 		Joins("JOIN assets a ON a.id = ir.asset_id").
 		Joins("LEFT JOIN categories c ON c.id = a.category_id").
-		Joins("LEFT JOIN departments d ON d.id = a.department_id")
+		Joins("LEFT JOIN departments d ON d.id = a.department_id").
+		Where("ir.deleted_at IS NULL").
+		Where("it.deleted_at IS NULL").
+		Where("a.deleted_at IS NULL").
+		Where("c.deleted_at IS NULL").
+		Where("(d.deleted_at IS NULL OR d.id IS NULL)")
 
 	// 应用过滤条件
 	query = applyInventoryFilters(query, req.Filters)

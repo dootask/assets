@@ -2,6 +2,7 @@ package reports
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"asset-management-system/server/global"
 	"asset-management-system/server/models"
+	"asset-management-system/server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -507,7 +509,7 @@ func GetRecentReports(c *gin.Context) {
 			"type":         getReportTypeDisplayName(report.ReportType),
 			"date":         report.CreatedAt.Format("2006-01-02 15:04:05"),
 			"size":         report.GetFileSizeDisplay(),
-			"download_url": report.GetDownloadURL(),
+			"download_url": report.GetDownloadURL(c.GetString("base_url")),
 			"generated_by": report.GeneratedBy,
 			"file_format":  report.FileFormat,
 		}
@@ -538,7 +540,7 @@ func getReportTypeDisplayName(reportType models.ReportRecordType) string {
 }
 
 // recordReportGeneration 记录报表生成
-func recordReportGeneration(reportName string, reportType models.ReportRecordType, filePath string, fileSize *int64, generatedBy string, parameters interface{}) error {
+func recordReportGeneration(reportName string, reportType models.ReportRecordType, fileFormat models.ReportRecordFormat, relativeFilePath string, fileSize *int64, generatedBy string, parameters interface{}) error {
 	// 序列化参数为JSON字符串
 	var paramsStr string
 	if parameters != nil {
@@ -550,7 +552,8 @@ func recordReportGeneration(reportName string, reportType models.ReportRecordTyp
 	report := models.ReportRecord{
 		ReportName:  reportName,
 		ReportType:  reportType,
-		FilePath:    filePath,
+		FileFormat:  fileFormat,
+		FilePath:    relativeFilePath, // 只保存相对路径
 		FileSize:    fileSize,
 		GeneratedBy: generatedBy,
 		Parameters:  paramsStr,
@@ -574,9 +577,9 @@ func ExportAssetReports(c *gin.Context) {
 
 	switch format {
 	case "excel":
-		exportAssetReportsToExcel(c, parameters)
+		exportAssetReportsToExcelFile(c, parameters)
 	case "csv":
-		exportAssetReportsToCSV(c, parameters)
+		exportAssetReportsToCSVFile(c, parameters)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FORMAT",
@@ -600,9 +603,9 @@ func ExportBorrowReports(c *gin.Context) {
 
 	switch format {
 	case "excel":
-		exportBorrowReportsToExcel(c, parameters)
+		exportBorrowReportsToExcelFile(c, parameters)
 	case "csv":
-		exportBorrowReportsToCSV(c, parameters)
+		exportBorrowReportsToCSVFile(c, parameters)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FORMAT",
@@ -634,9 +637,9 @@ func ExportInventoryReports(c *gin.Context) {
 
 	switch format {
 	case "excel":
-		exportInventoryReportsToExcel(c, parameters)
+		exportInventoryReportsToExcelFile(c, parameters)
 	case "csv":
-		exportInventoryReportsToCSV(c, parameters)
+		exportInventoryReportsToCSVFile(c, parameters)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FORMAT",
@@ -663,9 +666,9 @@ func ExportCustomReports(c *gin.Context) {
 
 	switch req.Format {
 	case "excel":
-		exportCustomReportsToExcel(c, req.CustomReportRequest)
+		exportCustomReportsToExcelFile(c, req.CustomReportRequest)
 	case "csv":
-		exportCustomReportsToCSV(c, req.CustomReportRequest)
+		exportCustomReportsToCSVFile(c, req.CustomReportRequest)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FORMAT",
@@ -678,60 +681,42 @@ func ExportCustomReports(c *gin.Context) {
 func DownloadReport(c *gin.Context) {
 	filename := c.Param("filename")
 
-	// 从文件名解析报表类型和格式
-	var reportType models.ReportRecordType
-	var format string
-
-	if strings.Contains(filename, "资产统计报表") {
-		reportType = models.ReportRecordTypeAsset
-	} else if strings.Contains(filename, "借用统计报表") {
-		reportType = models.ReportRecordTypeBorrow
-	} else if strings.Contains(filename, "盘点统计报表") {
-		reportType = models.ReportRecordTypeInventory
-	} else {
+	// 验证文件名安全性 - 防止路径遍历攻击
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    "INVALID_FILENAME",
-			"message": "无效的文件名格式",
+			"message": "无效的文件名",
 		})
 		return
 	}
 
+	// 构建文件路径
+	filepath := fmt.Sprintf("./uploads/exports/%s", filename)
+
+	// 检查文件是否存在
+	if !utils.IsFileExists(filepath) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    "FILE_NOT_FOUND",
+			"message": "文件不存在或已过期",
+		})
+		return
+	}
+
+	// 根据文件扩展名设置Content-Type
+	var contentType string
 	if strings.HasSuffix(filename, ".xlsx") {
-		format = "excel"
+		contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	} else if strings.HasSuffix(filename, ".csv") {
-		format = "csv"
+		contentType = "text/csv"
 	} else {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "INVALID_FORMAT",
-			"message": "不支持的文件格式",
-		})
-		return
+		contentType = "application/octet-stream"
 	}
 
-	// 根据报表类型重新生成文件
-	switch reportType {
-	case models.ReportRecordTypeAsset:
-		if format == "excel" {
-			exportAssetReportsToExcel(c, nil)
-		} else {
-			exportAssetReportsToCSV(c, nil)
-		}
-	case models.ReportRecordTypeBorrow:
-		if format == "excel" {
-			exportBorrowReportsToExcel(c, nil)
-		} else {
-			exportBorrowReportsToCSV(c, nil)
-		}
-	case models.ReportRecordTypeInventory:
-		if format == "excel" {
-			exportInventoryReportsToExcel(c, nil)
-		} else {
-			exportInventoryReportsToCSV(c, nil)
-		}
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    "UNSUPPORTED_REPORT_TYPE",
-			"message": "不支持的报表类型",
-		})
-	}
+	// 设置响应头，使用实际文件名
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.Header("Cache-Control", "no-cache")
+
+	// 读取并返回文件内容
+	c.File(filepath)
 }
