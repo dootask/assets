@@ -19,6 +19,7 @@ require (
 )
 
 require (
+	github.com/dootask/tools/server/go v0.0.0-20250808160059-4524f6f95dfd
 	github.com/mattn/go-sqlite3 v1.14.22
 	gorm.io/driver/sqlite v1.6.0
 )
