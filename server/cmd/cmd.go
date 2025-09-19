@@ -49,9 +49,9 @@ func runPre(*cobra.Command, []string) {
 
 	// 加载应用配置
 	global.AppConfig = config.LoadConfig()
-	fmt.Printf("应用配置加载完成: %s v%s (%s)\n", 
-		global.AppConfig.AppName, 
-		global.AppConfig.AppVersion, 
+	fmt.Printf("应用配置加载完成: %s v%s (%s)\n",
+		global.AppConfig.AppName,
+		global.AppConfig.AppVersion,
 		global.AppConfig.NodeEnv)
 
 	// 创建必要的目录
@@ -59,7 +59,7 @@ func runPre(*cobra.Command, []string) {
 		fmt.Printf("创建上传目录失败: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	if err := os.MkdirAll(filepath.Dir(global.AppConfig.SQLiteDBPath), 0755); err != nil {
 		fmt.Printf("创建数据库目录失败: %v\n", err)
 		os.Exit(1)
@@ -115,15 +115,15 @@ func runServer(*cobra.Command, []string) {
 
 // setupStaticFileServing 设置静态文件服务
 func setupStaticFileServing(r *gin.Engine) {
-	// 上传文件服务
-	r.Static("/uploads", global.AppConfig.UploadDir)
-	
+	// 上传文件服务 - 使用配置的上传目录路径
+	r.Static("./public/uploads", global.AppConfig.UploadDir)
+
 	// 生产环境下服务前端静态文件
 	if config.IsProduction() {
 		// 服务 Next.js 静态文件
 		r.Static("/static", "./public")
 		r.Static("/_next/static", "./_next/static")
-		
+
 		// 处理前端路由 - 所有非API请求返回index.html
 		r.NoRoute(func(c *gin.Context) {
 			// 如果是API请求，返回404
@@ -134,7 +134,7 @@ func setupStaticFileServing(r *gin.Engine) {
 				})
 				return
 			}
-			
+
 			// 其他请求返回前端页面
 			c.File("./index.html")
 		})

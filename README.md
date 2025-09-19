@@ -138,6 +138,67 @@ make dev
 - **后端API**: http://localhost:8000
 - **数据库**: SQLite (./data/assets.db)
 
+## 🔌 DooTask 插件配置
+
+本系统支持作为DooTask平台的插件运行，提供企业级的资产管理解决方案。
+
+### 插件基本信息
+
+- **应用名称**: 资产管理系统
+- **支持版本**: DooTask > 1.1.66
+- **开发者**: DooTask Team
+
+### 应用配置
+
+#### 授权用户配置
+- **配置项**: `Authorized_users`
+- **类型**: 用户选择器
+- **说明**: 指定可以访问资产管理系统的用户列表
+- **示例**: `test***@dootask.com adm***@dootask.com`
+
+#### 资源限制配置
+- **CPU限制**: 可配置核心数（默认：0，表示无限制）
+- **内存限制**: 可配置MB/GB限制（默认：0，表示无限制）
+
+## ⚙️ 部署架构
+
+```mermaid
+graph TB
+    subgraph "DooTask 平台"
+        NGINX[Nginx 反向代理]
+        PLUGIN[插件管理]
+    end
+    
+    subgraph "资产管理系统"
+        FRONTEND[Next.js 前端 :3000]
+        BACKEND[Go 后端 :8000]
+        DB[(SQLite 数据库)]
+        FILES[文件存储]
+    end
+    
+    NGINX --> FRONTEND
+    NGINX --> BACKEND
+    BACKEND --> DB
+    BACKEND --> FILES
+    PLUGIN --> NGINX
+```
+
+### 访问路径
+
+在DooTask平台中，系统通过以下路径访问：
+
+- **前端界面**: `/apps/asset-management`
+- **API接口**: `/apps/asset-management/api`
+- **静态资源**: `/apps/asset-management/public`
+
+### 插件特性
+
+- **用户权限控制**: 基于DooTask用户系统的权限管理
+- **数据隔离**: 每个插件实例拥有独立的数据存储
+- **资源监控**: 支持CPU和内存使用限制
+- **自动重启**: 异常情况下自动重启服务
+- **数据持久化**: 使用Docker卷进行数据持久化存储
+
 ## 🛠️ 开发指南
 
 ### 项目结构

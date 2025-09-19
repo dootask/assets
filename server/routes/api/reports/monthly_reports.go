@@ -47,7 +47,7 @@ func GenerateMonthlyReport(c *gin.Context) {
 	filename := fmt.Sprintf("monthly_report_%s_%s.txt", req.Month, timestamp)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -107,7 +107,7 @@ func ExportAssetInventory(c *gin.Context) {
 	filename := fmt.Sprintf("asset_inventory_%s_%s.csv", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return

@@ -857,7 +857,7 @@ func ExportAssets(c *gin.Context) {
 	filename := fmt.Sprintf("asset_export_%s_%s.xlsx", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -1023,7 +1023,7 @@ func GenerateTemplate(c *gin.Context) {
 	filename := fmt.Sprintf("asset_template_%s_%s.xlsx", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -1336,7 +1336,7 @@ func DownloadAssetFile(c *gin.Context) {
 	}
 
 	// 构建文件路径
-	filepath := fmt.Sprintf("./uploads/exports/%s", filename)
+	filepath := fmt.Sprintf("./public/uploads/exports/%s", filename)
 
 	// 检查文件是否存在
 	if !utils.IsFileExists(filepath) {
@@ -1536,7 +1536,7 @@ func processLargeAssetExport(assets []models.Asset) {
 	filename := fmt.Sprintf("asset_export_large_%s_%s.xlsx", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		fmt.Printf("异步导出：创建导出目录失败: %v\n", err)
 		return

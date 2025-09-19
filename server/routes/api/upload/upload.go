@@ -49,7 +49,7 @@ func uploadFile(c *gin.Context) {
 	config := utils.FileUploadConfig{
 		MaxSize:      50 * 1024 * 1024, // 50MB
 		AllowedTypes: []string{".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv"},
-		UploadDir:    "./uploads/files",
+		UploadDir:    "./public/uploads/files",
 	}
 
 	filepath, err := utils.UploadFile(file, config)

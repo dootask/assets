@@ -184,7 +184,7 @@ func exportAssetReportsToExcelFile(c *gin.Context, parameters map[string]interfa
 	filename := fmt.Sprintf("asset_report_%s_%s.xlsx", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -225,7 +225,7 @@ func exportAssetReportsToCSVFile(c *gin.Context, parameters map[string]interface
 	filename := fmt.Sprintf("asset_report_%s_%s.csv", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -578,7 +578,7 @@ func exportBorrowReportsToExcelFile(c *gin.Context, parameters map[string]interf
 	filename := fmt.Sprintf("borrow_report_%s_%s.xlsx", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -682,7 +682,7 @@ func exportBorrowReportsToCSVFile(c *gin.Context, parameters map[string]interfac
 	filename := fmt.Sprintf("borrow_report_%s_%s.csv", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -1116,7 +1116,7 @@ func exportInventoryReportsToExcelFile(c *gin.Context, parameters map[string]int
 	filename := fmt.Sprintf("inventory_report_%s_%s.xlsx", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -1219,7 +1219,7 @@ func exportInventoryReportsToCSVFile(c *gin.Context, parameters map[string]inter
 	filename := fmt.Sprintf("inventory_report_%s_%s.csv", timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -1464,7 +1464,7 @@ func exportCustomReportsToExcelFile(c *gin.Context, req CustomReportRequest) {
 	filename := fmt.Sprintf("custom_report_%s_%s_%s.xlsx", req.ReportType, timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return
@@ -1532,7 +1532,7 @@ func exportCustomReportsToCSVFile(c *gin.Context, req CustomReportRequest) {
 	filename := fmt.Sprintf("custom_report_%s_%s_%s.csv", req.ReportType, timestamp, randomStr)
 
 	// 确保导出目录存在
-	exportDir := "./uploads/exports"
+	exportDir := "./public/uploads/exports"
 	if err := os.MkdirAll(exportDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Errorf("创建导出目录失败: %v", err))
 		return

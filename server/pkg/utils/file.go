@@ -24,7 +24,7 @@ type FileUploadConfig struct {
 var DefaultImageUploadConfig = FileUploadConfig{
 	MaxSize:      10 * 1024 * 1024, // 10MB
 	AllowedTypes: []string{".jpg", ".jpeg", ".png", ".gif", ".webp"},
-	UploadDir:    "./uploads/images",
+	UploadDir:    "./public/uploads/images",
 }
 
 // UploadFile 上传文件

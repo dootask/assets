@@ -691,7 +691,7 @@ func DownloadReport(c *gin.Context) {
 	}
 
 	// 构建文件路径
-	filepath := fmt.Sprintf("./uploads/exports/%s", filename)
+	filepath := fmt.Sprintf("./public/uploads/exports/%s", filename)
 
 	// 检查文件是否存在
 	if !utils.IsFileExists(filepath) {

@@ -5,11 +5,9 @@ services:
       - AUTHORIZED_USERS=${Authorized_users}
     volumes:
       - asset_management_data:/app/data
-      - asset_management_uploads:/app/uploads
-      - asset_management_backups:/app/backups
+      - asset_management_uploads:/app/public
     restart: unless-stopped
 
 volumes:
   asset_management_data:
-  asset_management_uploads:
-  asset_management_backups:
+  asset_management_public:

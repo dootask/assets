@@ -22,7 +22,7 @@ func CreateBackup(c *gin.Context) {
 	filename := fmt.Sprintf("assets_backup_%s.sql", timestamp)
 
 	// 创建备份目录
-	backupDir := "./backups"
+	backupDir := "./public/backups"
 	if err := os.MkdirAll(backupDir, 0755); err != nil {
 		utils.InternalError(c, fmt.Sprintf("创建备份目录失败: %v", err))
 		return
@@ -91,7 +91,7 @@ func RestoreBackup(c *gin.Context) {
 	}
 
 	// 构建文件路径
-	backupDir := "./backups"
+	backupDir := "./public/backups"
 	backupPath := filepath.Join(backupDir, req.FileName)
 
 	// 检查文件是否存在
@@ -145,7 +145,7 @@ func GetBackups(c *gin.Context) {
 	}
 
 	// 从文件系统读取备份文件
-	backupDir := "./backups"
+	backupDir := "./public/backups"
 	files, err := os.ReadDir(backupDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -250,7 +250,7 @@ func DownloadBackup(c *gin.Context) {
 	}
 
 	// 构建文件路径
-	backupDir := "./backups"
+	backupDir := "./public/backups"
 	backupPath := filepath.Join(backupDir, filename)
 
 	// 检查文件是否存在
@@ -293,7 +293,7 @@ func DeleteBackup(c *gin.Context) {
 	}
 
 	// 构建文件路径
-	backupDir := "./backups"
+	backupDir := "./public/backups"
 	backupPath := filepath.Join(backupDir, filename)
 
 	// 检查文件是否存在
@@ -342,7 +342,7 @@ func GetBackupInfo(c *gin.Context) {
 	}
 
 	// 构建文件路径
-	backupDir := "./backups"
+	backupDir := "./public/backups"
 	backupPath := filepath.Join(backupDir, filename)
 
 	// 检查文件是否存在
@@ -678,7 +678,7 @@ func parseSQLStatements(sqlContent string) ([]string, error) {
 
 // cleanupOldBackups 清理旧备份文件，保留最新10个
 func cleanupOldBackups() error {
-	backupDir := "./backups"
+	backupDir := "./public/backups"
 
 	// 读取备份目录
 	files, err := os.ReadDir(backupDir)

@@ -16,9 +16,17 @@ import (
 // AuthMiddleware 简化的认证中间件（支持微前端环境）
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 过滤掉静态文件请求，和健康检查请求
+		if strings.HasPrefix(c.Request.URL.Path, "/public/uploads/") || c.Request.URL.Path == "/health" {
+			c.Next()
+			return
+		}
+
 		// 检查微前端环境传递的用户信息
-		microAppUserID := c.GetHeader("X-MicroApp-User-ID")
 		microAppUserToken := c.GetHeader("X-MicroApp-User-Token")
+		if microAppUserToken == "" {
+			microAppUserToken = c.Query("token")
+		}
 
 		// 创建客户端
 		client := dootask.NewClient(
@@ -34,12 +42,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		dootaskUserID := strconv.FormatUint(uint64(user.UserID), 10)
-		// 检查用户ID是否匹配
-		if dootaskUserID != microAppUserID {
-			c.Set("is_authenticated", false)
-			c.AbortWithError(http.StatusForbidden, errors.New("权限不足"))
-			return
-		}
 
 		authorizedUsers := os.Getenv("AUTHORIZED_USERS")
 		authorizedUsersList := strings.Split(authorizedUsers, ",")
